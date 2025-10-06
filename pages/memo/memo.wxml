@@ -1,0 +1,213 @@
+<view class="container">
+  <!-- 记录模式选择 -->
+  <view class="mode-selector">
+    <view class="selector-item {{ recordMode === 'normal' ? 'active' : '' }}" bindtap="selectNormalMode">
+      <text class="icon">📝</text>
+      <text class="label">日常记录</text>
+    </view>
+    <view class="selector-item {{ recordMode === 'planning' ? 'active' : '' }}" bindtap="selectPlanningMode">
+      <text class="icon">📋</text>
+      <text class="label">明日规划</text>
+    </view>
+  </view>
+
+  <!-- 记录类型选择 -->
+  <view class="type-selector">
+    <view class="selector-item {{ inputType === 'text' ? 'active' : '' }}" bindtap="selectTextInput">
+      <text class="icon">📝</text>
+      <text class="label">文字记录</text>
+    </view>
+    <view class="selector-item {{ inputType === 'voice' ? 'active' : '' }}" bindtap="selectVoiceInput">
+      <text class="icon">🎤</text>
+      <text class="label">语音记录</text>
+    </view>
+  </view>
+
+  <!-- 文字输入模式 -->
+  <view wx:if="{{ inputType === 'text' }}" class="input-section fade-in">
+    <view class="card">
+      <view class="card-content">
+        <view class="title">{{ recordMode === 'planning' ? '明日规划' : '记录此刻' }}</view>
+        <view wx:if="{{ recordMode === 'planning' }}" class="planning-tip">
+          <text class="tip-icon">💡</text>
+          <text class="tip-text">规划明天的重要事项，让每一天都有方向</text>
+        </view>
+        <textarea 
+          class="memo-textarea {{ recordMode === 'planning' ? 'planning' : '' }}"
+          placeholder="{{ recordMode === 'planning' ? '明天我要做的重要事情...' : '记录此刻的想法、心情或发生的事情...' }}"
+          value="{{ textContent }}"
+          bindinput="onTextInput"
+          maxlength="{{ maxLength }}"
+          auto-focus="{{ inputType === 'text' }}"
+        />
+        <view class="char-count">{{ textContent.length }}/{{ maxLength }}</view>
+      </view>
+    </view>
+
+    <!-- 快速模板 -->
+    <view class="card">
+      <view class="card-content">
+        <view class="subtitle">{{ recordMode === 'planning' ? '规划模板' : '快速模板' }}</view>
+        <view class="template-list">
+          <view class="template-item" wx:for="{{ currentTemplates }}" wx:key="index" bindtap="useTemplate" data-template="{{ item }}">
+            {{ item }}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 语音输入模式 -->
+  <view wx:if="{{ inputType === 'voice' }}" class="voice-section fade-in">
+    <view class="card">
+      <view class="card-content">
+        <view class="title">语音记录</view>
+        
+        <!-- 录音按钮 -->
+        <view class="voice-recorder">
+          <button 
+            class="btn-voice {{ isRecording ? 'recording' : '' }}"
+            bindtouchstart="startRecording"
+            bindtouchend="stopRecording"
+            bindtouchcancel="cancelRecording"
+          >
+            <text wx:if="{{ !isRecording }}">🎤</text>
+            <text wx:else>⏸️</text>
+          </button>
+          <view class="voice-status">
+            <text wx:if="{{ !isRecording && !voiceContent }}">长按开始录音</text>
+            <text wx:if="{{ isRecording }}">正在录音...{{ recordingTime }}s</text>
+            <text wx:if="{{ !isRecording && voiceContent }}">录音完成</text>
+          </view>
+        </view>
+
+        <!-- 语音转文字结果 -->
+        <view wx:if="{{ voiceContent }}" class="voice-result">
+          <view class="subtitle">识别结果</view>
+          <textarea 
+            class="voice-textarea"
+            value="{{ voiceContent }}"
+            bindinput="onVoiceTextEdit"
+            placeholder="语音识别结果会显示在这里，您也可以手动编辑..."
+          />
+        </view>
+
+        <!-- 录音控制 -->
+        <view wx:if="{{ voiceContent }}" class="voice-controls">
+          <button class="btn btn-secondary" bindtap="playRecording">
+            <text>{{ isPlaying ? '⏸️ 暂停' : '▶️ 播放' }}</text>
+          </button>
+          <button class="btn btn-secondary" bindtap="reRecord">
+            <text>🔄 重新录制</text>
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 时间选择 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="subtitle">记录时间</view>
+      <view class="time-selector">
+        <view class="time-mode-toggle">
+          <view 
+            class="time-mode-item {{ timeMode === 'now' ? 'active' : '' }}"
+            bindtap="selectTimeMode"
+            data-mode="now"
+          >
+            <text class="mode-icon">⏰</text>
+            <text class="mode-label">当前时间</text>
+          </view>
+          <view 
+            class="time-mode-item {{ timeMode === 'custom' ? 'active' : '' }}"
+            bindtap="selectTimeMode"
+            data-mode="custom"
+          >
+            <text class="mode-icon">📅</text>
+            <text class="mode-label">补录时间</text>
+          </view>
+        </view>
+        
+        <!-- 自定义时间选择器 -->
+        <view wx:if="{{ timeMode === 'custom' }}" class="custom-time-picker">
+          <view class="picker-row">
+            <text class="picker-label">日期：</text>
+            <picker 
+              mode="date" 
+              value="{{ customDate }}" 
+              start="2020-01-01" 
+              end="{{ todayDate }}"
+              bindchange="onDateChange"
+            >
+              <view class="picker-value">{{ customDateDisplay }}</view>
+            </picker>
+          </view>
+          <view class="picker-row">
+            <text class="picker-label">时间：</text>
+            <picker 
+              mode="time" 
+              value="{{ customTime }}" 
+              bindchange="onTimeChange"
+            >
+              <view class="picker-value">{{ customTime }}</view>
+            </picker>
+          </view>
+          <view class="selected-time-display">
+            <text class="icon">🕐</text>
+            <text class="time-text">将记录为：{{ customTimeDisplay }}</text>
+          </view>
+        </view>
+        
+        <!-- 当前时间显示 -->
+        <view wx:else class="current-time-display">
+          <text class="icon">⏰</text>
+          <text class="time-text">{{ currentTimeDisplay }}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 标签选择 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="subtitle">添加标签</view>
+      
+      
+      <view class="tag-selector">
+        <view 
+          class="tag-item {{ selectedTags.indexOf(item) !== -1 ? 'selected' : '' }}"
+          wx:for="{{ availableTags }}" 
+          wx:key="index"
+          bindtap="toggleTag"
+          data-tag="{{ item }}"
+        >
+          {{ item }}
+        </view>
+      </view>
+      
+      <!-- 自定义标签输入 -->
+      <view class="custom-tag-input">
+        <input 
+          class="input"
+          placeholder="添加自定义标签"
+          value="{{ customTag }}"
+          bindinput="onCustomTagInput"
+          bindconfirm="addCustomTag"
+        />
+        <button wx:if="{{ customTag.length > 0 }}" class="btn btn-secondary" bindtap="addCustomTag">添加</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 保存按钮 -->
+  <view class="save-section">
+    <button 
+      class="btn btn-primary save-btn"
+      bindtap="saveMemo"
+      disabled="{{ !canSave || isSaving }}"
+    >
+      <text>{{ isSaving ? '保存中...' : (recordMode === 'planning' ? '📋 保存规划' : '💾 保存记录') }}</text>
+    </button>
+  </view>
+</view>

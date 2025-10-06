@@ -1,0 +1,120 @@
+<view class="container">
+  <!-- 每日箴言 -->
+  <view class="quote-card fade-in">
+    <view class="quote-text">{{ currentQuote }}</view>
+  </view>
+
+  <!-- 快速统计 -->
+  <view class="grid grid-2 mb-20">
+    <view class="grid-item">
+      <view class="stat-card">
+        <view class="stat-number">{{ todayMemoCount }}</view>
+        <view class="stat-label">今日记录</view>
+      </view>
+    </view>
+    <view class="grid-item">
+      <view class="stat-card">
+        <view class="stat-number">{{ totalMemoCount }}</view>
+        <view class="stat-label">总记录数</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快速操作 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">快速记录</view>
+      <view class="grid grid-2">
+        <view class="grid-item">
+          <button class="btn btn-primary" bindtap="goToTextMemo">
+            <text>📝 文字记录</text>
+          </button>
+        </view>
+        <view class="grid-item">
+          <button class="btn btn-primary" bindtap="goToVoiceMemo">
+            <text>🎤 语音记录</text>
+          </button>
+        </view>
+      </view>
+      <view class="planning-quick-action mt-20">
+        <button class="btn btn-planning" bindtap="goToPlanningMemo">
+          <text>📋 明日规划</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 明日规划重点 -->
+  <view wx:if="{{ todayPlanning }}" class="card planning-highlight">
+    <view class="card-content">
+      <view class="planning-header">
+        <view class="title">📋 明日规划重点</view>
+        <view class="planning-date">{{ planningDate }}</view>
+      </view>
+      <view class="planning-content">
+        <text class="planning-text">{{ todayPlanning.content }}</text>
+      </view>
+      <view class="planning-meta">
+        <view class="time-tag">{{ todayPlanning.formattedTime }}</view>
+        <view class="tag planning">规划</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 最近记录 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">最近记录</view>
+      <view wx:if="{{ recentMemos.length > 0 }}">
+        <view class="list-item" wx:for="{{ recentMemos }}" wx:key="id">
+          <view class="content">
+            <view class="subtitle">{{ item.content }}</view>
+            <view class="memo-meta">
+              <view class="time-tag">{{ item.formattedTime }}</view>
+              <view class="tag period-{{ item.periodColor }}">{{ item.timePeriod }}</view>
+              <view class="tag category-{{ item.categoryColor }}">{{ item.category }}</view>
+              <view class="tag {{ item.isPlanning ? 'planning' : item.type }}">
+                {{ item.isPlanning ? '规划' : (item.type === 'voice' ? '语音' : '文字') }}
+              </view>
+            </view>
+            <!-- 用户自定义标签 -->
+            <view class="memo-tags" wx:if="{{ item.tags && item.tags.length > 0 }}">
+              <text class="tag user-tag" wx:for="{{ item.tags }}" wx:key="index" wx:for-item="tag">{{ tag }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="text-center mt-20">
+          <button class="btn btn-secondary" bindtap="viewAllMemos">查看全部</button>
+        </view>
+      </view>
+      <view wx:else class="empty-state">
+        <view class="icon">📝</view>
+        <view class="text">暂无记录，开始记录美好生活吧！</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提醒设置 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">提醒设置</view>
+      <view class="flex flex-between">
+        <text>定时提醒</text>
+        <switch checked="{{ reminderEnabled }}" bindchange="toggleReminder" color="#6366f1"/>
+      </view>
+      <view wx:if="{{ reminderEnabled }}" class="mt-20">
+        <text class="subtitle">提醒间隔：{{ reminderInterval }}分钟</text>
+        <slider 
+          value="{{ reminderInterval }}" 
+          min="30" 
+          max="480" 
+          step="30"
+          show-value
+          bindchange="onReminderIntervalChange"
+          activeColor="#6366f1"
+          backgroundColor="#e5e7eb"
+        />
+      </view>
+    </view>
+  </view>
+</view>

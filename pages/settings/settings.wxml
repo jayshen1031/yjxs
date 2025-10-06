@@ -1,0 +1,203 @@
+<view class="container">
+  <!-- 用户信息卡片 -->
+  <view class="card user-card">
+    <view class="card-content">
+      <view class="user-info">
+        <view class="avatar-section">
+          <view wx:if="{{ currentUser.avatar }}" class="user-avatar">
+            <image src="{{ currentUser.avatar }}" />
+          </view>
+          <view wx:else class="user-avatar default-avatar">
+            <text>👤</text>
+          </view>
+          <button class="avatar-edit-btn" bindtap="changeAvatar">
+            <text>📷</text>
+          </button>
+        </view>
+        <view class="user-details">
+          <view class="user-name">{{ currentUser.displayName || currentUser.name || '未命名用户' }}</view>
+          <view class="user-email">{{ currentUser.email }}</view>
+          <view class="user-stats">
+            <text class="stat-item">📝 {{ userStats.totalMemos }}条记录</text>
+            <text class="stat-item">📋 {{ userStats.planningMemos }}条规划</text>
+            <text class="stat-item">🗓️ 注册{{ userStats.daysSinceCreated }}天</text>
+          </view>
+        </view>
+      </view>
+      <view class="user-actions">
+        <button class="btn btn-secondary" bindtap="editProfile">编辑资料</button>
+        <button class="btn btn-logout" bindtap="logout">退出登录</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 用户切换 -->
+  <view class="card" wx:if="{{ users.length > 1 }}">
+    <view class="card-content">
+      <view class="title">👥 用户切换</view>
+      <view class="user-list">
+        <view 
+          class="user-item {{ item.id === currentUser.id ? 'active' : '' }}"
+          wx:for="{{ users }}" 
+          wx:key="id"
+          bindtap="switchUser"
+          data-user-id="{{ item.id }}"
+        >
+          <view wx:if="{{ item.avatar }}" class="user-item-avatar">
+            <image src="{{ item.avatar }}" />
+          </view>
+          <view wx:else class="user-item-avatar default-avatar">
+            <text>👤</text>
+          </view>
+          <view class="user-item-info">
+            <view class="user-item-name">{{ item.displayName || item.name }}</view>
+            <view class="user-item-email">{{ item.email }}</view>
+            <view class="user-item-stats">{{ item.memoCount }}条记录</view>
+          </view>
+          <view wx:if="{{ item.id === currentUser.id }}" class="current-indicator">
+            <text>✓</text>
+          </view>
+        </view>
+      </view>
+      <button class="btn btn-primary" bindtap="addNewUser">+ 添加新用户</button>
+    </view>
+  </view>
+
+  <!-- Notion集成 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="section-header">
+        <view class="title">🔗 Notion集成</view>
+        <view class="notion-status-indicator">
+          <text class="status-text {{ notionConfigured ? 'connected' : 'disconnected' }}">
+            {{ notionConfigured ? '已配置' : '未配置' }}
+          </text>
+        </view>
+      </view>
+      
+      <view class="notion-info">
+        <view class="info-row">
+          <text class="info-label">同步状态:</text>
+          <text class="info-value {{ notionConfig.enabled ? 'enabled' : 'disabled' }}">
+            {{ notionConfig.enabled ? '已启用' : '已禁用' }}
+          </text>
+        </view>
+        <view class="info-row" wx:if="{{ notionConfig.enabled && lastSyncTime }}">
+          <text class="info-label">上次同步:</text>
+          <text class="info-value">{{ lastSyncTime }}</text>
+        </view>
+        <view class="info-row" wx:if="{{ notionConfig.enabled }}">
+          <text class="info-label">待同步:</text>
+          <text class="info-value">{{ pendingMemos }}条记录</text>
+        </view>
+      </view>
+
+      <view class="notion-actions">
+        <button class="btn btn-primary" bindtap="configureNotion">
+          <text>{{ notionConfigured ? '⚙️ 重新配置' : '🔗 配置Notion' }}</text>
+        </button>
+        <button class="btn btn-secondary" bindtap="syncToNotion" 
+                wx:if="{{ notionConfigured && notionConfig.enabled }}"
+                loading="{{ syncing }}">
+          <text>{{ syncing ? '同步中...' : '🔄 立即同步' }}</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 偏好设置 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">⚙️ 偏好设置</view>
+      
+      <view class="setting-item">
+        <view class="setting-info">
+          <view class="setting-name">自动同步</view>
+          <view class="setting-desc">保存记录时自动同步到Notion</view>
+        </view>
+        <switch 
+          checked="{{ preferences.autoSync }}" 
+          bindchange="toggleAutoSync" 
+          color="#6366f1"
+          disabled="{{ !notionConfig.enabled }}"
+        />
+      </view>
+      
+      <view class="setting-item">
+        <view class="setting-info">
+          <view class="setting-name">提醒通知</view>
+          <view class="setting-desc">开启定时记录提醒</view>
+        </view>
+        <switch 
+          checked="{{ preferences.reminderEnabled }}" 
+          bindchange="toggleReminder" 
+          color="#6366f1"
+        />
+      </view>
+      
+      <view class="setting-item">
+        <view class="setting-info">
+          <view class="setting-name">提醒间隔</view>
+          <view class="setting-desc">{{ preferences.reminderInterval }}分钟</view>
+        </view>
+        <slider 
+          value="{{ preferences.reminderInterval }}" 
+          min="30" 
+          max="480" 
+          step="30"
+          bindchange="onReminderIntervalChange"
+          activeColor="#6366f1"
+          backgroundColor="#e5e7eb"
+          disabled="{{ !preferences.reminderEnabled }}"
+        />
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据管理 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">📊 数据管理</view>
+      
+      <view class="data-actions">
+        <button class="btn btn-secondary" bindtap="exportData">
+          <text>📤 导出数据</text>
+        </button>
+        <button class="btn btn-secondary" bindtap="importData">
+          <text>📥 导入数据</text>
+        </button>
+      </view>
+      
+      <view class="danger-zone">
+        <view class="danger-title">⚠️ 危险操作</view>
+        <button class="btn btn-danger" bindtap="clearAllData">
+          <text>🗑️ 清除所有数据</text>
+        </button>
+        <button class="btn btn-danger" bindtap="deleteCurrentUser">
+          <text>👤 删除当前用户</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 关于 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">ℹ️ 关于</view>
+      <view class="about-info">
+        <view class="about-item">
+          <text class="about-label">版本号:</text>
+          <text class="about-value">v1.0.0</text>
+        </view>
+        <view class="about-item">
+          <text class="about-label">开发者:</text>
+          <text class="about-value">Claude Code</text>
+        </view>
+        <view class="about-item">
+          <text class="about-label">更新时间:</text>
+          <text class="about-value">2025年1月</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

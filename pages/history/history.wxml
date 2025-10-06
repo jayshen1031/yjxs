@@ -1,0 +1,142 @@
+<view class="container">
+  <!-- 页面标题说明 -->
+  <view class="page-header">
+    <view class="page-title">完整历史记录</view>
+    <view class="page-desc">高级筛选、搜索和管理所有记录</view>
+  </view>
+
+  <!-- 日期选择和统计 -->
+  <view class="header-section">
+    <view class="date-selector">
+      <picker mode="date" value="{{ selectedDate }}" bindchange="onDateChange" start="2020-01-01" end="{{ todayDate }}">
+        <view class="date-picker">
+          <text class="date-text">{{ selectedDateDisplay }}</text>
+          <text class="date-icon">📅</text>
+        </view>
+      </picker>
+    </view>
+    
+    <!-- 统计卡片 -->
+    <view class="stats-grid">
+      <view class="stat-card">
+        <view class="stat-number">{{ stats.total }}</view>
+        <view class="stat-label">总记录</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-number">{{ stats.text }}</view>
+        <view class="stat-label">文字记录</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-number">{{ stats.voice }}</view>
+        <view class="stat-label">语音记录</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-number">{{ stats.todayCount }}</view>
+        <view class="stat-label">今日记录</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 高级筛选 -->
+  <view class="advanced-filter">
+    <view class="filter-header" bindtap="toggleFilterPanel">
+      <text class="filter-title">高级筛选</text>
+      <text class="filter-arrow {{ showFilterPanel ? 'active' : '' }}">▼</text>
+    </view>
+    
+    <view class="filter-panel {{ showFilterPanel ? 'show' : '' }}">
+      <!-- 标签筛选 -->
+      <view class="filter-group">
+        <view class="filter-label">标签筛选</view>
+        <view class="tag-filter">
+          <view class="filter-tag {{ selectedTags.indexOf(item) !== -1 ? 'selected' : '' }}" wx:for="{{ allTags }}" wx:key="index" bindtap="toggleTagFilter" data-tag="{{ item }}">
+            {{ item }}
+          </view>
+        </view>
+      </view>
+
+      <!-- 时间范围筛选 -->
+      <view class="filter-group">
+        <view class="filter-label">时间范围</view>
+        <view class="time-range-filter">
+          <view class="time-range-item {{ timeRange === item.value ? 'active' : '' }}" wx:for="{{ timeRangeOptions }}" wx:key="value" bindtap="setTimeRange" data-range="{{ item.value }}">
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
+
+      <!-- 排序方式 -->
+      <view class="filter-group">
+        <view class="filter-label">排序方式</view>
+        <view class="sort-options">
+          <view class="sort-option {{ sortBy === item.value ? 'active' : '' }}" wx:for="{{ sortOptions }}" wx:key="value" bindtap="setSortBy" data-sort="{{ item.value }}">
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 记录列表 -->
+  <view class="memo-list" wx:if="{{ filteredMemos.length > 0 }}">
+    <!-- 按日期分组显示 -->
+    <view class="date-group" wx:for="{{ groupedMemos }}" wx:key="date">
+      <view class="date-header">
+        <text class="date-title">{{ item.dateDisplay }}</text>
+        <text class="date-count">{{ item.memos.length }}条</text>
+      </view>
+      
+      <view class="memo-item" wx:for="{{ item.memos }}" wx:key="id" wx:for-item="memo">
+        <view class="memo-content" bindtap="viewMemoDetail" data-memo="{{ memo }}">
+          <view class="memo-header">
+            <view class="memo-type {{ memo.isPlanning ? 'planning' : memo.type }}">
+              <text>{{ memo.isPlanning ? '📋' : (memo.type === 'voice' ? '🎤' : '📝') }}</text>
+            </view>
+            <view class="memo-time">{{ memo.timeStr }}</view>
+            <view class="memo-actions">
+              <button class="action-btn" wx:if="{{ memo.type === 'voice' }}" catchtap="playVoice" data-memo="{{ memo }}">
+                <text>{{ memo.isPlaying ? '⏸️' : '▶️' }}</text>
+              </button>
+              <button class="action-btn" catchtap="editMemo" data-memo="{{ memo }}">
+                <text>✏️</text>
+              </button>
+              <button class="action-btn delete" catchtap="deleteMemo" data-memo="{{ memo }}">
+                <text>🗑️</text>
+              </button>
+            </view>
+          </view>
+          
+          <view class="memo-text">{{ memo.content }}</view>
+          
+          <view class="memo-labels">
+            <text class="tag period-{{ memo.periodColor }}">{{ memo.timePeriod }}</text>
+            <text class="tag category-{{ memo.categoryColor }}">{{ memo.category }}</text>
+          </view>
+          
+          <view class="memo-tags" wx:if="{{ memo.tags && memo.tags.length > 0 }}">
+            <text class="tag user-tag" wx:for="{{ memo.tags }}" wx:key="index" wx:for-item="tag">{{ tag }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:else class="empty-state">
+    <view class="empty-icon">🗂️</view>
+    <view class="empty-text">
+      <text wx:if="{{ hasActiveFilters }}">没有符合条件的记录</text>
+      <text wx:else>暂无历史记录</text>
+    </view>
+    <button wx:if="{{ hasActiveFilters }}" class="btn btn-secondary" bindtap="clearFilters">
+      <text>清除筛选</text>
+    </button>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{ filteredMemos.length > 0 && hasMore }}">
+    <button class="btn btn-secondary" bindtap="loadMore" loading="{{ isLoading }}">
+      <text>{{ isLoading ? '加载中...' : '加载更多' }}</text>
+    </button>
+  </view>
+</view>

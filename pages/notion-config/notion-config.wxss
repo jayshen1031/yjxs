@@ -1,0 +1,424 @@
+/* pages/notion-config/notion-config.wxss */
+.container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 30rpx;
+}
+
+/* 头部 */
+.header {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 30rpx;
+  border-radius: 16rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.header-icon {
+  font-size: 48rpx;
+  margin-right: 20rpx;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.header-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.header-desc {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.user-email-hint {
+  margin-top: 20rpx;
+  padding: 16rpx;
+  background: #eff6ff;
+  border-radius: 8rpx;
+  border-left: 4rpx solid #3b82f6;
+}
+
+.user-email-hint text {
+  display: block;
+  font-size: 22rpx;
+  color: #1e40af;
+  line-height: 1.4;
+}
+
+.user-email-hint text:first-child {
+  font-weight: 600;
+  margin-bottom: 4rpx;
+}
+
+/* 状态指示器 */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 30rpx;
+  border-radius: 16rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.status-icon {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+  margin-bottom: 10rpx;
+}
+
+.status-item.completed .status-icon {
+  background: #10b981;
+  color: white;
+}
+
+.status-item text {
+  font-size: 22rpx;
+  color: #6b7280;
+  text-align: center;
+}
+
+.status-item.completed text {
+  color: #10b981;
+}
+
+.status-line {
+  height: 4rpx;
+  background: #e5e7eb;
+  flex: 1;
+  margin: 0 20rpx;
+}
+
+.status-line.completed {
+  background: #10b981;
+}
+
+/* 配置表单 */
+.config-form {
+  background: white;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.form-section {
+  margin-bottom: 40rpx;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.help-btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 24rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.input-field {
+  flex: 1;
+  height: 80rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  background: white;
+}
+
+.input-field:focus {
+  border-color: #6366f1;
+}
+
+.input-field.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.input-hint.error {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.toggle-btn {
+  width: 80rpx;
+  height: 80rpx;
+  margin-left: 15rpx;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-hint {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-label {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 30rpx;
+}
+
+.test-btn, .save-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: none;
+}
+
+.test-btn {
+  background: #f59e0b;
+  color: white;
+}
+
+.test-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+}
+
+.save-btn {
+  background: #10b981;
+  color: white;
+}
+
+.save-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+}
+
+/* 连接状态 */
+.connection-status {
+  margin-bottom: 30rpx;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  border-left: 8rpx solid;
+}
+
+.status-card.success {
+  background: #ecfdf5;
+  border-color: #10b981;
+}
+
+.status-card.error {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.status-card .status-icon {
+  font-size: 32rpx;
+  margin-right: 20rpx;
+}
+
+.status-content {
+  flex: 1;
+}
+
+.status-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.status-card.success .status-title {
+  color: #065f46;
+}
+
+.status-card.error .status-title {
+  color: #991b1b;
+}
+
+.status-message {
+  font-size: 22rpx;
+}
+
+.status-card.success .status-message {
+  color: #047857;
+}
+
+.status-card.error .status-message {
+  color: #dc2626;
+}
+
+/* 帮助说明 */
+.help-section {
+  background: white;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.help-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.help-item:last-child {
+  border-bottom: none;
+}
+
+.help-icon {
+  font-size: 32rpx;
+  margin-right: 20rpx;
+}
+
+.help-text {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* 帮助对话框 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 600rpx;
+  background: white;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx;
+  background: #f8fafc;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.modal-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.close-btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 24rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-body {
+  padding: 30rpx;
+}
+
+.modal-body .help-text {
+  display: block;
+  font-size: 24rpx;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 15rpx;
+}
+
+.modal-body .help-text:last-child {
+  margin-bottom: 0;
+}

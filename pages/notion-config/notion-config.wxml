@@ -1,0 +1,127 @@
+<!--pages/notion-config/notion-config.wxml-->
+<view class="container">
+  <!-- 头部 -->
+  <view class="header">
+    <view class="header-icon">🔗</view>
+    <view class="header-content">
+      <text class="header-title">Notion集成配置</text>
+      <text class="header-desc">连接你的Notion账户，实现数据同步</text>
+      <view class="user-email-hint" wx:if="{{userEmail}}">
+        <text>👤 当前账户：{{userEmail}}</text>
+        <text>💡 建议使用相同邮箱的Notion账户</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 状态指示器 -->
+  <view class="status-indicator">
+    <view class="status-item {{configStatus.step >= 1 ? 'completed' : ''}}">
+      <view class="status-icon">{{configStatus.step >= 1 ? '✅' : '1'}}</view>
+      <text>获取API密钥</text>
+    </view>
+    <view class="status-line {{configStatus.step >= 2 ? 'completed' : ''}}"></view>
+    <view class="status-item {{configStatus.step >= 2 ? 'completed' : ''}}">
+      <view class="status-icon">{{configStatus.step >= 2 ? '✅' : '2'}}</view>
+      <text>配置数据库</text>
+    </view>
+  </view>
+
+  <!-- 配置表单 -->
+  <view class="config-form">
+    <!-- API密钥配置 -->
+    <view class="form-section">
+      <view class="section-header">
+        <text class="section-title">Notion API密钥</text>
+        <button class="help-btn" bindtap="showApiKeyHelp">❓</button>
+      </view>
+      <view class="input-group">
+        <input class="input-field {{apiKeyError ? 'error' : ''}}" 
+               placeholder="ntn_313793477676LiqamZbn7TBVYB2EQOBaeZo7Jqt0f"
+               value="{{notionConfig.apiKey}}"
+               bindinput="onApiKeyInput"
+               password="{{!showApiKey}}"
+               type="text"/>
+        <button class="toggle-btn" bindtap="toggleApiKeyVisibility">
+          {{showApiKey ? '👁️' : '👁️‍🗨️'}}
+        </button>
+      </view>
+      <text class="input-hint">
+        从Notion集成页面复制的API密钥，任何格式都可以
+      </text>
+    </view>
+
+    <!-- 数据库ID配置 -->
+    <view class="form-section">
+      <view class="section-header">
+        <text class="section-title">数据库ID</text>
+        <button class="help-btn" bindtap="showDatabaseIdHelp">❓</button>
+      </view>
+      <view class="input-group">
+        <input class="input-field {{databaseIdError ? 'error' : ''}}" 
+               placeholder="1a2b3c4d5e6f7890abcdef1234567890"
+               value="{{notionConfig.databaseId}}"
+               bindinput="onDatabaseIdInput"
+               type="text"/>
+      </view>
+      <text class="input-hint">
+        从Notion数据库URL中复制的ID，任何格式都可以
+      </text>
+    </view>
+
+    <!-- 同步设置 -->
+    <view class="form-section">
+      <text class="section-title">同步设置</text>
+      <view class="setting-item">
+        <text class="setting-label">启用自动同步</text>
+        <switch checked="{{notionConfig.syncEnabled}}" 
+               bindchange="onSyncEnabledChange"/>
+      </view>
+      <view class="setting-item">
+        <text class="setting-label">启用Notion集成</text>
+        <switch checked="{{notionConfig.enabled}}" 
+               bindchange="onNotionEnabledChange"/>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <button class="save-btn" 
+            bindtap="saveConfig"
+            disabled="{{!canSave || saving}}">
+      {{saving ? '保存中...' : '保存并启用同步'}}
+    </button>
+  </view>
+
+  <!-- 帮助说明 -->
+  <view class="help-section">
+    <text class="help-title">配置帮助</text>
+    <view class="help-item" bindtap="showApiKeyHelp">
+      <text class="help-icon">🔑</text>
+      <text class="help-text">如何获取API密钥？</text>
+    </view>
+    <view class="help-item" bindtap="showDatabaseIdHelp">
+      <text class="help-icon">🗃️</text>
+      <text class="help-text">如何获取数据库ID？</text>
+    </view>
+    <view class="help-item" bindtap="showSyncHelp">
+      <text class="help-icon">🔄</text>
+      <text class="help-text">同步机制说明</text>
+    </view>
+  </view>
+</view>
+
+<!-- 帮助对话框 -->
+<view class="modal-mask" wx:if="{{showHelp}}" bindtap="hideHelp">
+  <view class="modal-content" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">{{helpContent.title}}</text>
+      <button class="close-btn" bindtap="hideHelp">✕</button>
+    </view>
+    <view class="modal-body">
+      <text class="help-text" wx:for="{{helpContent.steps}}" wx:key="index">
+        {{index + 1}}. {{item}}
+      </text>
+    </view>
+  </view>
+</view>

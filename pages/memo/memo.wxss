@@ -1,0 +1,437 @@
+/* 记录页面样式 */
+.container {
+  padding-bottom: 120rpx;
+}
+
+/* 模式选择器 */
+.mode-selector {
+  display: flex;
+  background: #ffffff;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 8rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 类型选择器 */
+.type-selector {
+  display: flex;
+  background: #ffffff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  padding: 8rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.selector-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  transition: all 0.2s ease;
+}
+
+.selector-item.active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+}
+
+.selector-item .icon {
+  font-size: 32rpx;
+  margin-bottom: 8rpx;
+}
+
+.selector-item .label {
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+/* 文字输入区域 */
+.input-section {
+  animation: fadeIn 0.3s ease;
+}
+
+.memo-textarea {
+  width: 100%;
+  min-height: 300rpx;
+  padding: 20rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  background: #ffffff;
+  color: #1f2937;
+  resize: none;
+}
+
+.memo-textarea:focus {
+  border-color: #6366f1;
+  outline: none;
+}
+
+.memo-textarea.planning {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.planning-tip {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+  border-left: 4rpx solid #f59e0b;
+}
+
+.tip-icon {
+  font-size: 24rpx;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 24rpx;
+  color: #9ca3af;
+  margin-top: 12rpx;
+}
+
+/* 模板列表 */
+.template-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.template-item {
+  padding: 12rpx 20rpx;
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  transition: all 0.2s ease;
+}
+
+.template-item:active {
+  background: #e5e7eb;
+  transform: scale(0.95);
+}
+
+/* 语音录制区域 */
+.voice-section {
+  animation: fadeIn 0.3s ease;
+}
+
+.voice-recorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 20rpx;
+}
+
+.btn-voice {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  color: #ffffff;
+  font-size: 48rpx;
+  margin-bottom: 24rpx;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-voice:active {
+  transform: scale(0.95);
+}
+
+.btn-voice.recording {
+  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  animation: recordingPulse 1s infinite;
+  box-shadow: 0 8rpx 32rpx rgba(220, 38, 38, 0.5);
+}
+
+@keyframes recordingPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8rpx 32rpx rgba(220, 38, 38, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12rpx 40rpx rgba(220, 38, 38, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8rpx 32rpx rgba(220, 38, 38, 0.5);
+  }
+}
+
+.voice-status {
+  font-size: 28rpx;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* 语音识别结果 */
+.voice-result {
+  margin-top: 32rpx;
+}
+
+.voice-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  background: #f9fafb;
+  color: #1f2937;
+  margin-top: 16rpx;
+}
+
+/* 录音控制按钮 */
+.voice-controls {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 24rpx;
+  justify-content: center;
+}
+
+.voice-controls .btn {
+  flex: 1;
+  max-width: 200rpx;
+}
+
+/* 标签选择器 */
+.tag-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.tag-item {
+  padding: 12rpx 20rpx;
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  transition: all 0.2s ease;
+  border: 2rpx solid transparent;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.tag-item.selected {
+  background: #e0e7ff;
+  color: #3730a3;
+  border-color: #6366f1;
+}
+
+.tag-item:active {
+  transform: scale(0.95);
+}
+
+/* 自定义标签输入 */
+.custom-tag-input {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+  align-items: center;
+}
+
+.custom-tag-input .input {
+  flex: 1;
+  height: 72rpx;
+}
+
+.custom-tag-input .btn {
+  min-width: 120rpx;
+  height: 72rpx;
+  padding: 0 24rpx;
+}
+
+/* 保存按钮区域 */
+.save-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  padding: 20rpx;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.save-btn:disabled {
+  background: #d1d5db !important;
+  color: #9ca3af !important;
+  opacity: 0.6;
+}
+
+/* 响应式调整 */
+@media (max-width: 320px) {
+  .btn-voice {
+    width: 140rpx;
+    height: 140rpx;
+    font-size: 40rpx;
+  }
+  
+  .voice-controls {
+    flex-direction: column;
+  }
+  
+  .voice-controls .btn {
+    max-width: none;
+  }
+}
+
+/* 时间选择器样式 */
+.time-selector {
+  margin-top: 16rpx;
+}
+
+.time-mode-toggle {
+  display: flex;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 4rpx;
+  margin-bottom: 20rpx;
+}
+
+.time-mode-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 12rpx;
+  border-radius: 8rpx;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.time-mode-item.active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 2rpx 6rpx rgba(99, 102, 241, 0.3);
+}
+
+.time-mode-item .mode-icon {
+  font-size: 24rpx;
+  margin-bottom: 6rpx;
+}
+
+.time-mode-item .mode-label {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+/* 自定义时间选择器 */
+.custom-time-picker {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  border: 2rpx solid #e5e7eb;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 12rpx 0;
+}
+
+.picker-row:last-child {
+  margin-bottom: 0;
+}
+
+.picker-label {
+  width: 80rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #374151;
+}
+
+.picker-value {
+  flex: 1;
+  padding: 12rpx 16rpx;
+  background: #ffffff;
+  border-radius: 8rpx;
+  border: 2rpx solid #d1d5db;
+  font-size: 28rpx;
+  color: #1f2937;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.picker-value:active {
+  border-color: #6366f1;
+}
+
+/* 选中时间显示 */
+.selected-time-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16rpx;
+  padding: 12rpx 16rpx;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+  border-radius: 8rpx;
+  border-left: 4rpx solid #6366f1;
+}
+
+.selected-time-display .icon {
+  font-size: 20rpx;
+  margin-right: 8rpx;
+}
+
+.selected-time-display .time-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #3730a3;
+}
+
+/* 当前时间显示 */
+.current-time-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16rpx;
+  padding: 12rpx 16rpx;
+  background: linear-gradient(135deg, #d1fae5 0%, #f0fdf4 100%);
+  border-radius: 8rpx;
+  border-left: 4rpx solid #10b981;
+}
+
+.current-time-display .icon {
+  font-size: 20rpx;
+  margin-right: 8rpx;
+}
+
+.current-time-display .time-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #047857;
+}

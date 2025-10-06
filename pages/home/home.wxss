@@ -1,0 +1,344 @@
+/* 首页特定样式 */
+.container {
+  padding-bottom: 120rpx;
+}
+
+.quote-card {
+  margin-top: 20rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.quote-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.quote-text {
+  position: relative;
+  z-index: 1;
+  font-style: italic;
+}
+
+.stat-card {
+  border-left: 6rpx solid #6366f1;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:active {
+  transform: translateY(-4rpx);
+}
+
+.quick-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.quick-action-btn {
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  font-size: 28rpx;
+  border: none;
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+}
+
+.quick-action-btn:active {
+  transform: scale(0.95);
+}
+
+.recent-memo-item {
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid #f3f4f6;
+}
+
+.recent-memo-item:last-child {
+  border-bottom: none;
+}
+
+.memo-content {
+  font-size: 28rpx;
+  color: #374151;
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memo-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.reminder-section {
+  margin-top: 20rpx;
+}
+
+.reminder-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+}
+
+.interval-setting {
+  margin-top: 16rpx;
+}
+
+.interval-label {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.slider {
+  margin: 16rpx 0;
+}
+
+/* 空状态优化 */
+.empty-state {
+  padding: 60rpx 20rpx;
+}
+
+.empty-state .icon {
+  font-size: 100rpx;
+  opacity: 0.6;
+  margin-bottom: 20rpx;
+}
+
+.empty-state .text {
+  font-size: 26rpx;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+/* 规划相关样式 */
+.planning-highlight {
+  border: 2rpx solid #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+}
+
+.planning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.planning-date {
+  font-size: 22rpx;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.2);
+  padding: 6rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.planning-content {
+  margin-bottom: 16rpx;
+}
+
+.planning-text {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.planning-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.tag.planning {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.btn-planning {
+  width: 100%;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border-radius: 12rpx;
+  padding: 16rpx 32rpx;
+  font-size: 28rpx;
+  border: none;
+  box-shadow: 0 4rpx 12rpx rgba(245, 158, 11, 0.3);
+}
+
+.btn-planning:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* 标签样式 */
+.memo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.tag {
+  padding: 6rpx 12rpx;
+  border-radius: 12rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.tag.user-tag {
+  background: #8b5cf6;
+  color: #ffffff;
+}
+
+.tag.text {
+  background: #6366f1;
+}
+
+.tag.voice {
+  background: #ef4444;
+}
+
+.tag.planning {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.planning-quick-action {
+  border-top: 2rpx solid #e5e7eb;
+  padding-top: 20rpx;
+}
+
+/* 时间段标签颜色 */
+.tag.period-morning {
+  background: #f97316;  /* 橙色 - 早晨 */
+  color: #ffffff;
+}
+
+.tag.period-forenoon {
+  background: #eab308;  /* 黄色 - 上午 */
+  color: #ffffff;
+}
+
+.tag.period-noon {
+  background: #f59e0b;  /* 暖橙色 - 中午 */
+  color: #ffffff;
+}
+
+.tag.period-afternoon {
+  background: #3b82f6;  /* 蓝色 - 下午 */
+  color: #ffffff;
+}
+
+.tag.period-evening {
+  background: #8b5cf6;  /* 紫色 - 晚上 */
+  color: #ffffff;
+}
+
+.tag.period-planning {
+  background: #10b981;  /* 绿色 - 规划 */
+  color: #ffffff;
+}
+
+.tag.period-rest {
+  background: #6b7280;  /* 灰色 - 休息 */
+  color: #ffffff;
+}
+
+/* 内容分类标签颜色 */
+.tag.category-life {
+  background: #10b981;  /* 绿色 - 生活 */
+  color: #ffffff;
+}
+
+.tag.category-work {
+  background: #3b82f6;  /* 蓝色 - 工作 */
+  color: #ffffff;
+}
+
+.tag.category-study {
+  background: #8b5cf6;  /* 紫色 - 学习 */
+  color: #ffffff;
+}
+
+.tag.category-growth {
+  background: #f97316;  /* 橙色 - 成长 */
+  color: #ffffff;
+}
+
+.tag.category-finance {
+  background: #eab308;  /* 黄色 - 理财 */
+  color: #ffffff;
+}
+
+.tag.category-health {
+  background: #ef4444;  /* 红色 - 健康 */
+  color: #ffffff;
+}
+
+.tag.category-social {
+  background: #ec4899;  /* 粉色 - 社交 */
+  color: #ffffff;
+}
+
+.tag.category-goal {
+  background: #a855f7;  /* 紫色偏红 - 目标 */
+  color: #ffffff;
+}
+
+.tag.category-idea {
+  background: #6b7280;  /* 灰色 - 想法 */
+  color: #ffffff;
+}
+
+.tag.category-mood {
+  background: #06b6d4;  /* 青色 - 心情 */
+  color: #ffffff;
+}
+
+/* 响应式调整 */
+@media (max-width: 320px) {
+  .grid-2 .grid-item {
+    flex-basis: 100%;
+  }
+  
+  .quote-text {
+    font-size: 28rpx;
+  }
+  
+  .stat-number {
+    font-size: 40rpx;
+  }
+  
+  .planning-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8rpx;
+  }
+}

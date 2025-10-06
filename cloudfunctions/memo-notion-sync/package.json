@@ -1,0 +1,10 @@
+{
+  "name": "memo-notion-sync",
+  "version": "1.0.0",
+  "description": "语寄心声 - Notion同步云函数",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.4.0",
+    "axios": "^0.27.2"
+  }
+}

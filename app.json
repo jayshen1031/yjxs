@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/home/home",
+    "pages/memo/memo",
+    "pages/timeline/timeline",
+    "pages/history/history",
+    "pages/settings/settings",
+    "pages/notion-config/notion-config"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#6366f1",
+    "navigationBarTitleText": "语寄心声",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f8fafc"
+  },
+  "cloud": true,
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#6366f1",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/memo/memo",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/timeline/timeline",
+        "text": "时间线"
+      },
+      {
+        "pagePath": "pages/history/history",
+        "text": "历史"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置"
+      }
+    ]
+  },
+  "permission": {
+    "scope.record": {
+      "desc": "需要录音权限来支持语音输入功能"
+    }
+  },
+  "requiredBackgroundModes": ["audio"],
+  "sitemapLocation": "sitemap.json"
+}

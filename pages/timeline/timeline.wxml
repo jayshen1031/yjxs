@@ -1,0 +1,129 @@
+<view class="container">
+  <!-- 时间线标题 -->
+  <view class="timeline-header">
+    <view class="timeline-title">📍 实时时间线</view>
+    <view class="timeline-desc">最近30条记录的时间轴展示</view>
+  </view>
+
+  <!-- 简化筛选 -->
+  <view class="filter-section">
+    <view class="search-box">
+      <input 
+        class="search-input"
+        placeholder="快速搜索..."
+        value="{{ searchKeyword }}"
+        bindinput="onSearchInput"
+        bindconfirm="onSearch"
+      />
+      <text class="search-icon">🔍</text>
+    </view>
+    
+    <!-- 简化筛选标签 -->
+    <view class="filter-tabs">
+      <view 
+        class="filter-tab {{ activeFilter === 'all' ? 'active' : '' }}"
+        bindtap="setFilter" 
+        data-filter="all"
+      >
+        全部
+      </view>
+      <view 
+        class="filter-tab {{ activeFilter === 'today' ? 'active' : '' }}"
+        bindtap="setFilter" 
+        data-filter="today"
+      >
+        今天
+      </view>
+      <view 
+        class="filter-tab {{ activeFilter === 'voice' ? 'active' : '' }}"
+        bindtap="setFilter" 
+        data-filter="voice"
+      >
+        语音
+      </view>
+    </view>
+  </view>
+
+  <!-- 时间线列表 -->
+  <view class="timeline-list" wx:if="{{ filteredMemos.length > 0 }}">
+    <view class="timeline-item fade-in" wx:for="{{ filteredMemos }}" wx:key="id">
+      <!-- 时间线节点 -->
+      <view class="timeline-node">
+        <view class="timeline-dot {{ item.isPlanning ? 'planning' : item.type }}"></view>
+        <view class="timeline-line" wx:if="{{ index < filteredMemos.length - 1 }}"></view>
+      </view>
+      
+      <!-- 记录内容 -->
+      <view class="timeline-content">
+        <view class="memo-card {{ item.isPlanning ? 'planning-card' : '' }}" bindtap="viewMemoDetail" data-memo="{{ item }}">
+          <!-- 时间信息 -->
+          <view class="memo-time">
+            <text class="time-main">{{ item.timeDisplay.time }}</text>
+            <text class="time-date">{{ item.timeDisplay.date }}</text>
+          </view>
+          
+          <!-- 内容预览 -->
+          <view class="memo-preview">
+            <text class="memo-text">{{ item.content }}</text>
+          </view>
+          
+          <!-- 标签和类型 -->
+          <view class="memo-meta">
+            <view class="memo-labels">
+              <text class="tag period-{{ item.periodColor }}">{{ item.timePeriod }}</text>
+              <text class="tag category-{{ item.categoryColor }}">{{ item.category }}</text>
+              <text class="tag {{ item.isPlanning ? 'planning' : item.type }}">
+                {{ item.isPlanning ? '规划' : (item.type === 'voice' ? '语音' : '文字') }}
+              </text>
+            </view>
+            <view class="memo-tags" wx:if="{{ item.tags && item.tags.length > 0 }}">
+              <text class="tag user-tag" wx:for="{{ item.tags }}" wx:key="index" wx:for-item="tag">{{ tag }}</text>
+            </view>
+          </view>
+          
+          <!-- 操作按钮 -->
+          <view class="memo-actions">
+            <button class="action-btn" wx:if="{{ item.type === 'voice' }}" catchtap="playVoice" data-memo="{{ item }}">
+              <text>{{ item.isPlaying ? '⏸️' : '▶️' }}</text>
+            </button>
+            <button class="action-btn" catchtap="editMemo" data-memo="{{ item }}">
+              <text>✏️</text>
+            </button>
+            <button class="action-btn delete" catchtap="deleteMemo" data-memo="{{ item }}">
+              <text>🗑️</text>
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:else class="empty-state">
+    <view class="empty-icon">📝</view>
+    <view class="empty-text">
+      <text wx:if="{{ searchKeyword }}">没有找到相关记录</text>
+      <text wx:else>暂无记录，开始记录美好生活吧！</text>
+    </view>
+    <button wx:if="{{ !searchKeyword }}" class="btn btn-primary" bindtap="goToAddMemo">
+      <text>开始记录</text>
+    </button>
+  </view>
+
+  <!-- 查看更多按钮 -->
+  <view class="more-actions" wx:if="{{ filteredMemos.length >= 30 }}">
+    <button class="btn btn-secondary view-more-btn" bindtap="goToHistory">
+      <text>📚 查看完整历史记录</text>
+    </button>
+  </view>
+
+  <!-- 统计信息 -->
+  <view class="stats-footer" wx:if="{{ filteredMemos.length > 0 }}">
+    <text class="stats-text">显示最近 {{ filteredMemos.length }} 条记录</text>
+  </view>
+</view>
+
+<!-- 浮动添加按钮 -->
+<view class="fab" bindtap="goToAddMemo">
+  <text>+</text>
+</view>

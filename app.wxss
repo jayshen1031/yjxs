@@ -1,0 +1,323 @@
+/* 全局样式 */
+page {
+  background-color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+/* 容器样式 */
+.container {
+  padding: 20rpx;
+  min-height: 100vh;
+}
+
+/* 卡片样式 */
+.card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.card-content {
+  padding: 24rpx;
+}
+
+/* 按钮样式 */
+.btn {
+  border-radius: 12rpx;
+  padding: 16rpx 32rpx;
+  font-size: 28rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+}
+
+.btn-primary:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:active {
+  background: #e5e7eb;
+}
+
+.btn-voice {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  color: #ffffff;
+  font-size: 24rpx;
+  margin: 20rpx auto;
+}
+
+.btn-voice.recording {
+  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 文本输入框 */
+.input {
+  width: 100%;
+  padding: 16rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.input:focus {
+  border-color: #6366f1;
+}
+
+.textarea {
+  min-height: 200rpx;
+  resize: none;
+}
+
+/* 标题样式 */
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16rpx;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 12rpx;
+}
+
+/* 时间标签 */
+.time-tag {
+  font-size: 24rpx;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 8rpx 16rpx;
+  border-radius: 16rpx;
+  display: inline-block;
+}
+
+/* 分割线 */
+.divider {
+  height: 2rpx;
+  background: #e5e7eb;
+  margin: 20rpx 0;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 80rpx 20rpx;
+  color: #9ca3af;
+}
+
+.empty-state .icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-state .text {
+  font-size: 28rpx;
+}
+
+/* 浮动操作按钮 */
+.fab {
+  position: fixed;
+  bottom: 100rpx;
+  right: 40rpx;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  z-index: 1000;
+  font-size: 32rpx;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* 列表项 */
+.list-item {
+  padding: 24rpx;
+  border-bottom: 2rpx solid #f3f4f6;
+  display: flex;
+  align-items: flex-start;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.list-item .content {
+  flex: 1;
+}
+
+.list-item .actions {
+  margin-left: 20rpx;
+}
+
+/* 标签 */
+.tag {
+  display: inline-block;
+  padding: 6rpx 12rpx;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 22rpx;
+  border-radius: 12rpx;
+  margin-right: 8rpx;
+  margin-bottom: 8rpx;
+}
+
+.tag.voice {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tag.text {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* 箴言卡片 */
+.quote-card {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  padding: 32rpx;
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+
+.quote-text {
+  font-size: 32rpx;
+  font-weight: 500;
+  line-height: 1.8;
+  letter-spacing: 1rpx;
+}
+
+/* 统计卡片 */
+.stat-card {
+  background: #ffffff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  text-align: center;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.stat-number {
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #6366f1;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+/* 响应式网格 */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin: -10rpx;
+}
+
+.grid-item {
+  flex: 1;
+  min-width: 200rpx;
+  padding: 10rpx;
+}
+
+.grid-2 .grid-item {
+  flex-basis: 50%;
+}
+
+.grid-3 .grid-item {
+  flex-basis: 33.333%;
+}
+
+/* 动画效果 */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* 工具类 */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-10 { margin-top: 10rpx; }
+.mt-20 { margin-top: 20rpx; }
+.mb-10 { margin-bottom: 10rpx; }
+.mb-20 { margin-bottom: 20rpx; }
+
+.p-10 { padding: 10rpx; }
+.p-20 { padding: 20rpx; }
+
+.flex { display: flex; }
+.flex-column { flex-direction: column; }
+.flex-center { align-items: center; justify-content: center; }
+.flex-between { justify-content: space-between; }
+.flex-1 { flex: 1; }
