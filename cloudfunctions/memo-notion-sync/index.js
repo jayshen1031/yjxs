@@ -642,12 +642,30 @@ function hashPassword(password) {
 
 // 验证密码
 function verifyPassword(password, hashedPassword) {
+  console.log('verifyPassword调用:', { 
+    passwordLength: password ? password.length : 0,
+    hashedPasswordType: typeof hashedPassword,
+    hashedPasswordLength: hashedPassword ? hashedPassword.length : 0,
+    includesColon: hashedPassword ? hashedPassword.includes(':') : false
+  })
+  
   if (!hashedPassword || typeof hashedPassword !== 'string' || !hashedPassword.includes(':')) {
+    console.log('密码验证失败: 无效的hashedPassword格式')
     return false
   }
-  const [salt, hash] = hashedPassword.split(':')
-  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
-  return hash === verifyHash
+  
+  try {
+    const [salt, hash] = hashedPassword.split(':')
+    console.log('密码哈希分割结果:', { saltLength: salt ? salt.length : 0, hashLength: hash ? hash.length : 0 })
+    
+    const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
+    const isMatch = hash === verifyHash
+    console.log('密码验证完成:', { isMatch })
+    return isMatch
+  } catch (error) {
+    console.error('密码验证异常:', error)
+    return false
+  }
 }
 
 // 创建带密码的用户
@@ -722,6 +740,8 @@ async function createUserWithPassword(data) {
 async function loginWithPassword(data) {
   const { email, password } = data
   
+  console.log('loginWithPassword开始:', { email, passwordLength: password ? password.length : 0 })
+  
   if (!email) {
     throw new Error('邮箱地址不能为空')
   }
@@ -735,14 +755,32 @@ async function loginWithPassword(data) {
     email: email.toLowerCase()
   }).get()
 
+  console.log('数据库查询结果:', { count: result.data.length })
+
   if (result.data.length === 0) {
     throw new Error('该邮箱尚未注册')
   }
 
   const user = result.data[0]
+  console.log('找到用户:', { 
+    id: user._id, 
+    email: user.email, 
+    hasPasswordHash: !!user.passwordHash,
+    passwordHashType: typeof user.passwordHash,
+    passwordHashValue: user.passwordHash ? user.passwordHash.substring(0, 20) + '...' : 'undefined'
+  })
+  
+  // 检查用户是否设置了密码
+  if (!user.passwordHash) {
+    throw new Error('该用户尚未设置密码，请联系管理员')
+  }
   
   // 验证密码
-  if (!verifyPassword(password, user.passwordHash)) {
+  console.log('开始验证密码...')
+  const isPasswordValid = verifyPassword(password, user.passwordHash)
+  console.log('密码验证结果:', isPasswordValid)
+  
+  if (!isPasswordValid) {
     throw new Error('密码错误')
   }
   
