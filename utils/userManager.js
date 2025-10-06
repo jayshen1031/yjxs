@@ -58,7 +58,7 @@ class UserManager {
       throw new Error('该邮箱已被注册')
     }
 
-    const emailPrefix = userInfo.email.split('@')[0]
+    const emailPrefix = (userInfo.email && userInfo.email.includes('@')) ? userInfo.email.split('@')[0] : 'user'
     const newUser = {
       id: this.generateUserId(),
       email: userInfo.email.trim(),

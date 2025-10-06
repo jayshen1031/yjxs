@@ -392,7 +392,7 @@ async function createUser(data) {
   }
 
   // 创建新用户
-  const emailPrefix = email.split('@')[0]
+  const emailPrefix = (email && email.includes('@')) ? email.split('@')[0] : 'user'
   const userData = {
     email: email.toLowerCase(),
     name: name || emailPrefix,
@@ -642,6 +642,9 @@ function hashPassword(password) {
 
 // 验证密码
 function verifyPassword(password, hashedPassword) {
+  if (!hashedPassword || typeof hashedPassword !== 'string' || !hashedPassword.includes(':')) {
+    return false
+  }
   const [salt, hash] = hashedPassword.split(':')
   const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
   return hash === verifyHash
@@ -670,7 +673,7 @@ async function createUserWithPassword(data) {
   }
 
   // 创建新用户
-  const emailPrefix = email.split('@')[0]
+  const emailPrefix = (email && email.includes('@')) ? email.split('@')[0] : 'user'
   const userData = {
     email: email.toLowerCase(),
     passwordHash: hashPassword(password),
