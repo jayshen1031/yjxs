@@ -564,30 +564,49 @@ Page({
         console.log('用户的notionConfig:', cloudUser.notionConfig)
         
         // 创建或更新本地用户缓存
-        let localUser = userManager.getUserByEmail(loginEmail)
+        let localUser = null
+        try {
+          console.log('尝试获取本地用户:', loginEmail)
+          localUser = userManager.getUserByEmail(loginEmail)
+          console.log('获取本地用户结果:', localUser)
+        } catch (getUserError) {
+          console.error('获取本地用户失败:', getUserError)
+        }
+        
         if (!localUser) {
-          // 确保所有必需的用户信息都存在
-          const safeUserData = {
-            id: cloudUser.id || 'temp_' + Date.now(),
-            email: cloudUser.email || loginEmail.trim(),
-            name: cloudUser.name || 'User',
-            displayName: cloudUser.displayName || cloudUser.name || 'User'
+          try {
+            // 确保所有必需的用户信息都存在
+            const safeUserData = {
+              id: cloudUser.id || 'temp_' + Date.now(),
+              email: cloudUser.email || loginEmail.trim(),
+              name: cloudUser.name || 'User',
+              displayName: cloudUser.displayName || cloudUser.name || 'User'
+            }
+            console.log('创建本地用户，安全数据:', safeUserData)
+            localUser = userManager.createUser(safeUserData)
+            console.log('创建本地用户成功:', localUser)
+          } catch (createUserError) {
+            console.error('创建本地用户失败:', createUserError)
+            throw new Error('创建本地用户失败: ' + createUserError.message)
           }
-          console.log('创建本地用户，安全数据:', safeUserData)
-          localUser = userManager.createUser(safeUserData)
         }
         
         // 同步云端的Notion配置到本地
-        console.log('开始同步notionConfig到本地...')
-        const notionConfigToSync = cloudUser.notionConfig || {
-          enabled: false,
-          apiKey: '',
-          databaseId: '',
-          syncEnabled: true
+        try {
+          console.log('开始同步notionConfig到本地...')
+          const notionConfigToSync = cloudUser.notionConfig || {
+            enabled: false,
+            apiKey: '',
+            databaseId: '',
+            syncEnabled: true
+          }
+          console.log('要同步的notionConfig:', notionConfigToSync)
+          userManager.configureNotion(localUser.id, notionConfigToSync)
+          console.log('notionConfig同步完成')
+        } catch (configError) {
+          console.error('Notion配置同步失败:', configError)
+          // 不抛出错误，继续登录流程
         }
-        console.log('要同步的notionConfig:', notionConfigToSync)
-        userManager.configureNotion(localUser.id, notionConfigToSync)
-        console.log('notionConfig同步完成')
         
         // 更新云端的最后登录时间
         await apiService.updateUserLogin(cloudUser.id)
