@@ -45,8 +45,13 @@ class UserManager {
 
   // 创建新用户
   createUser(userInfo) {
+    // 验证输入参数
+    if (!userInfo || typeof userInfo !== 'object') {
+      throw new Error('用户信息参数无效')
+    }
+    
     // 验证必需的邮箱
-    if (!userInfo.email || !userInfo.email.trim()) {
+    if (!userInfo.email || typeof userInfo.email !== 'string' || !userInfo.email.trim()) {
       throw new Error('邮箱地址是必需的')
     }
 
@@ -118,8 +123,11 @@ class UserManager {
 
   // 根据邮箱查找用户
   getUserByEmail(email) {
+    if (!email || typeof email !== 'string') {
+      return null
+    }
     return this.users.find(user => 
-      user.email.toLowerCase() === email.toLowerCase()
+      user.email && user.email.toLowerCase() === email.toLowerCase()
     )
   }
 

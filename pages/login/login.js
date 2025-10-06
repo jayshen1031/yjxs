@@ -530,10 +530,12 @@ Page({
     this.setData({ logging: true })
 
     try {
+      console.log('开始密码登录流程:', { loginEmail: loginEmail.trim(), passwordLength: loginPassword.length })
       const apiService = require('../../utils/apiService.js')
       
       // 密码登录验证
       const result = await apiService.loginWithPassword(loginEmail.trim(), loginPassword)
+      console.log('云函数返回结果:', result)
       
       if (result.success && result.user) {
         const cloudUser = result.user
@@ -543,12 +545,15 @@ Page({
         // 创建或更新本地用户缓存
         let localUser = userManager.getUserByEmail(loginEmail)
         if (!localUser) {
-          localUser = userManager.createUser({
-            id: cloudUser.id, // 使用云端的用户ID
-            email: cloudUser.email,
-            name: cloudUser.name,
-            displayName: cloudUser.displayName
-          })
+          // 确保所有必需的用户信息都存在
+          const safeUserData = {
+            id: cloudUser.id || 'temp_' + Date.now(),
+            email: cloudUser.email || loginEmail.trim(),
+            name: cloudUser.name || 'User',
+            displayName: cloudUser.displayName || cloudUser.name || 'User'
+          }
+          console.log('创建本地用户，安全数据:', safeUserData)
+          localUser = userManager.createUser(safeUserData)
         }
         
         // 同步云端的Notion配置到本地
