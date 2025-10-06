@@ -217,6 +217,11 @@ class ApiService {
     return await this.callCloudFunction('deleteUser', { userId })
   }
 
+  // 为现有用户设置密码（临时功能）
+  async setPasswordForUser(email, password) {
+    return await this.callCloudFunction('setPasswordForUser', { email, password })
+  }
+
   // 格式化错误信息
   formatError(error) {
     if (error.status) {

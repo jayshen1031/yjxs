@@ -208,12 +208,24 @@ Page({
           throw new Error('用户切换失败')
         }
       } else {
-        throw new Error(result.error || '获取用户数据失败')
+        // 安全处理错误信息
+        const errorMsg = result.error || '获取用户数据失败'
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : '获取用户数据失败')
       }
     } catch (error) {
       console.error('快速登录失败:', error)
+      
+      // 确保错误信息是字符串
+      let errorMessage = '登录失败'
+      if (error && error.message) {
+        errorMessage = typeof error.message === 'string' ? error.message : '登录失败'
+        if (errorMessage.length > 30) {
+          errorMessage = errorMessage.substring(0, 30) + '...'
+        }
+      }
+      
       wx.showToast({
-        title: '登录失败: ' + error.message,
+        title: errorMessage,
         icon: 'error'
       })
     }
@@ -413,7 +425,8 @@ Page({
       const apiService = require('../../utils/apiService.js')
       
       // 生成显示名称：优先使用输入的名称，否则使用邮箱前缀
-      const displayName = newUserName.trim() || newUserEmail.split('@')[0]
+      const emailPrefix = (newUserEmail && newUserEmail.includes('@')) ? newUserEmail.split('@')[0] : 'user'
+      const displayName = newUserName.trim() || emailPrefix
       
       // 在云端创建用户（带密码）
       const result = await apiService.createUserWithPassword({
@@ -461,12 +474,23 @@ Page({
           }
         })
       } else {
-        throw new Error(result.error || '用户创建失败')
+        // 安全处理错误信息，确保不会有undefined.split()的问题
+        const errorMsg = result.error || '用户创建失败'
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : '用户创建失败')
       }
 
     } catch (error) {
+      // 确保错误信息是字符串
+      let errorMessage = '创建失败'
+      if (error && error.message) {
+        errorMessage = typeof error.message === 'string' ? error.message : '创建失败'
+        if (errorMessage.length > 50) {
+          errorMessage = errorMessage.substring(0, 50) + '...'
+        }
+      }
+      
       wx.showToast({
-        title: '创建失败',
+        title: errorMessage,
         icon: 'error'
       })
       console.error('创建用户失败:', error)
@@ -567,7 +591,9 @@ Page({
         }, 1500)
         
       } else {
-        throw new Error(result.error || '该邮箱尚未注册')
+        // 安全处理错误信息，确保不会有undefined.split()的问题
+        const errorMsg = result.error || '该邮箱尚未注册'
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : '登录失败')
       }
 
     } catch (error) {
@@ -578,7 +604,17 @@ Page({
       console.error('邮箱登录失败:', error)
       
       // 确保错误信息是字符串，而不是undefined
-      const errorMessage = (error && error.message) ? error.message : '登录失败，请检查邮箱地址或网络连接'
+      let errorMessage = '登录失败，请检查邮箱地址或网络连接'
+      
+      if (error && error.message) {
+        // 确保错误消息是字符串类型
+        errorMessage = typeof error.message === 'string' ? error.message : errorMessage
+        
+        // 如果错误消息过长，截取前100个字符
+        if (errorMessage.length > 100) {
+          errorMessage = errorMessage.substring(0, 100) + '...'
+        }
+      }
       
       this.setData({
         loginEmailError: errorMessage
