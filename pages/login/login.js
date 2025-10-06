@@ -241,13 +241,22 @@ Page({
 
   // 检查邮箱是否已存在
   checkEmailExists: function (email) {
+    if (!email || !this.data.users) {
+      return false
+    }
     return this.data.users.some(user => 
-      user.email.toLowerCase() === email.toLowerCase()
+      user.email && user.email.toLowerCase() === email.toLowerCase()
     )
   },
 
   // 用户名输入
   onUserNameInput: function (e) {
+    // 安全检查事件对象
+    if (!e || !e.detail) {
+      console.warn('onUserNameInput: 事件对象无效')
+      return
+    }
+    
     // 检查是否是"undefine"字符串，如果是则使用空字符串
     let rawValue = e.detail.value
     if (rawValue === 'undefine' || rawValue === 'undefined') {
@@ -327,6 +336,12 @@ Page({
 
   // 邮箱输入
   onUserEmailInput: function (e) {
+    // 安全检查事件对象
+    if (!e || !e.detail) {
+      console.warn('onUserEmailInput: 事件对象无效')
+      return
+    }
+    
     // 检查是否是"undefine"字符串，如果是则使用空字符串
     let rawValue = e.detail.value
     if (rawValue === 'undefine' || rawValue === 'undefined') {
@@ -372,6 +387,12 @@ Page({
 
   // 登录邮箱输入 - 简化版本，只记录输入值
   onLoginEmailInput(e) {
+    // 安全检查事件对象
+    if (!e || !e.detail) {
+      console.warn('onLoginEmailInput: 事件对象无效')
+      return
+    }
+    
     const email = e.detail.value || ''
     
     this.setData({
