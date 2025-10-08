@@ -1,0 +1,310 @@
+<wxs module="utils">
+function getCategoryClass(category) {
+  var categoryMap = {
+    '励志': 'inspire',
+    '生活': 'life', 
+    '成长': 'growth',
+    '哲理': 'philosophy',
+    '记录': 'record',
+    '时间': 'time',
+    '自信': 'confidence',
+    '心理': 'psychology',
+    '决策': 'decision',
+    '自定义': 'custom'
+  }
+  return categoryMap[category] || 'custom'
+}
+
+module.exports = {
+  getCategoryClass: getCategoryClass
+}
+</wxs>
+
+<view class="container">
+  <!-- 顶部操作区 -->
+  <view class="header-section">
+    <view class="stats-card">
+      <view class="stats-row">
+        <view class="stat-item">
+          <view class="stat-number">{{totalQuotes}}</view>
+          <view class="stat-label">总箴言</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-number">{{favoriteQuotes}}</view>
+          <view class="stat-label">已收藏</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-number">{{userQuotes}}</view>
+          <view class="stat-label">自定义</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-number">{{categoriesCount}}</view>
+          <view class="stat-label">分类</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 快速操作 -->
+    <view class="quick-actions">
+      <button class="action-btn primary" bindtap="addQuote">
+        <text class="icon">✏️</text>
+        <text>添加箴言</text>
+      </button>
+      <button class="action-btn secondary" bindtap="refreshCurrentQuote">
+        <text class="icon">🎲</text>
+        <text>随机刷新</text>
+      </button>
+      <button class="action-btn secondary" bindtap="showSettings">
+        <text class="icon">⚙️</text>
+        <text>设置</text>
+      </button>
+    </view>
+  </view>
+
+  <!-- 当前显示的箴言 -->
+  <view class="current-quote-section">
+    <view class="section-title">
+      <text class="icon">💫</text>
+      <text>当前箴言</text>
+    </view>
+    <view class="current-quote-card">
+      <view class="quote-content">{{currentQuote.content}}</view>
+      <view class="quote-meta">
+        <view class="category-tag category-{{utils.getCategoryClass(currentQuote.category)}}">{{currentQuote.category}}</view>
+        <view class="usage-count">已激励 {{currentQuote.usageCount}} 次</view>
+        <view class="favorite-btn" bindtap="toggleCurrentFavorite">
+          <text class="heart {{currentQuote.isFavorite ? 'favorite' : ''}}">❤️</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 筛选和搜索 -->
+  <view class="filter-section">
+    <view class="search-box">
+      <input 
+        class="search-input" 
+        placeholder="搜索箴言内容或标签..." 
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+        bindconfirm="onSearchConfirm"
+      />
+      <text class="search-icon">🔍</text>
+    </view>
+    
+    <scroll-view class="category-filter" scroll-x="true">
+      <view class="filter-item {{selectedCategory === '' ? 'active' : ''}}" bindtap="filterByCategory" data-category="">
+        全部 ({{totalQuotes}})
+      </view>
+      <view 
+        class="filter-item-wrapper" 
+        wx:for="{{categories}}" 
+        wx:key="category"
+        wx:for-item="category"
+        wx:for-index="index"
+      >
+        <view 
+          class="filter-item {{selectedCategory === category ? 'active' : ''}}"
+          bindtap="filterByCategory" 
+          data-category="{{category}}"
+        >
+          {{category}} ({{categoriesData[category]}})
+        </view>
+        <view 
+          class="filter-action" 
+          bindtap="getRandomQuoteFromCategory"
+          data-category="{{category}}"
+        >
+          ⚡
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 箴言列表 -->
+  <view class="quotes-section">
+    <view class="section-header">
+      <view class="section-title">
+        <text class="icon">📚</text>
+        <text>箴言库 ({{filteredQuotes.length}})</text>
+      </view>
+      <view class="sort-options">
+        <picker bindchange="onSortChange" value="{{sortIndex}}" range="{{sortOptions}}" range-key="label">
+          <view class="sort-btn">
+            <text>{{sortOptions[sortIndex].label}}</text>
+            <text class="arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <scroll-view class="quotes-list" scroll-y="true">
+      <view 
+        class="quote-item {{quote.isFavorite ? 'favorite' : ''}}" 
+        wx:for="{{filteredQuotes}}" 
+        wx:key="id"
+        wx:for-item="quote"
+      >
+        <view class="quote-content-wrapper">
+          <view class="quote-text">{{quote.content}}</view>
+          <view class="quote-tags" wx:if="{{quote.tags.length > 0}}">
+            <text class="tag" wx:for="{{quote.tags}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+        
+        <view class="quote-meta-row">
+          <view class="quote-info">
+            <view class="category-tag category-{{utils.getCategoryClass(quote.category)}}">{{quote.category}}</view>
+            <view class="source-info">{{quote.source}}</view>
+            <view class="usage-info">使用 {{quote.usageCount}} 次</view>
+          </view>
+          
+          <view class="quote-actions">
+            <view class="action-icon" bindtap="toggleFavorite" data-id="{{quote.id}}">
+              <text class="heart {{quote.isFavorite ? 'favorite' : ''}}">❤️</text>
+            </view>
+            <view class="action-icon" bindtap="editQuote" data-id="{{quote.id}}" wx:if="{{quote.source === '用户添加'}}">
+              <text>✏️</text>
+            </view>
+            <view class="action-icon" bindtap="deleteQuote" data-id="{{quote.id}}" wx:if="{{quote.source === '用户添加'}}">
+              <text>🗑️</text>
+            </view>
+            <view class="action-icon" bindtap="useThisQuote" data-id="{{quote.id}}">
+              <text>⚡</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{filteredQuotes.length === 0}}">
+        <text class="empty-icon">📝</text>
+        <text class="empty-text">暂无符合条件的箴言</text>
+        <button class="empty-action" bindtap="addQuote">添加新箴言</button>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 添加/编辑箴言弹窗 -->
+  <view class="modal {{showAddModal ? 'show' : ''}}" wx:if="{{showAddModal}}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">{{editingQuote ? '编辑箴言' : '添加箴言'}}</text>
+        <text class="close-btn" bindtap="closeAddModal">✕</text>
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">箴言内容 *</label>
+        <textarea 
+          class="form-textarea" 
+          placeholder="输入激励人心的箴言..." 
+          value="{{formData.content}}"
+          bindinput="onContentInput"
+          maxlength="200"
+          show-confirm-bar="false"
+        ></textarea>
+        <view class="char-count">{{formData.content.length}}/200</view>
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">分类</label>
+        <picker bindchange="onCategoryChange" value="{{categoryIndex}}" range="{{categoryOptions}}">
+          <view class="picker-input">
+            <text>{{formData.category}}</text>
+            <text class="arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">标签 (用空格分隔)</label>
+        <input 
+          class="form-input" 
+          placeholder="如: 励志 成长 坚持" 
+          value="{{tagsInput}}"
+          bindinput="onTagsInput"
+        />
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">来源</label>
+        <input 
+          class="form-input" 
+          placeholder="如: 某某书籍、某某名人..." 
+          value="{{formData.source}}"
+          bindinput="onSourceInput"
+        />
+      </view>
+      
+      <view class="form-actions">
+        <button class="btn-cancel" bindtap="closeAddModal">取消</button>
+        <button class="btn-confirm" bindtap="confirmAddQuote" disabled="{{!formData.content}}">
+          {{editingQuote ? '保存' : '添加'}}
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 设置弹窗 -->
+  <view class="modal {{showSettingsModal ? 'show' : ''}}" wx:if="{{showSettingsModal}}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">箴言设置</text>
+        <text class="close-btn" bindtap="closeSettingsModal">✕</text>
+      </view>
+      
+      <view class="settings-group">
+        <view class="setting-item">
+          <text class="setting-label">只显示收藏的箴言</text>
+          <switch 
+            checked="{{settings.showFavoriteOnly}}" 
+            bindchange="onShowFavoriteOnlyChange"
+            color="#6366f1"
+          />
+        </view>
+        
+        <view class="setting-item">
+          <text class="setting-label">自动刷新箴言</text>
+          <switch 
+            checked="{{settings.autoRefresh}}" 
+            bindchange="onAutoRefreshChange"
+            color="#6366f1"
+          />
+        </view>
+        
+        <view class="setting-item">
+          <text class="setting-label">刷新间隔</text>
+          <picker bindchange="onRefreshIntervalChange" value="{{refreshIntervalIndex}}" range="{{refreshIntervalOptions}}" range-key="label">
+            <view class="picker-input">
+              <text>{{refreshIntervalOptions[refreshIntervalIndex].label}}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+      
+      <view class="settings-group">
+        <view class="setting-title">启用的分类</view>
+        <view class="category-checkboxes">
+          <view 
+            class="checkbox-item" 
+            wx:for="{{allCategories}}" 
+            wx:key="*this"
+            bindtap="toggleCategoryEnabled"
+            data-category="{{item}}"
+          >
+            <text class="checkbox {{settings.categories.includes(item) ? 'checked' : ''}}">
+              {{settings.categories.includes(item) ? '✓' : '○'}}
+            </text>
+            <text class="checkbox-label">{{item}}</text>
+          </view>
+        </view>
+      </view>
+      
+      <view class="form-actions">
+        <button class="btn-confirm full-width" bindtap="saveSettings">保存设置</button>
+      </view>
+    </view>
+  </view>
+</view>

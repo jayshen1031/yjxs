@@ -51,8 +51,8 @@ class NotionApiService {
     })
   }
 
-  // 测试Notion连接并初始化数据库结构
-  async testConnection(apiKey, databaseId) {
+  // 测试Notion连接并初始化双数据库结构
+  async testConnection(apiKey, parentPageId = null) {
     try {
       // 测试用户信息
       const userResult = await this.callApi('/users/me', {
@@ -66,34 +66,26 @@ class NotionApiService {
         }
       }
 
-      // 测试数据库访问
-      const dbResult = await this.callApi(`/databases/${databaseId}`, {
-        apiKey: apiKey
-      })
+      console.log('API密钥验证成功，用户:', userResult.data.name)
 
-      if (!dbResult.success) {
-        return {
-          success: false,
-          error: '数据库访问失败: ' + dbResult.error
+      // 如果提供了parentPageId，测试访问权限
+      if (parentPageId) {
+        const pageResult = await this.callApi(`/pages/${parentPageId}`, {
+          apiKey: apiKey
+        })
+
+        if (!pageResult.success) {
+          return {
+            success: false,
+            error: '无法访问指定页面: ' + pageResult.error
+          }
         }
-      }
-
-      // 初始化数据库结构
-      console.log('开始初始化数据库结构...')
-      const initResult = await this.initializeDatabaseStructure(apiKey, databaseId, dbResult.data)
-      
-      if (!initResult.success) {
-        console.warn('数据库结构初始化失败，但可以继续使用:', initResult.error)
-      } else {
-        console.log('数据库结构初始化成功')
       }
 
       return {
         success: true,
-        message: '连接成功！数据库结构已初始化',
-        user: userResult.data,
-        database: dbResult.data,
-        initialized: initResult.success
+        message: 'Notion连接验证成功',
+        user: userResult.data
       }
     } catch (error) {
       return {
@@ -103,62 +95,165 @@ class NotionApiService {
     }
   }
 
+  // 自动创建四数据库架构
+  async createQuadDatabases(apiKey, parentPageId) {
+    try {
+      console.log('开始自动创建四数据库架构...')
+
+      // 1. 创建目标库
+      const goalsDbResult = await this.createGoalsDatabase(apiKey, parentPageId)
+      if (!goalsDbResult.success) {
+        return {
+          success: false,
+          error: '创建目标库失败: ' + goalsDbResult.error
+        }
+      }
+      console.log('目标库创建成功:', goalsDbResult.databaseId)
+
+      // 2. 创建待办库（关联目标库）
+      const todosDbResult = await this.createTodosDatabase(
+        apiKey,
+        parentPageId,
+        goalsDbResult.databaseId
+      )
+      if (!todosDbResult.success) {
+        return {
+          success: false,
+          error: '创建待办库失败: ' + todosDbResult.error
+        }
+      }
+      console.log('待办库创建成功:', todosDbResult.databaseId)
+
+      // 3. 创建主记录表
+      const mainDbResult = await this.createMainRecordsDatabase(apiKey, parentPageId)
+      if (!mainDbResult.success) {
+        return {
+          success: false,
+          error: '创建主记录表失败: ' + mainDbResult.error
+        }
+      }
+      console.log('主记录表创建成功:', mainDbResult.databaseId)
+
+      // 4. 创建活动明细表（关联所有其他表）
+      const activityDbResult = await this.createActivityDetailsDatabase(
+        apiKey,
+        parentPageId,
+        mainDbResult.databaseId,
+        goalsDbResult.databaseId,
+        todosDbResult.databaseId
+      )
+      if (!activityDbResult.success) {
+        return {
+          success: false,
+          error: '创建活动明细表失败: ' + activityDbResult.error
+        }
+      }
+      console.log('活动明细表创建成功:', activityDbResult.databaseId)
+
+      // 5. 添加反向关联和Rollup字段
+      await this.addRelationsAndRollups(
+        apiKey,
+        mainDbResult.databaseId,
+        activityDbResult.databaseId,
+        goalsDbResult.databaseId,
+        todosDbResult.databaseId
+      )
+
+      return {
+        success: true,
+        message: '四数据库创建成功',
+        goalsDatabaseId: goalsDbResult.databaseId,
+        todosDatabaseId: todosDbResult.databaseId,
+        mainDatabaseId: mainDbResult.databaseId,
+        activityDatabaseId: activityDbResult.databaseId,
+        tables: ['goals', 'todos', 'main', 'activity']
+      }
+    } catch (error) {
+      console.error('创建四数据库异常:', error)
+      return {
+        success: false,
+        error: '创建失败: ' + error.message
+      }
+    }
+  }
+
+  // 自动创建双数据库架构（保持向后兼容）
+  async createDualDatabases(apiKey, parentPageId) {
+    // 重定向到四数据库创建
+    return await this.createQuadDatabases(apiKey, parentPageId)
+  }
+
   // 初始化数据库结构
   async initializeDatabaseStructure(apiKey, databaseId, currentDatabase) {
     try {
       const currentProperties = currentDatabase.properties || {}
-      
+
       // 定义需要的字段结构
       const requiredProperties = {
-        'Content': {
+        'User ID': {
           type: 'rich_text',
           rich_text: {}
         },
-        'Type': {
-          type: 'select',
-          select: {
-            options: [
-              { name: 'Text', color: 'blue' },
-              { name: 'Voice', color: 'green' }
-            ]
-          }
-        },
-        'Created': {
+        'Record Date': {
           type: 'date',
           date: {}
         },
-        // 注释掉自动创建的属性，让用户手动在Notion中创建需要的属性
-        // 'Time Period': {
-        //   type: 'select',
-        //   select: {
-        //     options: [
-        //       { name: '早晨', color: 'orange' },
-        //       { name: '上午', color: 'yellow' },
-        //       { name: '中午', color: 'orange' },
-        //       { name: '下午', color: 'blue' },
-        //       { name: '晚上', color: 'purple' },
-        //       { name: '规划', color: 'green' },
-        //       { name: '休息', color: 'gray' }
-        //     ]
-        //   }
-        // },
-        // 'Category': {
-        //   type: 'select',
-        //   select: {
-        //     options: [
-        //       { name: '生活', color: 'green' },
-        //       { name: '工作', color: 'blue' },
-        //       { name: '学习', color: 'purple' },
-        //       { name: '成长', color: 'orange' },
-        //       { name: '理财', color: 'yellow' },
-        //       { name: '健康', color: 'red' },
-        //       { name: '社交', color: 'pink' },
-        //       { name: '目标', color: 'brown' },
-        //       { name: '想法', color: 'gray' },
-        //       { name: '心情', color: 'default' }
-        //     ]
-        //   }
-        // },
+        'Start Time': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'End Time': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Valuable Content': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Valuable Activities': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Valuable Minutes': {
+          type: 'number',
+          number: {
+            format: 'number'
+          }
+        },
+        'Neutral Content': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Neutral Activities': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Neutral Minutes': {
+          type: 'number',
+          number: {
+            format: 'number'
+          }
+        },
+        'Wasteful Content': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Wasteful Activities': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Wasteful Minutes': {
+          type: 'number',
+          number: {
+            format: 'number'
+          }
+        },
+        'Total Minutes': {
+          type: 'number',
+          number: {
+            format: 'number'
+          }
+        },
         'Tags': {
           type: 'multi_select',
           multi_select: {
@@ -174,9 +269,22 @@ class NotionApiService {
             ]
           }
         },
-        'Planning': {
+        'Is Planning': {
           type: 'checkbox',
           checkbox: {}
+        },
+        'Goal ID': {
+          type: 'rich_text',
+          rich_text: {}
+        },
+        'Type': {
+          type: 'select',
+          select: {
+            options: [
+              { name: 'normal', color: 'blue' },
+              { name: 'planning', color: 'orange' }
+            ]
+          }
         },
         'Sync Status': {
           type: 'select',
@@ -236,6 +344,488 @@ class NotionApiService {
     }
   }
 
+  // 创建目标库
+  async createGoalsDatabase(apiKey, parentPageId) {
+    const databaseData = {
+      parent: {
+        type: 'page_id',
+        page_id: parentPageId
+      },
+      title: [
+        {
+          text: {
+            content: '语寄心声 - 目标库'
+          }
+        }
+      ],
+      properties: {
+        'Goal Name': {
+          title: {}
+        },
+        'Category': {
+          select: {
+            options: [
+              { name: '人生目标', color: 'red' },
+              { name: '年度目标', color: 'orange' },
+              { name: '季度目标', color: 'yellow' },
+              { name: '月度目标', color: 'green' },
+              { name: '周目标', color: 'blue' }
+            ]
+          }
+        },
+        'Status': {
+          select: {
+            options: [
+              { name: '未开始', color: 'gray' },
+              { name: '进行中', color: 'blue' },
+              { name: '已完成', color: 'green' },
+              { name: '已暂停', color: 'yellow' },
+              { name: '已取消', color: 'red' }
+            ]
+          }
+        },
+        'Progress': {
+          number: {
+            format: 'percent'
+          }
+        },
+        'Start Date': {
+          date: {}
+        },
+        'Target Date': {
+          date: {}
+        },
+        'Priority': {
+          select: {
+            options: [
+              { name: '高', color: 'red' },
+              { name: '中', color: 'yellow' },
+              { name: '低', color: 'gray' }
+            ]
+          }
+        },
+        'Description': {
+          rich_text: {}
+        },
+        'Tags': {
+          multi_select: {
+            options: [
+              { name: '工作', color: 'blue' },
+              { name: '学习', color: 'purple' },
+              { name: '生活', color: 'green' },
+              { name: '健康', color: 'pink' },
+              { name: '财务', color: 'orange' },
+              { name: '社交', color: 'yellow' }
+            ]
+          }
+        }
+        // Note: Related Todos, Related Activities, Total Time 等反向关联和Rollup字段会在后续添加
+      }
+    }
+
+    return await this.createDatabase(databaseData, apiKey)
+  }
+
+  // 创建待办库
+  async createTodosDatabase(apiKey, parentPageId, goalsDatabaseId) {
+    const databaseData = {
+      parent: {
+        type: 'page_id',
+        page_id: parentPageId
+      },
+      title: [
+        {
+          text: {
+            content: '语寄心声 - 待办库'
+          }
+        }
+      ],
+      properties: {
+        'Todo Name': {
+          title: {}
+        },
+        'Todo Type': {
+          select: {
+            options: [
+              { name: '目标导向', color: 'blue' },
+              { name: '临时待办', color: 'gray' },
+              { name: '习惯养成', color: 'green' },
+              { name: '紧急处理', color: 'red' }
+            ]
+          }
+        },
+        'Status': {
+          select: {
+            options: [
+              { name: '待办', color: 'gray' },
+              { name: '进行中', color: 'blue' },
+              { name: '已完成', color: 'green' },
+              { name: '已取消', color: 'red' }
+            ]
+          }
+        },
+        'Priority': {
+          select: {
+            options: [
+              { name: '紧急重要', color: 'red' },
+              { name: '重要不紧急', color: 'orange' },
+              { name: '紧急不重要', color: 'yellow' },
+              { name: '不紧急不重要', color: 'gray' }
+            ]
+          }
+        },
+        'Scope': {
+          select: {
+            options: [
+              { name: '今日', color: 'orange' },
+              { name: '近期', color: 'blue' }
+            ]
+          }
+        },
+        'Related Goal': {
+          relation: {
+            database_id: goalsDatabaseId,
+            type: 'dual_property',
+            dual_property: {
+              synced_property_name: 'Related Todos'
+            }
+          }
+        },
+        'Due Date': {
+          date: {}
+        },
+        'Estimated Minutes': {
+          number: {
+            format: 'number'
+          }
+        },
+        'Description': {
+          rich_text: {}
+        },
+        'Tags': {
+          multi_select: {
+            options: [
+              { name: '工作', color: 'blue' },
+              { name: '学习', color: 'purple' },
+              { name: '生活', color: 'green' },
+              { name: '健康', color: 'pink' },
+              { name: '紧急', color: 'red' },
+              { name: '重要', color: 'orange' }
+            ]
+          }
+        }
+        // Note: Related Activities, Actual Time 等反向关联和Rollup字段会在后续添加
+      }
+    }
+
+    return await this.createDatabase(databaseData, apiKey)
+  }
+
+  // 创建主记录表
+  async createMainRecordsDatabase(apiKey, parentPageId) {
+    const databaseData = {
+      parent: {
+        type: 'page_id',
+        page_id: parentPageId
+      },
+      title: [
+        {
+          text: {
+            content: '语寄心声 - 主记录'
+          }
+        }
+      ],
+      properties: {
+        'Name': {
+          title: {}
+        },
+        'User ID': {
+          rich_text: {}
+        },
+        'Record Date': {
+          date: {}
+        },
+        'Start Time': {
+          rich_text: {}
+        },
+        'End Time': {
+          rich_text: {}
+        },
+        'Type': {
+          select: {
+            options: [
+              { name: 'normal', color: 'blue' },
+              { name: 'planning', color: 'orange' }
+            ]
+          }
+        },
+        'Is Planning': {
+          checkbox: {}
+        },
+        'Summary': {
+          rich_text: {}
+        },
+        'Tags': {
+          multi_select: {
+            options: [
+              { name: '工作', color: 'blue' },
+              { name: '学习', color: 'purple' },
+              { name: '生活', color: 'green' },
+              { name: '重要', color: 'red' },
+              { name: '紧急', color: 'orange' }
+            ]
+          }
+        },
+        'Sync Status': {
+          select: {
+            options: [
+              { name: 'synced', color: 'green' },
+              { name: 'pending', color: 'yellow' },
+              { name: 'failed', color: 'red' }
+            ]
+          }
+        }
+        // Note: Activities relation 和 Rollup 字段会在 addRollupFieldsToMainDatabase 中添加
+      }
+    }
+
+    return await this.createDatabase(databaseData, apiKey)
+  }
+
+  // 创建活动明细表
+  async createActivityDetailsDatabase(apiKey, parentPageId, mainDatabaseId, goalsDatabaseId = null, todosDatabaseId = null) {
+    const properties = {
+      'Activity Name': {
+        title: {}
+      },
+      'Minutes': {
+        number: {
+          format: 'number'
+        }
+      },
+      'Value Type': {
+        select: {
+          options: [
+            { name: '有价值', color: 'green' },
+            { name: '中性', color: 'gray' },
+            { name: '低效', color: 'red' }
+          ]
+        }
+      },
+      'Record': {
+        relation: {
+          database_id: mainDatabaseId,
+          type: 'dual_property',
+          dual_property: {
+            synced_property_name: 'Activities'
+          }
+        }
+      },
+      'User ID': {
+        rich_text: {}
+      },
+      'Record Date': {
+        date: {}
+      },
+      'Description': {
+        rich_text: {}
+      },
+      'Tags': {
+        multi_select: {
+          options: [
+            { name: '工作', color: 'blue' },
+            { name: '学习', color: 'purple' },
+            { name: '生活', color: 'green' },
+            { name: '心情', color: 'pink' },
+            { name: '想法', color: 'yellow' },
+            { name: '计划', color: 'orange' },
+            { name: '总结', color: 'gray' },
+            { name: '感悟', color: 'red' }
+          ]
+        }
+      }
+    }
+
+    // 如果提供了目标库ID，添加关联字段
+    if (goalsDatabaseId) {
+      properties['Related Goal'] = {
+        relation: {
+          database_id: goalsDatabaseId,
+          type: 'dual_property',
+          dual_property: {
+            synced_property_name: 'Related Activities'
+          }
+        }
+      }
+      properties['Contribution Type'] = {
+        select: {
+          options: [
+            { name: '直接推进', color: 'green' },
+            { name: '间接支持', color: 'blue' },
+            { name: '学习准备', color: 'purple' },
+            { name: '无关', color: 'gray' }
+          ]
+        }
+      }
+    }
+
+    // 如果提供了待办库ID，添加关联字段
+    if (todosDatabaseId) {
+      properties['Related Todo'] = {
+        relation: {
+          database_id: todosDatabaseId,
+          type: 'dual_property',
+          dual_property: {
+            synced_property_name: 'Related Activities'
+          }
+        }
+      }
+    }
+
+    const databaseData = {
+      parent: {
+        type: 'page_id',
+        page_id: parentPageId
+      },
+      title: [
+        {
+          text: {
+            content: '语寄心声 - 活动明细'
+          }
+        }
+      ],
+      properties: properties
+    }
+
+    return await this.createDatabase(databaseData, apiKey)
+  }
+
+  // 添加关联和Rollup字段（四数据库架构）
+  async addRelationsAndRollups(apiKey, mainDatabaseId, activityDatabaseId, goalsDatabaseId, todosDatabaseId) {
+    try {
+      console.log('开始添加反向关联和Rollup字段...')
+
+      // 1. 主记录表添加Rollup字段
+      await this.callApi(`/databases/${mainDatabaseId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: {
+          properties: {
+            'Total Minutes': {
+              rollup: {
+                relation_property_name: 'Activities',
+                rollup_property_name: 'Minutes',
+                function: 'sum'
+              }
+            }
+          }
+        }
+      })
+      console.log('主记录表Rollup字段添加完成')
+
+      // 2. 目标库添加Rollup字段
+      await this.callApi(`/databases/${goalsDatabaseId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: {
+          properties: {
+            'Total Time Invested': {
+              rollup: {
+                relation_property_name: 'Related Activities',
+                rollup_property_name: 'Minutes',
+                function: 'sum'
+              }
+            },
+            'Total Todos': {
+              rollup: {
+                relation_property_name: 'Related Todos',
+                rollup_property_name: 'Todo Name',
+                function: 'count'
+              }
+            }
+          }
+        }
+      })
+      console.log('目标库Rollup字段添加完成')
+
+      // 3. 待办库添加Rollup字段
+      await this.callApi(`/databases/${todosDatabaseId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: {
+          properties: {
+            'Actual Time': {
+              rollup: {
+                relation_property_name: 'Related Activities',
+                rollup_property_name: 'Minutes',
+                function: 'sum'
+              }
+            }
+          }
+        }
+      })
+      console.log('待办库Rollup字段添加完成')
+
+      return { success: true, message: '所有关联和Rollup字段添加完成' }
+    } catch (error) {
+      console.error('添加关联和Rollup字段失败:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 添加Rollup字段到主记录表（保持向后兼容）
+  async addRollupFieldsToMainDatabase(apiKey, mainDatabaseId, activityDatabaseId) {
+    try {
+      const updateResult = await this.callApi(`/databases/${mainDatabaseId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: {
+          properties: {
+            'Total Minutes': {
+              rollup: {
+                relation_property_name: 'Activities',
+                rollup_property_name: 'Minutes',
+                function: 'sum'
+              }
+            }
+          }
+        }
+      })
+
+      console.log('Rollup字段添加结果:', updateResult.success ? '成功' : '失败')
+      return updateResult
+    } catch (error) {
+      console.error('添加Rollup字段失败:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 创建Notion数据库
+  async createDatabase(databaseData, apiKey) {
+    const endpoint = '/databases'
+    
+    // 尝试创建数据库
+    const result = await this.callApi(endpoint, {
+      apiKey: apiKey,
+      method: 'POST',
+      data: databaseData
+    })
+    
+    if (result.success) {
+      return {
+        success: true,
+        databaseId: result.data.id,
+        message: '数据库创建成功',
+        data: result.data
+      }
+    } else {
+      return {
+        success: false,
+        error: result.error
+      }
+    }
+  }
+
   // 创建页面到数据库
   async createPage(apiKey, databaseId, pageData) {
     const endpoint = '/pages'
@@ -255,6 +845,31 @@ class NotionApiService {
     })
   }
 
+  // 创建Notion页面（通用方法）
+  async createPageGeneric(pageData, apiKey) {
+    const endpoint = '/pages'
+    
+    const result = await this.callApi(endpoint, {
+      apiKey: apiKey,
+      method: 'POST',
+      data: pageData
+    })
+    
+    if (result.success) {
+      return {
+        success: true,
+        pageId: result.data.id,
+        message: '页面创建成功',
+        data: result.data
+      }
+    } else {
+      return {
+        success: false,
+        error: result.error
+      }
+    }
+  }
+
   // 查询数据库
   async queryDatabase(apiKey, databaseId, filter = {}) {
     const endpoint = `/databases/${databaseId}/query`
@@ -266,11 +881,311 @@ class NotionApiService {
     })
   }
 
-  // 同步备忘录到Notion
+  // 创建主记录（双表模式）
+  async createMainRecord(apiKey, mainDatabaseId, memo) {
+    try {
+      console.log('创建主记录到主记录表...')
+
+      // 生成摘要文本
+      const generateSummary = (memo) => {
+        const parts = []
+
+        if (memo.valuableTimeEntries && memo.valuableTimeEntries.length > 0) {
+          const count = memo.valuableTimeEntries.length
+          const total = memo.valuableTimeEntries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+          parts.push(`有价值活动${count}个(${total}分钟)`)
+        }
+
+        if (memo.neutralTimeEntries && memo.neutralTimeEntries.length > 0) {
+          const count = memo.neutralTimeEntries.length
+          const total = memo.neutralTimeEntries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+          parts.push(`中性活动${count}个(${total}分钟)`)
+        }
+
+        if (memo.wastefulTimeEntries && memo.wastefulTimeEntries.length > 0) {
+          const count = memo.wastefulTimeEntries.length
+          const total = memo.wastefulTimeEntries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+          parts.push(`低效活动${count}个(${total}分钟)`)
+        }
+
+        return parts.join('；') || '无活动记录'
+      }
+
+      const pageData = {
+        parent: {
+          type: 'database_id',
+          database_id: mainDatabaseId
+        },
+        properties: {
+          'Name': {
+            title: [{
+              text: { content: memo.id || `memo_${Date.now()}` }
+            }]
+          },
+          'User ID': {
+            rich_text: [{
+              text: { content: memo.userId || 'default_user' }
+            }]
+          },
+          'Record Date': {
+            date: {
+              start: new Date(memo.timestamp).toISOString().split('T')[0]
+            }
+          },
+          'Start Time': {
+            rich_text: [{
+              text: { content: memo.startTime || '' }
+            }]
+          },
+          'End Time': {
+            rich_text: [{
+              text: { content: memo.endTime || '' }
+            }]
+          },
+          'Type': {
+            select: {
+              name: memo.recordMode || (memo.isPlanning ? 'planning' : 'normal')
+            }
+          },
+          'Is Planning': {
+            checkbox: memo.isPlanning || false
+          },
+          'Summary': {
+            rich_text: [{
+              text: { content: generateSummary(memo) }
+            }]
+          },
+          'Sync Status': {
+            select: { name: 'synced' }
+          }
+        }
+      }
+
+      // 添加标签
+      if (memo.tags && memo.tags.length > 0) {
+        pageData.properties['Tags'] = {
+          multi_select: memo.tags.map(tag => ({ name: tag }))
+        }
+      }
+
+      const result = await this.createPage(apiKey, mainDatabaseId, pageData)
+
+      if (result.success) {
+        console.log('主记录创建成功:', result.data.id)
+        return {
+          success: true,
+          mainRecordId: result.data.id
+        }
+      } else {
+        console.error('主记录创建失败:', result.error)
+        return {
+          success: false,
+          error: result.error
+        }
+      }
+    } catch (error) {
+      console.error('创建主记录异常:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  // 创建活动记录（双表模式）
+  async createActivityRecords(apiKey, activityDatabaseId, mainRecordId, memo) {
+    try {
+      console.log('创建活动记录到活动明细表...')
+
+      // 收集所有活动
+      const activities = []
+
+      // 有价值的活动
+      if (memo.valuableTimeEntries && memo.valuableTimeEntries.length > 0) {
+        memo.valuableTimeEntries.forEach(entry => {
+          activities.push({
+            activityName: entry.activity || '未命名活动',
+            minutes: entry.minutes || 0,
+            valueType: '有价值',
+            description: entry.description || '',
+            tags: entry.tags || []
+          })
+        })
+      }
+
+      // 中性活动
+      if (memo.neutralTimeEntries && memo.neutralTimeEntries.length > 0) {
+        memo.neutralTimeEntries.forEach(entry => {
+          activities.push({
+            activityName: entry.activity || '未命名活动',
+            minutes: entry.minutes || 0,
+            valueType: '中性',
+            description: entry.description || '',
+            tags: entry.tags || []
+          })
+        })
+      }
+
+      // 低效活动
+      if (memo.wastefulTimeEntries && memo.wastefulTimeEntries.length > 0) {
+        memo.wastefulTimeEntries.forEach(entry => {
+          activities.push({
+            activityName: entry.activity || '未命名活动',
+            minutes: entry.minutes || 0,
+            valueType: '低效',
+            description: entry.description || '',
+            tags: entry.tags || []
+          })
+        })
+      }
+
+      console.log(`准备创建${activities.length}条活动记录`)
+
+      // 批量创建活动记录
+      const results = []
+      for (const activity of activities) {
+        const activityData = {
+          parent: {
+            type: 'database_id',
+            database_id: activityDatabaseId
+          },
+          properties: {
+            'Activity Name': {
+              title: [{
+                text: { content: activity.activityName }
+              }]
+            },
+            'Minutes': {
+              number: activity.minutes
+            },
+            'Value Type': {
+              select: { name: activity.valueType }
+            },
+            'Record': {
+              relation: [{
+                id: mainRecordId
+              }]
+            },
+            'User ID': {
+              rich_text: [{
+                text: { content: memo.userId || 'default_user' }
+              }]
+            },
+            'Record Date': {
+              date: {
+                start: new Date(memo.timestamp).toISOString().split('T')[0]
+              }
+            }
+          }
+        }
+
+        if (activity.description) {
+          activityData.properties['Description'] = {
+            rich_text: [{
+              text: { content: activity.description }
+            }]
+          }
+        }
+
+        if (activity.tags && activity.tags.length > 0) {
+          activityData.properties['Tags'] = {
+            multi_select: activity.tags.map(tag => ({ name: tag }))
+          }
+        }
+
+        const result = await this.createPage(apiKey, activityDatabaseId, activityData)
+        results.push(result)
+      }
+
+      const successCount = results.filter(r => r.success).length
+      console.log(`活动记录创建完成: 成功${successCount}/${activities.length}`)
+
+      return {
+        success: successCount > 0,
+        total: activities.length,
+        successCount: successCount,
+        failedCount: activities.length - successCount
+      }
+    } catch (error) {
+      console.error('创建活动记录异常:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  // 同步备忘录到Notion（双表模式）
+  async syncMemoToNotionDualTable(apiKey, mainDatabaseId, activityDatabaseId, memo) {
+    try {
+      console.log('开始双表模式同步备忘录到Notion:', memo.id)
+
+      // 第1步：创建主记录
+      const mainRecordResult = await this.createMainRecord(apiKey, mainDatabaseId, memo)
+
+      if (!mainRecordResult.success) {
+        return {
+          success: false,
+          error: '创建主记录失败: ' + mainRecordResult.error
+        }
+      }
+
+      const mainRecordId = mainRecordResult.mainRecordId
+
+      // 第2步：创建活动记录
+      const activityResult = await this.createActivityRecords(
+        apiKey,
+        activityDatabaseId,
+        mainRecordId,
+        memo
+      )
+
+      if (!activityResult.success) {
+        console.warn('活动记录创建失败，但主记录已创建:', activityResult.error)
+        return {
+          success: true,  // 主记录创建成功就算成功
+          mainRecordId: mainRecordId,
+          warning: '部分活动记录创建失败: ' + activityResult.error
+        }
+      }
+
+      console.log('双表同步完成:', {
+        mainRecordId,
+        activities: activityResult.successCount
+      })
+
+      return {
+        success: true,
+        mainRecordId: mainRecordId,
+        activityCount: activityResult.successCount,
+        message: `同步成功：主记录1条，活动${activityResult.successCount}条`
+      }
+    } catch (error) {
+      console.error('双表同步异常:', error)
+      return {
+        success: false,
+        error: '双表同步失败: ' + error.message
+      }
+    }
+  }
+
+  // 同步备忘录到Notion（单表模式 - 兼容旧版）
   async syncMemoToNotion(apiKey, databaseId, memo) {
     try {
-      console.log('开始同步备忘录到Notion:', memo)
-      
+      console.log('开始单表模式同步备忘录到Notion:', memo)
+
+      // 格式化活动列表为字符串
+      const formatActivities = (entries) => {
+        if (!entries || entries.length === 0) return ''
+        return entries.map(e => `${e.activity}(${e.minutes}分钟)`).join(', ')
+      }
+
+      // 计算总分钟数
+      const calculateTotalMinutes = (entries) => {
+        if (!entries || entries.length === 0) return 0
+        return entries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+      }
+
       // 构建完整的Notion页面数据
       const pageData = {
         parent: {
@@ -282,42 +1197,31 @@ class NotionApiService {
             title: [
               {
                 text: {
-                  content: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : '')
+                  content: memo.id || `memo_${Date.now()}`
                 }
               }
             ]
           },
-          'Content': {
+          'User ID': {
             rich_text: [
               {
                 text: {
-                  content: memo.content || ''
+                  content: memo.userId || 'default_user'
                 }
               }
             ]
           },
+          'Record Date': {
+            date: {
+              start: new Date(memo.timestamp).toISOString().split('T')[0]
+            }
+          },
           'Type': {
             select: {
-              name: memo.type === 'voice' ? 'Voice' : 'Text'
+              name: memo.recordMode || (memo.isPlanning ? 'planning' : 'normal')
             }
           },
-          'Created': {
-            date: {
-              start: new Date(memo.timestamp).toISOString()
-            }
-          },
-          // 注释掉不存在的属性，避免同步错误
-          // 'Time Period': {
-          //   select: {
-          //     name: this.getTimePeriod(memo)
-          //   }
-          // },
-          // 'Category': {
-          //   select: {
-          //     name: this.getCategory(memo)
-          //   }
-          // },
-          'Planning': {
+          'Is Planning': {
             checkbox: memo.isPlanning || false
           },
           'Sync Status': {
@@ -328,6 +1232,127 @@ class NotionApiService {
         }
       }
 
+      // 如果有时间信息
+      if (memo.startTime) {
+        pageData.properties['Start Time'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.startTime
+              }
+            }
+          ]
+        }
+      }
+
+      if (memo.endTime) {
+        pageData.properties['End Time'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.endTime
+              }
+            }
+          ]
+        }
+      }
+
+      // 有价值的活动
+      if (memo.valuableContent) {
+        pageData.properties['Valuable Content'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.valuableContent
+              }
+            }
+          ]
+        }
+      }
+
+      if (memo.valuableTimeEntries && memo.valuableTimeEntries.length > 0) {
+        pageData.properties['Valuable Activities'] = {
+          rich_text: [
+            {
+              text: {
+                content: formatActivities(memo.valuableTimeEntries)
+              }
+            }
+          ]
+        }
+        pageData.properties['Valuable Minutes'] = {
+          number: calculateTotalMinutes(memo.valuableTimeEntries)
+        }
+      }
+
+      // 中性活动
+      if (memo.neutralContent) {
+        pageData.properties['Neutral Content'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.neutralContent
+              }
+            }
+          ]
+        }
+      }
+
+      if (memo.neutralTimeEntries && memo.neutralTimeEntries.length > 0) {
+        pageData.properties['Neutral Activities'] = {
+          rich_text: [
+            {
+              text: {
+                content: formatActivities(memo.neutralTimeEntries)
+              }
+            }
+          ]
+        }
+        pageData.properties['Neutral Minutes'] = {
+          number: calculateTotalMinutes(memo.neutralTimeEntries)
+        }
+      }
+
+      // 低效活动
+      if (memo.wastefulContent) {
+        pageData.properties['Wasteful Content'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.wastefulContent
+              }
+            }
+          ]
+        }
+      }
+
+      if (memo.wastefulTimeEntries && memo.wastefulTimeEntries.length > 0) {
+        pageData.properties['Wasteful Activities'] = {
+          rich_text: [
+            {
+              text: {
+                content: formatActivities(memo.wastefulTimeEntries)
+              }
+            }
+          ]
+        }
+        pageData.properties['Wasteful Minutes'] = {
+          number: calculateTotalMinutes(memo.wastefulTimeEntries)
+        }
+      }
+
+      // 计算总时间
+      const totalMinutes =
+        calculateTotalMinutes(memo.valuableTimeEntries) +
+        calculateTotalMinutes(memo.neutralTimeEntries) +
+        calculateTotalMinutes(memo.wastefulTimeEntries)
+
+      if (totalMinutes > 0) {
+        pageData.properties['Total Minutes'] = {
+          number: totalMinutes
+        }
+      }
+
       // 添加标签（如果有）
       if (memo.tags && memo.tags.length > 0) {
         pageData.properties['Tags'] = {
@@ -335,12 +1360,25 @@ class NotionApiService {
         }
       }
 
+      // 添加目标ID（如果有）
+      if (memo.goalId) {
+        pageData.properties['Goal ID'] = {
+          rich_text: [
+            {
+              text: {
+                content: memo.goalId
+              }
+            }
+          ]
+        }
+      }
+
       console.log('构建的页面数据:', JSON.stringify(pageData, null, 2))
 
       const result = await this.createPage(apiKey, databaseId, pageData)
-      
+
       console.log('创建页面结果:', result)
-      
+
       if (result.success) {
         return {
           success: true,
@@ -368,22 +1406,57 @@ class NotionApiService {
       const result = await this.queryDatabase(apiKey, databaseId, {
         sorts: [
           {
-            property: 'Created',
+            property: 'Record Date',
             direction: 'descending'
           }
         ]
       })
 
       if (result.success) {
+        // 解析活动字符串为数组
+        const parseActivities = (activitiesStr) => {
+          if (!activitiesStr) return []
+          // 格式: "活动1(30分钟), 活动2(15分钟)"
+          return activitiesStr.split(', ').map(entry => {
+            const match = entry.match(/^(.+)\((\d+)分钟\)$/)
+            if (match) {
+              return {
+                activity: match[1],
+                minutes: parseInt(match[2])
+              }
+            }
+            return null
+          }).filter(e => e !== null)
+        }
+
         const memos = result.data.results.map(page => {
           const properties = page.properties
+          const recordDate = properties['Record Date']?.date?.start
+
           return {
-            id: page.id,
-            content: properties.Content?.rich_text?.[0]?.text?.content || '',
-            type: properties.Type?.select?.name?.toLowerCase() || 'text',
-            timestamp: new Date(properties.Created?.date?.start || page.created_time).getTime(),
+            id: properties.Name?.title?.[0]?.text?.content || page.id,
+            userId: properties['User ID']?.rich_text?.[0]?.text?.content || 'default_user',
+            timestamp: recordDate ? new Date(recordDate).getTime() : new Date(page.created_time).getTime(),
+            startTime: properties['Start Time']?.rich_text?.[0]?.text?.content || '',
+            endTime: properties['End Time']?.rich_text?.[0]?.text?.content || '',
+
+            // 有价值的活动
+            valuableContent: properties['Valuable Content']?.rich_text?.[0]?.text?.content || '',
+            valuableTimeEntries: parseActivities(properties['Valuable Activities']?.rich_text?.[0]?.text?.content),
+
+            // 中性活动
+            neutralContent: properties['Neutral Content']?.rich_text?.[0]?.text?.content || '',
+            neutralTimeEntries: parseActivities(properties['Neutral Activities']?.rich_text?.[0]?.text?.content),
+
+            // 低效活动
+            wastefulContent: properties['Wasteful Content']?.rich_text?.[0]?.text?.content || '',
+            wastefulTimeEntries: parseActivities(properties['Wasteful Activities']?.rich_text?.[0]?.text?.content),
+
+            recordMode: properties.Type?.select?.name || 'normal',
+            isPlanning: properties['Is Planning']?.checkbox || false,
             tags: properties.Tags?.multi_select?.map(tag => tag.name) || [],
-            isPlanning: properties.Planning?.checkbox || false,
+            goalId: properties['Goal ID']?.rich_text?.[0]?.text?.content || '',
+
             notionPageId: page.id,
             syncStatus: 'synced'
           }
@@ -576,6 +1649,213 @@ class NotionApiService {
     }
   }
 
+  // 同步目标到Notion
+  async syncGoalToNotion(apiKey, goalsDatabaseId, goal) {
+    try {
+      console.log('开始同步目标到Notion...', goal.id)
+
+      const pageData = {
+        parent: {
+          type: 'database_id',
+          database_id: goalsDatabaseId
+        },
+        properties: {
+          'Goal Name': {
+            title: [{
+              text: { content: goal.title || '未命名目标' }
+            }]
+          },
+          'Category': {
+            select: { name: goal.category || '月度目标' }
+          },
+          'Status': {
+            select: { name: this.mapGoalStatus(goal.status) }
+          },
+          'Progress': {
+            number: (goal.progress || 0) / 100
+          },
+          'Priority': {
+            select: { name: goal.priority || '中' }
+          }
+        }
+      }
+
+      // 添加描述
+      if (goal.description) {
+        pageData.properties['Description'] = {
+          rich_text: [{
+            text: { content: goal.description.substring(0, 2000) }
+          }]
+        }
+      }
+
+      // 添加开始日期
+      if (goal.startDate) {
+        pageData.properties['Start Date'] = {
+          date: {
+            start: new Date(goal.startDate).toISOString().split('T')[0]
+          }
+        }
+      }
+
+      // 添加目标日期
+      if (goal.targetDate) {
+        pageData.properties['Target Date'] = {
+          date: {
+            start: goal.targetDate
+          }
+        }
+      }
+
+      // 添加标签
+      if (goal.tags && goal.tags.length > 0) {
+        pageData.properties['Tags'] = {
+          multi_select: goal.tags.map(tag => ({ name: tag }))
+        }
+      }
+
+      const result = await this.createPageGeneric(pageData, apiKey)
+
+      if (result.success) {
+        return {
+          success: true,
+          pageId: result.pageId,
+          message: '目标同步成功'
+        }
+      } else {
+        return {
+          success: false,
+          error: result.error
+        }
+      }
+    } catch (error) {
+      console.error('同步目标到Notion异常:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  // 同步待办到Notion
+  async syncTodoToNotion(apiKey, todosDatabaseId, todo, goals = []) {
+    try {
+      console.log('开始同步待办到Notion...', todo.id)
+
+      const pageData = {
+        parent: {
+          type: 'database_id',
+          database_id: todosDatabaseId
+        },
+        properties: {
+          'Todo Name': {
+            title: [{
+              text: { content: todo.title || '未命名待办' }
+            }]
+          },
+          'Todo Type': {
+            select: { name: todo.type || '临时待办' }
+          },
+          'Status': {
+            select: { name: this.mapTodoStatus(todo.status) }
+          },
+          'Priority': {
+            select: { name: todo.priority || '重要不紧急' }
+          },
+          'Scope': {
+            select: { name: todo.scope || '近期' }
+          }
+        }
+      }
+
+      // 添加描述
+      if (todo.description) {
+        pageData.properties['Description'] = {
+          rich_text: [{
+            text: { content: todo.description.substring(0, 2000) }
+          }]
+        }
+      }
+
+      // 添加截止日期
+      if (todo.dueDate) {
+        pageData.properties['Due Date'] = {
+          date: {
+            start: todo.dueDate
+          }
+        }
+      }
+
+      // 添加预计时间
+      if (todo.estimatedMinutes) {
+        pageData.properties['Estimated Minutes'] = {
+          number: todo.estimatedMinutes
+        }
+      }
+
+      // 添加标签
+      if (todo.tags && todo.tags.length > 0) {
+        pageData.properties['Tags'] = {
+          multi_select: todo.tags.map(tag => ({ name: tag }))
+        }
+      }
+
+      // 添加关联目标（如果有）
+      if (todo.relatedGoalId && goals.length > 0) {
+        const relatedGoal = goals.find(g => g.id === todo.relatedGoalId)
+        if (relatedGoal && relatedGoal.notionPageId) {
+          pageData.properties['Related Goal'] = {
+            relation: [{
+              id: relatedGoal.notionPageId
+            }]
+          }
+        }
+      }
+
+      const result = await this.createPageGeneric(pageData, apiKey)
+
+      if (result.success) {
+        return {
+          success: true,
+          pageId: result.pageId,
+          message: '待办同步成功'
+        }
+      } else {
+        return {
+          success: false,
+          error: result.error
+        }
+      }
+    } catch (error) {
+      console.error('同步待办到Notion异常:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  // 映射目标状态到Notion
+  mapGoalStatus(status) {
+    const statusMap = {
+      'active': '进行中',
+      'completed': '已完成',
+      'paused': '已暂停',
+      'cancelled': '已取消'
+    }
+    return statusMap[status] || '未开始'
+  }
+
+  // 映射待办状态到Notion
+  mapTodoStatus(status) {
+    const statusMap = {
+      '待办': '待办',
+      '进行中': '进行中',
+      '已完成': '已完成',
+      '已取消': '已取消'
+    }
+    return statusMap[status] || '待办'
+  }
 }
 
 // 创建全局实例

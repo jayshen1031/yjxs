@@ -92,12 +92,14 @@
             <view class="memo-type {{ memo.isPlanning ? 'planning' : memo.type }}">
               <text>{{ memo.isPlanning ? '📋' : (memo.type === 'voice' ? '🎤' : '📝') }}</text>
             </view>
-            <view class="memo-time">{{ memo.timeStr }}</view>
+            <view class="memo-time-info">
+              <view class="time-period-main">{{ memo.timePeriodDisplay }}</view>
+            </view>
             <view class="memo-actions">
               <button class="action-btn" wx:if="{{ memo.type === 'voice' }}" catchtap="playVoice" data-memo="{{ memo }}">
                 <text>{{ memo.isPlaying ? '⏸️' : '▶️' }}</text>
               </button>
-              <button class="action-btn" catchtap="editMemo" data-memo="{{ memo }}">
+              <button class="action-btn" bindtap="editMemo" data-id="{{ memo.id }}" data-type="{{ memo.type }}">
                 <text>✏️</text>
               </button>
               <button class="action-btn delete" catchtap="deleteMemo" data-memo="{{ memo }}">

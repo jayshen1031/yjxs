@@ -300,11 +300,28 @@
   background: #fef3c7;
 }
 
+.memo-time-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  margin-left: 12rpx;
+  flex: 1;
+}
+
 .memo-time {
   font-size: 24rpx;
   color: #6b7280;
-  margin-left: 12rpx;
-  flex: 1;
+}
+
+.time-period-main {
+  font-size: 22rpx;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+  width: fit-content;
+  font-weight: 600;
+  border: 1rpx solid rgba(5, 150, 105, 0.2);
 }
 
 .memo-actions {

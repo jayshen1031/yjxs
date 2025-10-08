@@ -125,6 +125,7 @@ Page({
       ...memo,
       timeStr: this.formatTime(new Date(memo.timestamp)),
       dateStr: this.formatDate(new Date(memo.timestamp)),
+      timePeriodDisplay: this.formatTimePeriodDisplay(memo),  // 新增：时间段显示
       timePeriod: this.getTimePeriod(memo),
       periodColor: this.getTimePeriodColor(memo),
       category: this.getCategory(memo),
@@ -175,6 +176,43 @@ Page({
   // 格式化时间
   formatTime: function(date) {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+  },
+
+  // 格式化时间段显示
+  formatTimePeriodDisplay: function(memo) {
+    if (!memo || !memo.timestamp) {
+      return '时间未知'
+    }
+
+    // 获取记录的开始时间
+    const recordDate = new Date(memo.timestamp)
+    const startTime = `${recordDate.getHours().toString().padStart(2, '0')}:${recordDate.getMinutes().toString().padStart(2, '0')}`
+    
+    // 获取日期显示
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+    const memoDate = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
+    
+    let dateStr = ''
+    if (memoDate.getTime() === today.getTime()) {
+      dateStr = '今天'
+    } else if (memoDate.getTime() === yesterday.getTime()) {
+      dateStr = '昨天'
+    } else {
+      dateStr = `${recordDate.getMonth() + 1}月${recordDate.getDate()}日`
+    }
+
+    // 尝试从memo数据中获取时间段信息
+    if (memo.startTime && memo.endTime) {
+      return `${dateStr} ${memo.startTime}-${memo.endTime}`
+    }
+    
+    // 如果没有时间段信息，则基于开始时间推算一个小时的时间段
+    const endDate = new Date(recordDate.getTime() + 60 * 60 * 1000) // 加1小时
+    const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`
+    
+    return `${dateStr} ${startTime}-${endTime}`
   },
 
   // 日期选择
@@ -388,9 +426,40 @@ Page({
 
   // 编辑备忘录
   editMemo: function(e) {
-    const memo = e.currentTarget.dataset.memo
-    wx.navigateTo({
-      url: `/pages/memo/memo?type=${memo.type}&editId=${memo.id}`
+    console.log('editMemo clicked', e)
+    const { id, type } = e.currentTarget.dataset
+    console.log('memo id:', id, 'type:', type)
+    
+    if (!id) {
+      console.error('memo data is invalid. id:', id, 'type:', type)
+      wx.showToast({
+        title: '记录数据错误',
+        icon: 'none'
+      })
+      return
+    }
+    
+    // type字段可能为undefined（历史记录兼容），这是正常的
+    
+    // 由于memo页面是tabBar页面，不能使用navigateTo传参
+    // 使用全局数据传递编辑参数
+    const app = getApp()
+    app.globalData.editMemo = {
+      type: type,
+      editId: id,
+      fromPage: 'history'
+    }
+    
+    console.log('switching to memo tab with edit params:', type, id)
+    wx.switchTab({
+      url: '/pages/memo/memo',
+      fail: (err) => {
+        console.error('switch tab failed:', err)
+        wx.showToast({
+          title: '跳转失败',
+          icon: 'none'
+        })
+      }
     })
   },
 

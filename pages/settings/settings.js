@@ -9,8 +9,14 @@ Page({
     notionConfig: {
       enabled: false,
       apiKey: '',
-      databaseId: ''
+      databaseId: '',
+      mainDatabaseId: '',
+      activityDatabaseId: '',
+      goalsDatabaseId: '',
+      todosDatabaseId: '',
+      parentPageId: ''
     },
+    configMode: 'auto', // 'auto' 自动创建 | 'manual' 手动配置
     preferences: {
       autoSync: true,
       reminderEnabled: true,
@@ -25,17 +31,28 @@ Page({
     pendingMemos: 0,
     showApiKey: false,
     testing: false,
-    syncing: false
+    syncing: false,
+    creating: false, // 正在创建数据库
+    // 箴言相关数据
+    quoteStats: {
+      total: 0,
+      favorites: 0,
+      user: 0,
+      categories: 0
+    },
+    currentQuotePreview: null
   },
 
   onLoad: function() {
     this.loadUserData()
     this.loadSyncStatus()
+    this.loadQuoteData()
   },
 
   onShow: function() {
     this.loadUserData()
     this.loadSyncStatus()
+    this.loadQuoteData()
   },
 
   // 加载用户数据
@@ -221,11 +238,24 @@ Page({
     })
   },
 
-  // 配置Notion
+  // 配置Notion - 重置配置状态，显示配置界面
   configureNotion: function() {
-    wx.navigateTo({
-      url: `/pages/notion-config/notion-config?userId=${this.data.currentUser.id}`
+    // 方案1：重置notionConfigured状态，在当前页面重新配置
+    this.setData({
+      notionConfigured: false,
+      configMode: 'auto'
     })
+
+    wx.showToast({
+      title: '请重新配置',
+      icon: 'none',
+      duration: 1500
+    })
+
+    // 方案2（备用）：跳转到独立配置页面
+    // wx.navigateTo({
+    //   url: `/pages/notion-config/notion-config?userId=${this.data.currentUser.id}`
+    // })
   },
 
   // 切换Notion同步
@@ -261,12 +291,32 @@ Page({
     const databaseId = e.detail.value
     const notionConfig = { ...this.data.notionConfig, databaseId }
     console.log('Database ID输入:', databaseId, '更新配置:', notionConfig)
-    
+
     this.setData({ notionConfig })
-    
+
     // 实时保存配置到用户数据
     const saveResult = userManager.configureNotion(this.data.currentUser.id, notionConfig)
     console.log('保存Database ID结果:', saveResult)
+  },
+
+  // Notion 父页面ID输入
+  onParentPageIdInput: function(e) {
+    const parentPageId = e.detail.value
+    const notionConfig = { ...this.data.notionConfig, parentPageId }
+    console.log('Parent Page ID输入:', parentPageId, '更新配置:', notionConfig)
+
+    this.setData({ notionConfig })
+
+    // 实时保存配置到用户数据
+    const saveResult = userManager.configureNotion(this.data.currentUser.id, notionConfig)
+    console.log('保存Parent Page ID结果:', saveResult)
+  },
+
+  // 切换配置模式
+  onConfigModeChange: function(e) {
+    const configMode = e.detail.value
+    console.log('切换配置模式:', configMode)
+    this.setData({ configMode })
   },
 
   // 切换API Key显示
@@ -276,35 +326,131 @@ Page({
     })
   },
 
+  // 自动创建双数据库
+  autoCreateDatabases: async function() {
+    const { apiKey, parentPageId } = this.data.notionConfig
+
+    if (!apiKey || !parentPageId) {
+      toast.error('请先填写API Key和父页面ID')
+      return
+    }
+
+    this.setData({ creating: true })
+
+    try {
+      console.log('开始自动创建四数据库架构...')
+
+      const cloudTest = require('../../utils/cloudTest.js')
+      const result = await cloudTest.autoCreateDatabases(apiKey, parentPageId)
+
+      if (result.success) {
+        // 更新配置
+        const notionConfig = {
+          ...this.data.notionConfig,
+          enabled: true,
+          goalsDatabaseId: result.goalsDatabaseId,
+          todosDatabaseId: result.todosDatabaseId,
+          mainDatabaseId: result.mainDatabaseId,
+          activityDatabaseId: result.activityDatabaseId,
+          databaseId: result.mainDatabaseId  // 兼容旧版
+        }
+
+        // 保存配置到用户数据
+        userManager.configureNotion(this.data.currentUser.id, notionConfig)
+
+        // 更新初始化状态
+        const initStatus = {
+          success: true,
+          addedFields: result.tables || ['goals', 'todos', 'main', 'activity'],
+          error: null
+        }
+        userManager.updateNotionInitStatus(this.data.currentUser.id, initStatus)
+
+        // 刷新页面数据
+        await this.loadUserData()
+        this.loadSyncStatus()
+
+        // 显示成功消息
+        let message = '✅ 四数据库创建成功！\n'
+        message += `🎯 目标库ID: ${result.goalsDatabaseId.slice(0, 8)}...\n`
+        message += `📝 待办库ID: ${result.todosDatabaseId.slice(0, 8)}...\n`
+        message += `📋 主记录表ID: ${result.mainDatabaseId.slice(0, 8)}...\n`
+        message += `📊 活动明细表ID: ${result.activityDatabaseId.slice(0, 8)}...\n`
+        message += '🎉 数据库字段已自动初始化'
+
+        wx.showModal({
+          title: '创建成功',
+          content: message,
+          showCancel: false,
+          confirmText: '好的'
+        })
+
+        console.log('双数据库创建成功:', result)
+      } else {
+        toast.error('创建失败: ' + result.error)
+      }
+    } catch (error) {
+      console.error('自动创建数据库失败:', error)
+      toast.error('创建失败: ' + error.message)
+    } finally {
+      this.setData({ creating: false })
+    }
+  },
+
   // 测试Notion连接
   testNotionConnection: async function() {
     const { apiKey, databaseId } = this.data.notionConfig
-    
+
     if (!apiKey || !databaseId) {
       toast.error('请先填写API Token和Database ID')
       return
     }
 
     this.setData({ testing: true })
-    
+
     try {
-      // 直接测试Notion API连接（跳过云开发环境测试）
+      console.log('开始测试Notion连接并初始化数据库...')
+
+      // 直接测试Notion API连接并初始化数据库字段
       const cloudTest = require('../../utils/cloudTest.js')
       const notionTest = await cloudTest.testNotionDirectly(apiKey, databaseId)
-      
+
       if (notionTest.success) {
         // 保存配置到本地
         userManager.configureNotion(this.data.currentUser.id, this.data.notionConfig)
+
+        // 保存初始化状态
+        if (notionTest.initialized !== undefined) {
+          const initStatus = {
+            success: notionTest.initialized,
+            addedFields: notionTest.database?.properties ?
+                        Object.keys(notionTest.database.properties) : [],
+            error: notionTest.initialized ? null : '部分字段初始化失败'
+          }
+          userManager.updateNotionInitStatus(this.data.currentUser.id, initStatus)
+          console.log('数据库初始化状态已保存:', initStatus)
+        }
+
         this.loadSyncStatus()
-        
-        let message = 'Notion连接测试成功'
+        this.loadUserData() // 重新加载用户数据以更新显示
+
+        // 构建成功消息
+        let message = '✅ Notion连接测试成功'
         if (notionTest.user) {
-          message += `\n用户: ${notionTest.user.name}`
+          message += `\n👤 用户: ${notionTest.user.name || 'Unknown'}`
         }
         if (notionTest.database) {
-          message += `\n数据库: ${notionTest.database.title[0]?.plain_text || 'Database'}`
+          const dbTitle = notionTest.database.title?.[0]?.plain_text ||
+                         notionTest.database.title?.[0]?.text?.content ||
+                         'Database'
+          message += `\n📋 数据库: ${dbTitle}`
         }
-        
+        if (notionTest.initialized) {
+          message += '\n🎉 数据库字段已自动初始化'
+        } else {
+          message += '\n⚠️ 部分字段需要手动创建'
+        }
+
         toast.success(message)
       } else {
         toast.error('Notion连接失败: ' + notionTest.error)
@@ -508,6 +654,45 @@ Page({
         }
       }
     })
+  },
+
+  // 加载箴言数据
+  loadQuoteData: function() {
+    const app = getApp()
+    const allQuotes = app.getAllQuotes()
+    const favoriteQuotes = allQuotes.filter(quote => quote.isFavorite)
+    const userQuotes = allQuotes.filter(quote => quote.source === '用户添加')
+    const categories = Object.keys(app.getQuoteCategories())
+    const currentQuote = app.globalData.currentQuote
+
+    this.setData({
+      quoteStats: {
+        total: allQuotes.length,
+        favorites: favoriteQuotes.length,
+        user: userQuotes.length,
+        categories: categories.length
+      },
+      currentQuotePreview: currentQuote && typeof currentQuote === 'object' ? currentQuote : null
+    })
+  },
+
+  // 跳转到箴言管理页面
+  goToQuoteManager: function() {
+    wx.navigateTo({
+      url: '/pages/quote-manager/quote-manager'
+    })
+  },
+
+  // 刷新箴言
+  refreshQuote: function() {
+    const app = getApp()
+    const newQuote = app.refreshQuote()
+    if (newQuote) {
+      this.setData({
+        currentQuotePreview: newQuote
+      })
+      toast.success('已刷新箴言')
+    }
   },
 
   // 格式化时间

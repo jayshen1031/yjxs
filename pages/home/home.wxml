@@ -1,21 +1,178 @@
+<wxs module="utils">
+function getCategoryClass(category) {
+  var categoryMap = {
+    '励志': 'inspire',
+    '生活': 'life', 
+    '成长': 'growth',
+    '哲理': 'philosophy',
+    '记录': 'record',
+    '时间': 'time',
+    '自信': 'confidence',
+    '心理': 'psychology',
+    '决策': 'decision',
+    '自定义': 'custom'
+  }
+  return categoryMap[category] || 'custom'
+}
+
+module.exports = {
+  getCategoryClass: getCategoryClass
+}
+</wxs>
+
 <view class="container">
-  <!-- 每日箴言 -->
-  <view class="quote-card fade-in">
-    <view class="quote-text">{{ currentQuote }}</view>
+  <!-- 每日箴言力量库 -->
+  <view class="quote-section fade-in">
+    <view class="quote-header">
+      <view class="quote-title">
+        <text class="icon">💫</text>
+        <text>今日箴言</text>
+      </view>
+      <view class="quote-actions">
+        <view class="action-btn" bindtap="refreshQuote">
+          <text class="icon">🎲</text>
+        </view>
+        <view class="action-btn" bindtap="toggleQuoteFavorite">
+          <text class="icon heart {{currentQuoteData.isFavorite ? 'favorite' : ''}}">❤️</text>
+        </view>
+        <view class="action-btn" bindtap="goToQuoteManager">
+          <text class="icon">⚙️</text>
+        </view>
+      </view>
+    </view>
+    
+    <view class="quote-card">
+      <view class="quote-content">{{ currentQuoteData.content || currentQuote }}</view>
+      <view class="quote-meta" wx:if="{{ currentQuoteData.category }}">
+        <view class="category-tag category-{{ utils.getCategoryClass(currentQuoteData.category) }}">{{ currentQuoteData.category }}</view>
+        <view class="usage-count">已激励 {{ currentQuoteData.usageCount || 0 }} 次</view>
+        <view class="source-info">{{ currentQuoteData.source }}</view>
+      </view>
+    </view>
+    
+    <!-- 心情选择器 -->
+    <view class="mood-selector">
+      <view class="mood-title">
+        <text class="icon">💭</text>
+        <text>今日心情</text>
+      </view>
+      <view class="mood-options">
+        <view 
+          class="mood-chip {{selectedMood === moodItem.mood ? 'active' : ''}}" 
+          wx:for="{{ moodOptions }}" 
+          wx:key="mood"
+          wx:for-item="moodItem"
+          bindtap="selectMood"
+          data-mood="{{ moodItem.mood }}"
+        >
+          <text class="mood-emoji">{{ moodItem.emoji }}</text>
+          <text class="mood-text">{{ moodItem.mood }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 快速箴言分类 -->
+    <scroll-view class="quick-categories" scroll-x="true" wx:if="{{ quoteCategories.length > 0 }}">
+      <view 
+        class="category-chip {{selectedQuoteCategory === category ? 'active' : ''}}" 
+        wx:for="{{ quoteCategories }}" 
+        wx:key="*this"
+        wx:for-item="category"
+        bindtap="quickFilterByCategory"
+        data-category="{{ category }}"
+      >
+        {{ category }}
+      </view>
+    </scroll-view>
   </view>
 
   <!-- 快速统计 -->
   <view class="grid grid-2 mb-20">
     <view class="grid-item">
       <view class="stat-card">
-        <view class="stat-number">{{ todayMemoCount }}</view>
-        <view class="stat-label">今日记录</view>
+        <view class="stat-number">{{ continuousDays }}</view>
+        <view class="stat-label">连续记录</view>
       </view>
     </view>
     <view class="grid-item">
       <view class="stat-card">
-        <view class="stat-number">{{ totalMemoCount }}</view>
-        <view class="stat-label">总记录数</view>
+        <view class="stat-number">{{ todayValueScore }}%</view>
+        <view class="stat-label">今日价值度</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 目标进展 -->
+  <view class="card" wx:if="{{ goalStats.total > 0 }}">
+    <view class="card-content">
+      <view class="title-row">
+        <view class="title">🎯 目标进展</view>
+        <view class="action-link" bindtap="goToGoalManager">管理目标</view>
+      </view>
+      
+      <!-- 目标统计 -->
+      <view class="goal-stats">
+        <view class="stat-item">
+          <view class="stat-value">{{ goalStats.total }}</view>
+          <view class="stat-desc">总目标</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-value">{{ goalStats.active }}</view>
+          <view class="stat-desc">进行中</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-value">{{ goalStats.completed }}</view>
+          <view class="stat-desc">已完成</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-value">{{ goalStats.averageProgress }}%</view>
+          <view class="stat-desc">平均进度</view>
+        </view>
+      </view>
+      
+      <!-- 今日目标 -->
+      <view wx:if="{{ todayGoals.length > 0 }}" class="today-goals">
+        <view class="goals-header">
+          <text class="goals-title">📅 今日目标</text>
+          <text class="goals-count">{{ todayGoals.length }}个</text>
+        </view>
+        <view class="goals-list">
+          <view 
+            class="goal-item-mini" 
+            wx:for="{{ todayGoals }}" 
+            wx:key="id"
+            wx:for-item="goal"
+          >
+            <view class="goal-info">
+              <view class="goal-title-mini">{{ goal.title }}</view>
+              <view class="goal-meta-mini">
+                <view class="type-indicator type-{{ goal.type }}"></view>
+                <text class="goal-category">{{ goal.category }}</text>
+                <text class="goal-progress">{{ goal.progress }}%</text>
+              </view>
+            </view>
+            <view class="goal-progress-bar">
+              <view class="progress-fill" style="width: {{ goal.progress }}%"></view>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 快速目标操作 -->
+      <view class="quick-goal-actions">
+        <view wx:if="{{ goalStats.total === 0 }}" class="no-goals-tip">
+          <button class="btn btn-goal" bindtap="goToGoalManager">
+            <text>🎯 设定第一个目标</text>
+          </button>
+        </view>
+        <view wx:else class="goal-quick-actions">
+          <button class="btn btn-goal-add" bindtap="quickAddGoal">
+            <text>➕ 快速添加目标</text>
+          </button>
+          <button class="btn btn-goal-manage" bindtap="goToGoalManager">
+            <text>⚙️ 管理目标</text>
+          </button>
+        </view>
       </view>
     </view>
   </view>
@@ -27,19 +184,14 @@
       <view class="grid grid-2">
         <view class="grid-item">
           <button class="btn btn-primary" bindtap="goToTextMemo">
-            <text>📝 文字记录</text>
+            <text>📝 价值记录</text>
           </button>
         </view>
         <view class="grid-item">
-          <button class="btn btn-primary" bindtap="goToVoiceMemo">
-            <text>🎤 语音记录</text>
+          <button class="btn btn-planning" bindtap="goToPlanningMemo">
+            <text>📋 明日规划</text>
           </button>
         </view>
-      </view>
-      <view class="planning-quick-action mt-20">
-        <button class="btn btn-planning" bindtap="goToPlanningMemo">
-          <text>📋 明日规划</text>
-        </button>
       </view>
     </view>
   </view>
@@ -55,8 +207,58 @@
         <text class="planning-text">{{ todayPlanning.content }}</text>
       </view>
       <view class="planning-meta">
-        <view class="time-tag">{{ todayPlanning.formattedTime }}</view>
+        <view class="time-tag">⏰ 规划时间：{{ todayPlanning.formattedTime }}</view>
         <view class="tag planning">规划</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 今日待办 -->
+  <view class="card today-todos-section">
+    <view class="card-content">
+      <view class="section-header">
+        <view class="title">✅ 今日待办 ({{ todayTodosStats.total }})</view>
+        <view class="action-link" bindtap="goToTodosPage">
+          <text>管理全部</text>
+          <text class="icon">→</text>
+        </view>
+      </view>
+
+      <view wx:if="{{ todayTodos.length > 0 }}">
+        <view class="todo-item" wx:for="{{ todayTodos }}" wx:key="id" bindtap="toggleTodoStatus" data-id="{{ item.id }}">
+          <view class="todo-checkbox">
+            <text class="icon {{item.status === '已完成' ? 'checked' : ''}}">{{ item.status === '已完成' ? '✓' : '○' }}</text>
+          </view>
+          <view class="todo-content">
+            <view class="todo-title {{item.status === '已完成' ? 'completed' : ''}}">{{ item.title }}</view>
+            <view class="todo-meta">
+              <view class="todo-type-tag">{{ item.type }}</view>
+              <view class="todo-priority-tag priority-{{item.priorityLevel}}">{{ item.priorityText }}</view>
+              <view wx:if="{{ item.estimatedMinutes }}" class="todo-time-tag">⏱ {{ item.estimatedMinutes }}分钟</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="todos-summary">
+          <view class="summary-item">
+            <text class="label">待办:</text>
+            <text class="value">{{ todayTodosStats.pending }}</text>
+          </view>
+          <view class="summary-item">
+            <text class="label">进行中:</text>
+            <text class="value">{{ todayTodosStats.inProgress }}</text>
+          </view>
+          <view class="summary-item">
+            <text class="label">已完成:</text>
+            <text class="value">{{ todayTodosStats.completed }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-state">
+        <view class="icon">📝</view>
+        <view class="text">今天还没有待办事项</view>
+        <view class="hint">可以在"明日规划"中添加，或在"目标·待办"页面管理</view>
       </view>
     </view>
   </view>
@@ -97,23 +299,67 @@
   <!-- 提醒设置 -->
   <view class="card">
     <view class="card-content">
-      <view class="title">提醒设置</view>
+      <view class="title">⏰ 准点提醒</view>
       <view class="flex flex-between">
-        <text>定时提醒</text>
+        <text>每小时准点提醒</text>
         <switch checked="{{ reminderEnabled }}" bindchange="toggleReminder" color="#6366f1"/>
       </view>
-      <view wx:if="{{ reminderEnabled }}" class="mt-20">
-        <text class="subtitle">提醒间隔：{{ reminderInterval }}分钟</text>
-        <slider 
-          value="{{ reminderInterval }}" 
-          min="30" 
-          max="480" 
-          step="30"
-          show-value
-          bindchange="onReminderIntervalChange"
-          activeColor="#6366f1"
-          backgroundColor="#e5e7eb"
+      <view wx:if="{{ reminderEnabled }}" class="reminder-info">
+        <view class="reminder-time-range">
+          <text class="time-badge">7:00</text>
+          <text class="time-separator">-</text>
+          <text class="time-badge">22:00</text>
+        </view>
+        <text class="reminder-desc">生活时间段内每小时整点提醒记录</text>
+        <text class="reminder-note">💡 过去1小时的活动回顾和记录</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快速添加目标弹窗 -->
+  <view class="modal {{ showQuickGoalModal ? 'show' : '' }}" wx:if="{{ showQuickGoalModal }}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">快速添加目标</text>
+        <text class="close-btn" bindtap="closeQuickGoalModal">✕</text>
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">目标标题 *</label>
+        <input 
+          class="form-input" 
+          placeholder="如：每天跑步30分钟、学会弹吉他..." 
+          value="{{ quickGoalForm.title }}"
+          bindinput="onQuickGoalTitleInput"
+          maxlength="50"
         />
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">目标类型</label>
+        <picker bindchange="onQuickGoalTypeChange" value="{{ quickGoalTypeIndex }}" range="{{ quickGoalTypes }}" range-key="label">
+          <view class="picker-input">
+            <text>{{ quickGoalTypes[quickGoalTypeIndex].label }}</text>
+            <text class="arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-group">
+        <label class="form-label">目标分类</label>
+        <picker bindchange="onQuickGoalCategoryChange" value="{{ quickGoalCategoryIndex }}" range="{{ quickGoalCategories }}">
+          <view class="picker-input">
+            <text>{{ quickGoalCategories[quickGoalCategoryIndex] }}</text>
+            <text class="arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-actions">
+        <button class="btn-cancel" bindtap="closeQuickGoalModal">取消</button>
+        <button class="btn-confirm" bindtap="confirmQuickAddGoal" disabled="{{ !quickGoalForm.title }}">
+          创建目标
+        </button>
       </view>
     </view>
   </view>

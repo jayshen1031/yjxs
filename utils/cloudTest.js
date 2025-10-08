@@ -71,47 +71,82 @@ class CloudTest {
   }
 
   // 简化的Notion连接测试（不依赖云函数）
-  async testNotionDirectly(apiKey, databaseId) {
+  async testNotionDirectly(apiKey, parentPageId = null) {
     try {
-      if (!apiKey || !databaseId) {
-        throw new Error('API Key或Database ID不能为空')
+      if (!apiKey) {
+        throw new Error('API Key不能为空')
       }
 
-      // 使用wx.request直接测试Notion API
-      const response = await this.makeNotionRequest('/users/me', apiKey)
-      
-      if (response.statusCode === 200) {
-        const user = response.data
-        
-        // 如果提供了数据库ID，也测试数据库访问
-        let database = null
-        if (databaseId) {
-          const dbResponse = await this.makeNotionRequest(`/databases/${databaseId}`, apiKey)
-          if (dbResponse.statusCode === 200) {
-            database = dbResponse.data
-          }
+      console.log('开始测试Notion连接...')
+
+      // 使用notionApiService进行测试
+      const notionApiService = require('./notionApiService.js')
+      const result = await notionApiService.testConnection(apiKey, parentPageId)
+
+      console.log('Notion连接测试结果:', result)
+
+      if (result.success) {
+        let message = 'Notion连接测试成功'
+
+        if (result.user) {
+          message += `\n用户: ${result.user.name || 'Unknown'}`
         }
 
         return {
           success: true,
-          message: 'Notion连接测试成功',
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.person?.email
-          },
-          database: database ? {
-            id: database.id,
-            title: database.title
-          } : null
+          message: message,
+          user: result.user
         }
       } else {
-        throw new Error(`Notion API返回错误: ${response.statusCode}`)
+        return {
+          success: false,
+          error: result.error || 'Notion连接测试失败'
+        }
       }
     } catch (error) {
+      console.error('Notion连接测试异常:', error)
       return {
         success: false,
         error: error.message || 'Notion连接测试失败'
+      }
+    }
+  }
+
+  // 自动创建四数据库
+  async autoCreateDatabases(apiKey, parentPageId) {
+    try {
+      if (!apiKey || !parentPageId) {
+        throw new Error('API Key和父页面ID不能为空')
+      }
+
+      console.log('开始自动创建四数据库架构...')
+
+      const notionApiService = require('./notionApiService.js')
+      const result = await notionApiService.createQuadDatabases(apiKey, parentPageId)
+
+      console.log('四数据库创建结果:', result)
+
+      if (result.success) {
+        return {
+          success: true,
+          message: '四数据库创建成功！',
+          goalsDatabaseId: result.goalsDatabaseId,
+          todosDatabaseId: result.todosDatabaseId,
+          mainDatabaseId: result.mainDatabaseId,
+          activityDatabaseId: result.activityDatabaseId,
+          tables: result.tables
+        }
+      } else {
+        return {
+          success: false,
+          error: result.error || '创建数据库失败'
+        }
+      }
+    } catch (error) {
+      console.error('自动创建数据库异常:', error)
+      return {
+        success: false,
+        error: error.message || '创建数据库失败'
       }
     }
   }

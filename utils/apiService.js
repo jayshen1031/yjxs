@@ -3,6 +3,10 @@
  * 直接调用Notion API，不依赖云函数
  */
 
+// 预先声明所有依赖模块
+const notionApiService = require('./notionApiService.js')
+const userManager = require('./userManager.js')
+
 class ApiService {
   constructor() {
     // 使用云函数进行真正的数据库操作
@@ -76,14 +80,12 @@ class ApiService {
 
   // 测试Notion连接
   async testNotionConnection(apiKey, databaseId) {
-    const notionApiService = require('./notionApiService.js')
     return await notionApiService.testConnection(apiKey, databaseId)
   }
 
   // 保存用户配置 - 只保存到本地
   async saveUserConfig(userId, notionConfig) {
     try {
-      const userManager = require('./userManager.js')
       const success = userManager.configureNotion(userId, notionConfig)
       return {
         success: success,
@@ -99,20 +101,42 @@ class ApiService {
 
   // 同步备忘录到Notion
   async syncMemoToNotion(apiKey, databaseId, memo) {
-    const notionApiService = require('./notionApiService.js')
     return await notionApiService.syncMemoToNotion(apiKey, databaseId, memo)
   }
 
-  // 同步用户备忘录到Notion（根据用户ID获取配置）
-  async syncUserMemoToNotion(userId, memo) {
+  // 同步用户备忘录到Notion（通过邮箱匹配用户）
+  async syncUserMemoToNotion(userEmail, memo) {
     try {
-      const userManager = require('./userManager.js')
-      const user = userManager.getUsers().find(u => u.id === userId)
+      const user = userManager.getUserByEmail(userEmail)
+      const currentUser = userManager.getCurrentUser()
       
-      if (!user || !user.notionConfig || !user.notionConfig.enabled) {
+      console.log('Notion同步调试信息:')
+      console.log('- 传入的userEmail:', userEmail)
+      console.log('- 当前用户邮箱:', currentUser?.email)
+      console.log('- 找到的用户:', user?.email)
+      console.log('- 用户Notion配置:', user?.notionConfig)
+      console.log('- 配置enabled状态:', user?.notionConfig?.enabled)
+      console.log('- 配置apiKey存在:', !!user?.notionConfig?.apiKey)
+      console.log('- 配置databaseId存在:', !!user?.notionConfig?.databaseId)
+      
+      if (!user) {
         return {
           success: false,
-          error: '用户未配置Notion或未启用同步'
+          error: `找不到用户邮箱: ${userEmail}`
+        }
+      }
+      
+      if (!user.notionConfig) {
+        return {
+          success: false,
+          error: '用户没有Notion配置'
+        }
+      }
+      
+      if (!user.notionConfig.enabled) {
+        return {
+          success: false,
+          error: `Notion集成未启用，当前状态: ${user.notionConfig.enabled}`
         }
       }
 
@@ -126,28 +150,66 @@ class ApiService {
     }
   }
 
+  // 同步备忘录到Notion（完整版本，包含时间投入数据）
+  async syncUserMemoToNotionComplete(userEmail, memo) {
+    try {
+      const user = userManager.getUserByEmail(userEmail)
+      
+      if (!user || !user.notionConfig || !user.notionConfig.enabled) {
+        return {
+          success: false,
+          error: '用户未配置Notion或未启用同步'
+        }
+      }
+
+      const { apiKey, databaseId } = user.notionConfig
+      
+      // 先同步主记录
+      const mainResult = await notionApiService.syncMemoToNotion(apiKey, databaseId, memo)
+      
+      if (mainResult.success) {
+        // 如果有时间投入数据且用户配置了子数据库，则同步时间投入
+        // 注意：此处不直接调用notionSync以避免循环依赖
+        // 时间投入同步由调用方（app.js）负责处理
+      }
+      
+      return mainResult
+    } catch (error) {
+      return {
+        success: false,
+        error: '同步失败: ' + error.message
+      }
+    }
+  }
+
   // 从Notion获取备忘录列表
   async getMemoListFromNotion(apiKey, databaseId) {
-    const notionApiService = require('./notionApiService.js')
     return await notionApiService.getMemoListFromNotion(apiKey, databaseId)
   }
 
   // 批量同步备忘录
   async batchSyncMemos(apiKey, databaseId, memos) {
-    const notionApiService = require('./notionApiService.js')
     return await notionApiService.batchSyncMemos(apiKey, databaseId, memos)
   }
 
+  // 创建Notion数据库
+  async createNotionDatabase(databaseData, apiKey) {
+    return await notionApiService.createDatabase(databaseData, apiKey)
+  }
+
+  // 创建Notion页面
+  async createNotionPage(pageData, apiKey) {
+    return await notionApiService.createPageGeneric(pageData, apiKey)
+  }
+
   // 删除用户备忘录（包含Notion同步）
-  async deleteUserMemo(userId, memo) {
+  async deleteUserMemo(userEmail, memo) {
     try {
-      const userManager = require('./userManager.js')
-      const user = userManager.getUsers().find(u => u.id === userId)
+      const user = userManager.getUserByEmail(userEmail)
       
       // 如果用户配置了Notion且备忘录已同步，先从Notion删除
       if (user && user.notionConfig && user.notionConfig.enabled && memo.notionPageId) {
         const { apiKey } = user.notionConfig
-        const notionApiService = require('./notionApiService.js')
         const result = await notionApiService.deleteMemoFromNotion(apiKey, memo)
         
         if (!result.success) {

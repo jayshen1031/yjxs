@@ -4,13 +4,66 @@ const userManager = require('../../utils/userManager.js')
 Page({
   data: {
     currentQuote: '',
+    currentQuoteData: {},
     todayMemoCount: 0,
     totalMemoCount: 0,
     recentMemos: [],
     reminderEnabled: true,
     reminderInterval: 60,
     todayPlanning: null,
-    planningDate: ''
+    planningDate: '',
+    // 箴言相关
+    quoteCategories: [],
+    selectedQuoteCategory: '',
+    quotesCount: 0,
+    // 心情相关
+    moodOptions: [
+      { mood: '沮丧', emoji: '😔' },
+      { mood: '焦虑', emoji: '😰' },
+      { mood: '迷茫', emoji: '😕' },
+      { mood: '疲惫', emoji: '😴' },
+      { mood: '孤独', emoji: '😌' },
+      { mood: '压力大', emoji: '😤' },
+      { mood: '失落', emoji: '😞' },
+      { mood: '困惑', emoji: '🤔' },
+      { mood: '无聊', emoji: '😐' },
+      { mood: '开心', emoji: '😊' },
+      { mood: '平静', emoji: '😌' },
+      { mood: '充满动力', emoji: '💪' }
+    ],
+    selectedMood: '',
+    recommendedCategories: [],
+    // 目标相关
+    goalStats: {
+      total: 0,
+      active: 0,
+      completed: 0,
+      averageProgress: 0
+    },
+    todayGoals: [],
+    // 快速添加目标
+    showQuickGoalModal: false,
+    quickGoalForm: {
+      title: '',
+      type: 'short',
+      category: '个人成长'
+    },
+    // 今日待办
+    todayTodos: [],
+    todayTodosStats: {
+      total: 0,
+      pending: 0,
+      inProgress: 0,
+      completed: 0
+    },
+    quickGoalTypes: [
+      { value: 'short', label: '短期目标 (1-3个月)' },
+      { value: 'medium', label: '中期目标 (3-12个月)' },
+      { value: 'long', label: '长期目标 (1年以上)' }
+    ],
+    quickGoalCategories: ['个人成长', '健康生活', '职业发展', '学习技能', '人际关系', '财务管理', '兴趣爱好', '旅行体验'],
+    quickGoalTypeIndex: 0,
+    quickGoalCategoryIndex: 0
   },
 
   onLoad: function() {
@@ -40,9 +93,10 @@ Page({
   // 加载页面数据
   loadPageData: function() {
     // 获取今日箴言
-    this.setData({
-      currentQuote: app.globalData.currentQuote || '记录生活的美好，让每个瞬间都有意义。'
-    })
+    this.loadCurrentQuote()
+
+    // 获取箴言分类
+    this.loadQuoteCategories()
 
     // 获取备忘录统计
     this.loadMemoStats()
@@ -55,22 +109,158 @@ Page({
 
     // 获取今日规划
     this.loadTodayPlanning()
+
+    // 获取目标数据
+    this.loadGoalStats()
+
+    // 获取今日目标
+    this.loadTodayGoals()
+
+    // 获取今日待办
+    this.loadTodayTodos()
+  },
+
+  // 加载当前箴言
+  loadCurrentQuote: function() {
+    const currentQuote = app.globalData.currentQuote
+    const fallbackQuote = '记录生活的美好，让每个瞬间都有意义。'
+    
+    if (typeof currentQuote === 'object' && currentQuote.content) {
+      // 新版本的箴言对象
+      this.setData({
+        currentQuote: currentQuote.content,
+        currentQuoteData: currentQuote
+      })
+    } else if (typeof currentQuote === 'string') {
+      // 兼容旧版本的字符串箴言
+      this.setData({
+        currentQuote: currentQuote || fallbackQuote,
+        currentQuoteData: {
+          content: currentQuote || fallbackQuote,
+          category: '默认',
+          isFavorite: false,
+          usageCount: 0,
+          source: '内置'
+        }
+      })
+    } else {
+      this.setData({
+        currentQuote: fallbackQuote,
+        currentQuoteData: {
+          content: fallbackQuote,
+          category: '默认',
+          isFavorite: false,
+          usageCount: 0,
+          source: '内置'
+        }
+      })
+    }
+  },
+
+  // 加载箴言分类
+  loadQuoteCategories: function() {
+    const categories = Object.keys(app.getQuoteCategories())
+    const quotesCount = app.getAllQuotes().length
+    
+    this.setData({
+      quoteCategories: categories,
+      quotesCount: quotesCount
+    })
   },
 
   // 加载备忘录统计
   loadMemoStats: function() {
     const memoList = app.getMemoList()
-    const today = new Date().toDateString()
+    const today = new Date()
+    const todayStr = today.toDateString()
     
-    const todayMemos = memoList.filter(memo => {
-      const memoDate = new Date(memo.timestamp).toDateString()
-      return memoDate === today
-    })
+    // 计算连续记录天数
+    const continuousDays = this.calculateContinuousDays(memoList)
+    
+    // 计算今日价值度
+    const todayValueScore = this.calculateTodayValueScore(memoList, todayStr)
 
     this.setData({
-      todayMemoCount: todayMemos.length,
-      totalMemoCount: memoList.length
+      continuousDays: continuousDays,
+      todayValueScore: todayValueScore
     })
+  },
+
+  // 计算连续记录天数
+  calculateContinuousDays: function(memoList) {
+    if (memoList.length === 0) return 0
+    
+    const today = new Date()
+    let continuousDays = 0
+    let checkDate = new Date(today)
+    
+    // 从今天开始往前检查
+    for (let i = 0; i < 365; i++) { // 最多检查365天
+      const checkDateStr = checkDate.toDateString()
+      const hasRecord = memoList.some(memo => {
+        const memoDateStr = new Date(memo.timestamp).toDateString()
+        return memoDateStr === checkDateStr
+      })
+      
+      if (hasRecord) {
+        continuousDays++
+        // 往前推一天
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        break
+      }
+    }
+    
+    return continuousDays
+  },
+
+  // 计算今日价值度（基于价值分类内容）
+  calculateTodayValueScore: function(memoList, todayStr) {
+    const todayMemos = memoList.filter(memo => {
+      const memoDateStr = new Date(memo.timestamp).toDateString()
+      return memoDateStr === todayStr && !memo.isPlanning
+    })
+    
+    if (todayMemos.length === 0) return 0
+    
+    let totalValuePoints = 0
+    let totalContentLength = 0
+    
+    todayMemos.forEach(memo => {
+      if (!memo.content) return
+      
+      // 解析价值分类内容
+      const valuableLength = this.extractContentLength(memo.content, '🌟 有价值的活动：')
+      const neutralLength = this.extractContentLength(memo.content, '😐 中性的活动：')
+      const wastefulLength = this.extractContentLength(memo.content, '🗑️ 低效的活动：')
+      
+      // 计算权重分数：有价值=3分，中性=1分，低效=-1分
+      const valuePoints = (valuableLength * 3) + (neutralLength * 1) + (wastefulLength * -1)
+      const contentLength = valuableLength + neutralLength + wastefulLength
+      
+      totalValuePoints += valuePoints
+      totalContentLength += contentLength
+    })
+    
+    if (totalContentLength === 0) return 50 // 默认中性分数
+    
+    // 计算百分比，50为基准分（中性），最高100，最低0
+    const rawScore = (totalValuePoints / totalContentLength) * 16.67 + 50
+    return Math.max(0, Math.min(100, Math.round(rawScore)))
+  },
+
+  // 提取特定分类的内容长度
+  extractContentLength: function(content, prefix) {
+    if (!content.includes(prefix)) return 0
+    
+    const sections = content.split('\n\n')
+    for (let section of sections) {
+      if (section.startsWith(prefix)) {
+        const contentPart = section.replace(prefix + '\n', '')
+        return contentPart.trim().length
+      }
+    }
+    return 0
   },
 
   // 加载最近记录
@@ -147,6 +337,12 @@ Page({
       reminderEnabled: settings.enabled,
       reminderInterval: settings.interval
     })
+    
+    // 如果提醒已启用，自动开始提醒
+    if (settings.enabled) {
+      console.log('自动启动定时提醒，间隔:', settings.interval, '分钟')
+      this.startReminder()
+    }
   },
 
   // 格式化相对时间
@@ -177,29 +373,6 @@ Page({
     })
   },
 
-  // 跳转到语音记录
-  goToVoiceMemo: function() {
-    console.log('点击语音记录按钮')
-    wx.switchTab({
-      url: '/pages/memo/memo',
-      success: function() {
-        console.log('跳转语音记录页面成功')
-        // 由于switchTab不支持参数传递，需要用其他方式设置语音模式
-        const pages = getCurrentPages()
-        const memoPage = pages[pages.length - 1]
-        if (memoPage && memoPage.route === 'pages/memo/memo') {
-          memoPage.setData({ inputType: 'voice' })
-        }
-      },
-      fail: function(error) {
-        console.error('跳转语音记录页面失败:', error)
-        wx.showToast({
-          title: '跳转失败',
-          icon: 'error'
-        })
-      }
-    })
-  },
 
   // 跳转到规划记录
   goToPlanningMemo: function() {
@@ -266,18 +439,71 @@ Page({
     }
   },
 
-  // 开启提醒
+  // 开启准点提醒
   startReminder: function() {
     // 清除已有提醒
     this.stopReminder()
 
-    // 设置新的提醒
-    const intervalMs = this.data.reminderInterval * 60 * 1000
-    this.reminderTimer = setInterval(() => {
-      this.showReminderNotification()
-    }, intervalMs)
+    // 设置准点提醒（7:00-22:00每小时）
+    this.scheduleNextHourlyReminder()
+    console.log('已启动准点提醒系统（7:00-22:00每小时）')
+  },
 
-    console.log(`设置提醒间隔: ${this.data.reminderInterval}分钟`)
+  // 安排下一次准点提醒
+  scheduleNextHourlyReminder: function() {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentSecond = now.getSeconds()
+
+    // 计算下一个提醒时间
+    let nextHour = currentHour
+    
+    // 如果当前时间超过了整点，则下一小时提醒
+    if (currentMinute > 0 || currentSecond > 0) {
+      nextHour = currentHour + 1
+    }
+
+    // 如果超过22点或早于7点，则安排到明天7点
+    if (nextHour > 22 || nextHour < 7) {
+      const tomorrow = new Date(now)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      tomorrow.setHours(7, 0, 0, 0)
+      
+      const timeUntilTomorrow = tomorrow.getTime() - now.getTime()
+      this.reminderTimer = setTimeout(() => {
+        this.triggerHourlyReminder()
+      }, timeUntilTomorrow)
+      
+      console.log(`下次提醒时间：明天7:00（${Math.round(timeUntilTomorrow/1000/60)}分钟后）`)
+      return
+    }
+
+    // 计算到下一个整点的毫秒数
+    const nextReminderTime = new Date(now)
+    nextReminderTime.setHours(nextHour, 0, 0, 0)
+    
+    const timeUntilNext = nextReminderTime.getTime() - now.getTime()
+    
+    this.reminderTimer = setTimeout(() => {
+      this.triggerHourlyReminder()
+    }, timeUntilNext)
+
+    console.log(`下次提醒时间：${nextHour}:00（${Math.round(timeUntilNext/1000/60)}分钟后）`)
+  },
+
+  // 触发准点提醒
+  triggerHourlyReminder: function() {
+    const now = new Date()
+    const currentHour = now.getHours()
+    
+    // 只在生活时间段（7-22点）提醒
+    if (currentHour >= 7 && currentHour <= 22) {
+      this.showReminderNotification()
+    }
+    
+    // 安排下一次提醒
+    this.scheduleNextHourlyReminder()
   },
 
   // 停止提醒
@@ -293,11 +519,11 @@ Page({
     const now = new Date()
     const hour = now.getHours()
     
-    // 晚上21点后提醒记录明日规划
+    // 晚上21-22点提醒记录明日规划
     if (hour >= 21) {
       wx.showModal({
         title: '规划明天',
-        content: '今天就要结束了，不如规划一下明天的重要事项？',
+        content: `${hour}:00 整点提醒\n今天就要结束了，不如规划一下明天的重要事项？`,
         confirmText: '去规划',
         cancelText: '稍后',
         success: (res) => {
@@ -320,9 +546,30 @@ Page({
         }
       })
     } else {
+      // 根据时间段显示不同的提醒内容
+      let timeText = ''
+      let content = ''
+      
+      if (hour >= 7 && hour < 9) {
+        timeText = '早晨'
+        content = '美好的一天开始了，记录一下早晨的想法和计划吧～'
+      } else if (hour >= 9 && hour < 12) {
+        timeText = '上午'
+        content = '上午时光，记录一下过去一小时的工作或学习情况～'
+      } else if (hour >= 12 && hour < 14) {
+        timeText = '中午'
+        content = '午休时间，记录一下上午的收获和下午的计划～'
+      } else if (hour >= 14 && hour < 18) {
+        timeText = '下午'
+        content = '下午时光，记录一下过去一小时的进展和想法～'
+      } else if (hour >= 18 && hour < 21) {
+        timeText = '傍晚'
+        content = '一天即将结束，记录一下这一小时的生活点滴～'
+      }
+      
       wx.showModal({
-        title: '记录提醒',
-        content: '该记录一下此刻的心情和想法了～',
+        title: `${timeText}记录提醒`,
+        content: `${hour}:00 整点提醒\n${content}`,
         confirmText: '去记录',
         cancelText: '稍后',
         success: (res) => {
@@ -456,6 +703,333 @@ Page({
       '心情': 'mood'       // 默认色
     }
     return colorMap[category] || 'default'
+  },
+
+  // 箴言相关交互
+  // 刷新箴言
+  refreshQuote: function() {
+    const newQuote = app.refreshQuote()
+    if (newQuote) {
+      this.setData({
+        currentQuote: newQuote.content,
+        currentQuoteData: newQuote
+      })
+      
+      wx.showToast({
+        title: '已刷新箴言',
+        icon: 'success',
+        duration: 1500
+      })
+    }
+  },
+
+  // 切换箴言收藏状态
+  toggleQuoteFavorite: function() {
+    const currentQuote = this.data.currentQuoteData
+    if (currentQuote.id) {
+      const isFavorite = app.toggleQuoteFavorite(currentQuote.id)
+      this.setData({
+        'currentQuoteData.isFavorite': isFavorite
+      })
+      
+      wx.showToast({
+        title: isFavorite ? '已收藏' : '取消收藏',
+        icon: 'success',
+        duration: 1500
+      })
+    }
+  },
+
+  // 跳转到箴言管理页面
+  goToQuoteManager: function() {
+    wx.navigateTo({
+      url: '/pages/quote-manager/quote-manager'
+    })
+  },
+
+  // 心情选择
+  selectMood: function(e) {
+    const mood = e.currentTarget.dataset.mood
+    const app = getApp()
+    
+    // 获取心情推荐的箴言
+    const result = app.getQuoteByMood(mood)
+    
+    if (result) {
+      this.setData({
+        selectedMood: mood,
+        currentQuote: result.quote.content,
+        currentQuoteData: result.quote,
+        selectedQuoteCategory: result.category,
+        recommendedCategories: app.getMoodBasedCategories(mood)
+      })
+      
+      wx.showToast({
+        title: `为您推荐${result.category}箴言`,
+        icon: 'success',
+        duration: 2000
+      })
+    } else {
+      wx.showToast({
+        title: '暂无相关箴言',
+        icon: 'none',
+        duration: 1500
+      })
+    }
+  },
+
+  // 快速按分类筛选箴言
+  quickFilterByCategory: function(e) {
+    const category = e.currentTarget.dataset.category
+    const app = getApp()
+    
+    // 使用新的分类获取方法
+    const selectedQuote = app.setQuoteByCategory(category)
+    
+    if (selectedQuote) {
+      this.setData({
+        currentQuote: selectedQuote.content,
+        currentQuoteData: selectedQuote,
+        selectedQuoteCategory: category,
+        selectedMood: '' // 清除心情选择
+      })
+      
+      wx.showToast({
+        title: `已切换到${category}箴言`,
+        icon: 'success',
+        duration: 1500
+      })
+    } else {
+      wx.showToast({
+        title: `暂无${category}类箴言`,
+        icon: 'none',
+        duration: 1500
+      })
+    }
+  },
+
+  // 将中文分类转换为英文CSS类名
+  getCategoryClass: function(category) {
+    const categoryMap = {
+      '励志': 'inspire',
+      '生活': 'life', 
+      '成长': 'growth',
+      '哲理': 'philosophy',
+      '记录': 'record',
+      '时间': 'time',
+      '自信': 'confidence',
+      '心理': 'psychology',
+      '决策': 'decision',
+      '自定义': 'custom'
+    }
+    return categoryMap[category] || 'custom'
+  },
+
+  // 加载目标统计数据
+  loadGoalStats: function() {
+    try {
+      const goalStats = app.getGoalStats()
+      this.setData({
+        goalStats: goalStats
+      })
+    } catch (error) {
+      console.error('加载目标统计失败:', error)
+      this.setData({
+        goalStats: {
+          total: 0,
+          active: 0,
+          completed: 0,
+          averageProgress: 0
+        }
+      })
+    }
+  },
+
+  // 加载今日目标
+  loadTodayGoals: function() {
+    try {
+      const todayGoals = app.getTodayGoals()
+      this.setData({
+        todayGoals: todayGoals
+      })
+    } catch (error) {
+      console.error('加载今日目标失败:', error)
+      this.setData({
+        todayGoals: []
+      })
+    }
+  },
+
+  // 跳转到目标管理页面
+  goToGoalManager: function() {
+    wx.navigateTo({
+      url: '/pages/goal-manager/goal-manager'
+    })
+  },
+
+  // 快速添加目标
+  quickAddGoal: function() {
+    this.setData({
+      showQuickGoalModal: true,
+      quickGoalForm: {
+        title: '',
+        type: 'short',
+        category: '个人成长'
+      },
+      quickGoalTypeIndex: 0,
+      quickGoalCategoryIndex: 0
+    })
+  },
+
+  // 关闭快速添加目标弹窗
+  closeQuickGoalModal: function() {
+    this.setData({
+      showQuickGoalModal: false
+    })
+  },
+
+  // 快速目标标题输入
+  onQuickGoalTitleInput: function(e) {
+    this.setData({
+      'quickGoalForm.title': e.detail.value
+    })
+  },
+
+  // 快速目标类型选择
+  onQuickGoalTypeChange: function(e) {
+    const index = parseInt(e.detail.value)
+    this.setData({
+      quickGoalTypeIndex: index,
+      'quickGoalForm.type': this.data.quickGoalTypes[index].value
+    })
+  },
+
+  // 快速目标分类选择
+  onQuickGoalCategoryChange: function(e) {
+    const index = parseInt(e.detail.value)
+    this.setData({
+      quickGoalCategoryIndex: index,
+      'quickGoalForm.category': this.data.quickGoalCategories[index]
+    })
+  },
+
+  // 确认快速添加目标
+  confirmQuickAddGoal: function() {
+    if (!this.data.quickGoalForm.title.trim()) {
+      wx.showToast({
+        title: '请输入目标标题',
+        icon: 'none'
+      })
+      return
+    }
+
+    try {
+      const goalData = {
+        ...this.data.quickGoalForm,
+        title: this.data.quickGoalForm.title.trim(),
+        priority: 'medium', // 默认中优先级
+        description: '' // 快速添加时描述为空
+      }
+
+      app.createGoal(goalData)
+      
+      wx.showToast({
+        title: '目标创建成功',
+        icon: 'success'
+      })
+
+      this.closeQuickGoalModal()
+      this.loadGoalStats()
+      this.loadTodayGoals()
+    } catch (error) {
+      console.error('创建目标失败:', error)
+      wx.showToast({
+        title: '创建失败',
+        icon: 'none'
+      })
+    }
+  },
+
+  // ========== 今日待办相关方法 ==========
+
+  // 加载今日待办
+  loadTodayTodos: function() {
+    const todos = app.getTodayTodos ? app.getTodayTodos() : []
+    const stats = app.getTodayTodosStats ? app.getTodayTodosStats() : {
+      total: 0,
+      pending: 0,
+      inProgress: 0,
+      completed: 0
+    }
+
+    // 处理待办数据，添加UI需要的字段
+    const processedTodos = todos.map(todo => {
+      // 映射优先级显示
+      let priorityLevel = 'low'
+      let priorityText = todo.priority
+      if (todo.priority === '紧急重要') {
+        priorityLevel = 'urgent'
+        priorityText = '🔴 紧急重要'
+      } else if (todo.priority === '重要不紧急') {
+        priorityLevel = 'important'
+        priorityText = '🟡 重要'
+      } else if (todo.priority === '紧急不重要') {
+        priorityLevel = 'medium'
+        priorityText = '🟠 紧急'
+      } else {
+        priorityLevel = 'low'
+        priorityText = '⚪ 一般'
+      }
+
+      return {
+        ...todo,
+        priorityLevel,
+        priorityText
+      }
+    })
+
+    this.setData({
+      todayTodos: processedTodos,
+      todayTodosStats: stats
+    })
+  },
+
+  // 切换待办状态
+  toggleTodoStatus: function(e) {
+    const { id } = e.currentTarget.dataset
+    const todos = app.getTodos()
+    const todo = todos.find(t => t.id === id)
+
+    if (!todo) return
+
+    // 切换状态
+    const newStatus = todo.status === '已完成' ? '待办' : '已完成'
+
+    app.updateTodo(id, {
+      status: newStatus,
+      completedTime: newStatus === '已完成' ? new Date().toISOString() : ''
+    })
+
+    // 重新加载
+    this.loadTodayTodos()
+
+    wx.showToast({
+      title: newStatus === '已完成' ? '已完成' : '重新开始',
+      icon: 'success',
+      duration: 1000
+    })
+  },
+
+  // 跳转到待办页面
+  goToTodosPage: function() {
+    wx.switchTab({
+      url: '/pages/goals-todos/goals-todos'
+    })
+  },
+
+  onHide: function() {
+    // 页面隐藏时停止提醒（避免在其他页面弹出提醒）
+    this.stopReminder()
   },
 
   onUnload: function() {

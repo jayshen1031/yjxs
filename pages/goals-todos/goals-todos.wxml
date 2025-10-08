@@ -1,0 +1,381 @@
+<view class="container">
+  <!-- 顶部Tab切换 -->
+  <view class="tab-header">
+    <view class="tab-item {{ currentTab === 'goals' ? 'active' : '' }}" bindtap="switchTab" data-tab="goals">
+      <text class="tab-title">🎯 目标</text>
+      <view wx:if="{{ currentTab === 'goals' }}" class="tab-indicator"></view>
+    </view>
+    <view class="tab-item {{ currentTab === 'todos' ? 'active' : '' }}" bindtap="switchTab" data-tab="todos">
+      <text class="tab-title">📝 待办</text>
+      <view wx:if="{{ currentTab === 'todos' }}" class="tab-indicator"></view>
+    </view>
+  </view>
+
+  <!-- 目标视图 -->
+  <view wx:if="{{ currentTab === 'goals' }}" class="goals-view">
+    <!-- 目标统计卡片 -->
+    <view class="stats-section">
+      <view class="stats-header">
+        <text class="stats-title">目标概览</text>
+        <text class="action-btn" bindtap="addGoal">+ 新建</text>
+      </view>
+
+      <view class="stats-grid">
+        <view class="stat-card">
+          <text class="stat-value">{{ goalStats.total }}</text>
+          <text class="stat-label">总目标</text>
+        </view>
+        <view class="stat-card active">
+          <text class="stat-value">{{ goalStats.active }}</text>
+          <text class="stat-label">进行中</text>
+        </view>
+        <view class="stat-card completed">
+          <text class="stat-value">{{ goalStats.completed }}</text>
+          <text class="stat-label">已完成</text>
+        </view>
+        <view class="stat-card progress">
+          <text class="stat-value">{{ goalStats.averageProgress }}%</text>
+          <text class="stat-label">平均进度</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 筛选和搜索 -->
+    <view class="filter-section">
+      <view class="search-bar">
+        <input
+          class="search-input"
+          placeholder="搜索目标..."
+          value="{{ goalSearchKeyword }}"
+          bindinput="onGoalSearchInput"
+        />
+      </view>
+
+      <scroll-view class="filter-chips" scroll-x>
+        <view class="chip-group">
+          <text class="chip {{ selectedGoalCategory === '' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="">全部</text>
+          <text class="chip {{ selectedGoalCategory === '人生目标' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="人生目标">人生目标</text>
+          <text class="chip {{ selectedGoalCategory === '年度目标' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="年度目标">年度目标</text>
+          <text class="chip {{ selectedGoalCategory === '季度目标' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="季度目标">季度目标</text>
+          <text class="chip {{ selectedGoalCategory === '月度目标' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="月度目标">月度目标</text>
+          <text class="chip {{ selectedGoalCategory === '周目标' ? 'active' : '' }}" bindtap="filterGoalByCategory" data-category="周目标">周目标</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 目标列表 -->
+    <scroll-view class="goals-list" scroll-y>
+      <view wx:if="{{ filteredGoals.length === 0 }}" class="empty-state">
+        <text class="empty-icon">🎯</text>
+        <text class="empty-text">暂无目标</text>
+        <text class="empty-hint">点击右上角"新建"创建目标</text>
+      </view>
+
+      <view wx:for="{{ filteredGoals }}" wx:key="id" class="goal-card">
+        <view class="goal-header">
+          <view class="goal-title-row">
+            <text class="goal-title">{{ item.title }}</text>
+            <text class="goal-category">{{ item.category }}</text>
+          </view>
+
+          <view class="goal-meta">
+            <text class="goal-status status-{{ item.status }}">{{ item.statusText }}</text>
+            <text wx:if="{{ item.priority }}" class="goal-priority priority-{{ item.priority }}">{{ item.priorityText }}</text>
+          </view>
+        </view>
+
+        <text wx:if="{{ item.description }}" class="goal-description">{{ item.description }}</text>
+
+        <!-- 进度条 -->
+        <view class="progress-section">
+          <view class="progress-info">
+            <text class="progress-label">进度</text>
+            <text class="progress-value">{{ item.progress }}%</text>
+          </view>
+          <view class="progress-bar">
+            <view class="progress-fill" style="width: {{ item.progress }}%"></view>
+          </view>
+        </view>
+
+        <!-- 时间和标签 -->
+        <view class="goal-footer">
+          <view class="goal-info">
+            <text wx:if="{{ item.targetDate }}" class="info-item">📅 {{ item.targetDateText }}</text>
+            <text wx:if="{{ item.totalTimeInvestment > 0 }}" class="info-item">⏱ {{ item.timeInvestmentDisplay }}</text>
+          </view>
+          <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="goal-tags">
+            <text wx:for="{{ item.tags }}" wx:key="*this" wx:for-item="tag" class="tag">{{ tag }}</text>
+          </view>
+        </view>
+
+        <!-- 操作按钮 -->
+        <view class="goal-actions">
+          <text class="action-btn-small" bindtap="editGoal" data-id="{{ item.id }}">编辑</text>
+          <text class="action-btn-small" bindtap="updateProgress" data-id="{{ item.id }}">更新进度</text>
+          <text class="action-btn-small" bindtap="viewRelatedTodos" data-id="{{ item.id }}">查看待办</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 待办视图 -->
+  <view wx:if="{{ currentTab === 'todos' }}" class="todos-view">
+    <!-- 待办统计卡片 -->
+    <view class="stats-section todos">
+      <view class="stats-header">
+        <text class="stats-title">待办概览</text>
+        <text class="action-btn" bindtap="addTodo">+ 新建</text>
+      </view>
+
+      <view class="stats-grid">
+        <view class="stat-card">
+          <text class="stat-value">{{ todoStats.pending }}</text>
+          <text class="stat-label">待办</text>
+        </view>
+        <view class="stat-card active">
+          <text class="stat-value">{{ todoStats.inProgress }}</text>
+          <text class="stat-label">进行中</text>
+        </view>
+        <view class="stat-card completed">
+          <text class="stat-value">{{ todoStats.completed }}</text>
+          <text class="stat-label">已完成</text>
+        </view>
+        <view class="stat-card urgent">
+          <text class="stat-value">{{ todoStats.urgent }}</text>
+          <text class="stat-label">紧急</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 筛选和搜索 -->
+    <view class="filter-section">
+      <view class="search-bar">
+        <input
+          class="search-input"
+          placeholder="搜索待办..."
+          value="{{ todoSearchKeyword }}"
+          bindinput="onTodoSearchInput"
+        />
+      </view>
+
+      <scroll-view class="filter-chips" scroll-x>
+        <view class="chip-group">
+          <text class="chip {{ selectedTodoType === '' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="">全部</text>
+          <text class="chip {{ selectedTodoType === '目标导向' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="目标导向">目标导向</text>
+          <text class="chip {{ selectedTodoType === '临时待办' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="临时待办">临时待办</text>
+          <text class="chip {{ selectedTodoType === '习惯养成' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="习惯养成">习惯养成</text>
+          <text class="chip {{ selectedTodoType === '紧急处理' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="紧急处理">紧急处理</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 待办列表 -->
+    <scroll-view class="todos-list" scroll-y>
+      <view wx:if="{{ filteredTodos.length === 0 }}" class="empty-state">
+        <text class="empty-icon">📝</text>
+        <text class="empty-text">暂无待办</text>
+        <text class="empty-hint">点击右上角"新建"创建待办</text>
+      </view>
+
+      <view wx:for="{{ filteredTodos }}" wx:key="id" class="todo-card">
+        <view class="todo-header">
+          <view class="todo-check" bindtap="toggleTodoStatus" data-id="{{ item.id }}">
+            <text wx:if="{{ item.status === '已完成' }}" class="check-icon checked">✓</text>
+            <text wx:else class="check-icon">○</text>
+          </view>
+
+          <view class="todo-main">
+            <view class="todo-title-row">
+              <text class="todo-title {{ item.status === '已完成' ? 'completed' : '' }}">{{ item.title }}</text>
+              <text class="todo-type type-{{ item.type }}">{{ item.type }}</text>
+            </view>
+
+            <text wx:if="{{ item.description }}" class="todo-description">{{ item.description }}</text>
+
+            <view class="todo-meta">
+              <text class="priority priority-{{ item.priority }}">{{ item.priorityLabel }}</text>
+              <text wx:if="{{ item.dueDate }}" class="due-date {{ item.isOverdue ? 'overdue' : '' }}">{{ item.dueDateText }}</text>
+            </view>
+
+            <view wx:if="{{ item.relatedGoalName }}" class="related-goal">
+              <text class="goal-icon">🎯</text>
+              <text class="goal-name">{{ item.relatedGoalName }}</text>
+            </view>
+
+            <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="todo-tags">
+              <text wx:for="{{ item.tags }}" wx:key="*this" wx:for-item="tag" class="tag">{{ tag }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="todo-actions">
+          <text class="action-btn-small" bindtap="editTodo" data-id="{{ item.id }}">编辑</text>
+          <text class="action-btn-small" bindtap="recordTime" data-id="{{ item.id }}">记录时间</text>
+          <text class="action-btn-small danger" bindtap="deleteTodo" data-id="{{ item.id }}">删除</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 添加/编辑目标弹窗 -->
+  <view wx:if="{{ showGoalModal }}" class="modal-overlay" bindtap="closeGoalModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">{{ editingGoal ? '编辑目标' : '新建目标' }}</text>
+        <text class="close-btn" bindtap="closeGoalModal">×</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">目标名称</text>
+          <input class="form-input" placeholder="请输入目标名称" value="{{ goalFormData.title }}" bindinput="onGoalTitleInput" maxlength="50" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">描述</text>
+          <textarea class="form-textarea" placeholder="请输入描述（可选）" value="{{ goalFormData.description }}" bindinput="onGoalDescriptionInput" maxlength="200" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">目标层级</text>
+          <picker class="form-picker" mode="selector" range="{{ goalCategoryOptions }}" value="{{ goalCategoryIndex }}" bindchange="onGoalCategoryChange">
+            <view class="picker-value">{{ goalCategoryOptions[goalCategoryIndex] }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">优先级</text>
+          <picker class="form-picker" mode="selector" range="{{ priorityOptions }}" range-key="label" value="{{ goalPriorityIndex }}" bindchange="onGoalPriorityChange">
+            <view class="picker-value">{{ priorityOptions[goalPriorityIndex].label }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">目标日期</text>
+          <picker class="form-picker" mode="date" value="{{ goalTargetDate }}" bindchange="onGoalTargetDateChange">
+            <view class="picker-value">{{ goalTargetDate || '选择日期' }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">标签（空格分隔）</text>
+          <input class="form-input" placeholder="例如：工作 重要" value="{{ goalTagsInput }}" bindinput="onGoalTagsInput" />
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeGoalModal">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmAddGoal">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 添加/编辑待办弹窗 -->
+  <view wx:if="{{ showTodoModal }}" class="modal-overlay" bindtap="closeTodoModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">{{ editingTodo ? '编辑待办' : '新建待办' }}</text>
+        <text class="close-btn" bindtap="closeTodoModal">×</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">待办标题</text>
+          <input class="form-input" placeholder="请输入待办标题" value="{{ todoFormData.title }}" bindinput="onTodoTitleInput" maxlength="50" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">描述</text>
+          <textarea class="form-textarea" placeholder="请输入描述（可选）" value="{{ todoFormData.description }}" bindinput="onTodoDescriptionInput" maxlength="200" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">待办类型</text>
+          <picker class="form-picker" mode="selector" range="{{ todoTypeOptions }}" range-key="label" value="{{ todoTypeIndex }}" bindchange="onTodoTypeChange">
+            <view class="picker-value">{{ todoTypeOptions[todoTypeIndex].label }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">优先级</text>
+          <picker class="form-picker" mode="selector" range="{{ todoPriorityOptions }}" range-key="label" value="{{ todoPriorityIndex }}" bindchange="onTodoPriorityChange">
+            <view class="picker-value">{{ todoPriorityOptions[todoPriorityIndex].label }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">截止日期</text>
+          <picker class="form-picker" mode="date" value="{{ todoDueDate }}" bindchange="onTodoDueDateChange">
+            <view class="picker-value">{{ todoDueDate || '选择日期' }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">关联目标（可选）</text>
+          <picker class="form-picker" mode="selector" range="{{ availableGoals }}" range-key="title" value="{{ todoGoalIndex }}" bindchange="onTodoGoalChange">
+            <view class="picker-value">{{ todoGoalIndex >= 0 ? availableGoals[todoGoalIndex].title : '选择目标' }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">预计时间（分钟）</text>
+          <input class="form-input" type="number" placeholder="预计需要多少分钟" value="{{ todoFormData.estimatedMinutes }}" bindinput="onTodoEstimatedMinutesInput" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">标签（空格分隔）</text>
+          <input class="form-input" placeholder="例如：工作 重要" value="{{ todoTagsInput }}" bindinput="onTodoTagsInput" />
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeTodoModal">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmAddTodo">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 更新进度弹窗 -->
+  <view wx:if="{{ showProgressModal }}" class="modal-overlay" bindtap="closeProgressModal">
+    <view class="modal-content small" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">更新进度</text>
+        <text class="close-btn" bindtap="closeProgressModal">×</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">当前进度：{{ progressValue }}%</text>
+          <slider class="progress-slider" min="0" max="100" value="{{ progressValue }}" bindchange="onProgressChange" show-value />
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeProgressModal">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmUpdateProgress">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 记录时间弹窗 -->
+  <view wx:if="{{ showTimeModal }}" class="modal-overlay" bindtap="closeTimeModal">
+    <view class="modal-content small" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">记录实际耗时</text>
+        <text class="close-btn" bindtap="closeTimeModal">×</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">实际耗时（分钟）</text>
+          <input class="form-input" type="number" placeholder="请输入实际耗时" value="{{ actualMinutes }}" bindinput="onActualMinutesInput" />
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeTimeModal">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmRecordTime">确定</button>
+      </view>
+    </view>
+  </view>
+</view>

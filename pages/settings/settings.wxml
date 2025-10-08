@@ -74,13 +74,103 @@
           </text>
         </view>
       </view>
-      
-      <view class="notion-info">
+
+      <!-- 配置方式选择 -->
+      <view class="config-mode-selector" wx:if="{{ !notionConfigured }}">
+        <view class="mode-title">配置方式</view>
+        <radio-group bindchange="onConfigModeChange" class="radio-group">
+          <label class="radio-item">
+            <radio value="auto" checked="{{ configMode === 'auto' }}" color="#6366f1"/>
+            <text>🚀 自动创建数据库（推荐）</text>
+          </label>
+          <label class="radio-item">
+            <radio value="manual" checked="{{ configMode === 'manual' }}" color="#6366f1"/>
+            <text>⚙️ 使用已有数据库</text>
+          </label>
+        </radio-group>
+      </view>
+
+      <!-- 自动创建模式 -->
+      <view class="auto-create-section" wx:if="{{ configMode === 'auto' && !notionConfigured }}">
+        <view class="input-group">
+          <view class="input-label">Notion API Key</view>
+          <input
+            class="notion-input"
+            placeholder="请输入API Key"
+            value="{{ notionConfig.apiKey }}"
+            bindinput="onNotionApiKeyInput"
+          />
+        </view>
+        <view class="input-group">
+          <view class="input-label">父页面ID</view>
+          <input
+            class="notion-input"
+            placeholder="请输入Notion父页面ID"
+            value="{{ notionConfig.parentPageId }}"
+            bindinput="onParentPageIdInput"
+          />
+          <view class="input-hint">💡 在Notion中创建一个页面，从URL中复制页面ID</view>
+        </view>
+        <button
+          class="btn btn-primary btn-create"
+          bindtap="autoCreateDatabases"
+          loading="{{ creating }}"
+          disabled="{{ creating || !notionConfig.apiKey || !notionConfig.parentPageId }}"
+        >
+          <text>{{ creating ? '创建中...' : '🚀 自动创建双数据库' }}</text>
+        </button>
+      </view>
+
+      <!-- 手动配置模式 -->
+      <view class="manual-config-section" wx:if="{{ configMode === 'manual' && !notionConfigured }}">
+        <view class="input-group">
+          <view class="input-label">Notion API Key</view>
+          <input
+            class="notion-input"
+            placeholder="请输入API Key"
+            value="{{ notionConfig.apiKey }}"
+            bindinput="onNotionApiKeyInput"
+          />
+        </view>
+        <view class="input-group">
+          <view class="input-label">主记录数据库ID</view>
+          <input
+            class="notion-input"
+            placeholder="请输入主记录数据库ID"
+            value="{{ notionConfig.mainDatabaseId }}"
+            bindinput="onNotionDatabaseIdInput"
+          />
+        </view>
+        <view class="input-group">
+          <view class="input-label">活动明细数据库ID（可选）</view>
+          <input
+            class="notion-input"
+            placeholder="请输入活动明细数据库ID"
+            value="{{ notionConfig.activityDatabaseId }}"
+          />
+        </view>
+        <button class="btn btn-primary" bindtap="testNotionConnection">
+          <text>✓ 验证连接</text>
+        </button>
+      </view>
+
+      <!-- 已配置状态显示 -->
+      <view class="notion-info" wx:if="{{ notionConfigured }}">
         <view class="info-row">
           <text class="info-label">同步状态:</text>
           <text class="info-value {{ notionConfig.enabled ? 'enabled' : 'disabled' }}">
             {{ notionConfig.enabled ? '已启用' : '已禁用' }}
           </text>
+        </view>
+        <view class="info-row" wx:if="{{ notionConfig.initialized !== undefined }}">
+          <text class="info-label">数据库初始化:</text>
+          <text class="info-value {{ notionConfig.initialized ? 'enabled' : 'disabled' }}">
+            {{ notionConfig.initialized ? '✅ 已完成' : '⚠️ 未完成' }}
+          </text>
+        </view>
+        <view class="info-row" wx:if="{{ notionConfig.initialized && notionConfig.initializedFields && notionConfig.initializedFields.length > 0 }}">
+          <text class="info-label">初始化字段:</text>
+          <text class="info-value">{{ notionConfig.initializedFields.length }}个</text>
         </view>
         <view class="info-row" wx:if="{{ notionConfig.enabled && lastSyncTime }}">
           <text class="info-label">上次同步:</text>
@@ -92,12 +182,12 @@
         </view>
       </view>
 
-      <view class="notion-actions">
+      <view class="notion-actions" wx:if="{{ notionConfigured }}">
         <button class="btn btn-primary" bindtap="configureNotion">
           <text>{{ notionConfigured ? '⚙️ 重新配置' : '🔗 配置Notion' }}</text>
         </button>
-        <button class="btn btn-secondary" bindtap="syncToNotion" 
-                wx:if="{{ notionConfigured && notionConfig.enabled }}"
+        <button class="btn btn-secondary" bindtap="syncToNotion"
+                wx:if="{{ notionConfig.enabled }}"
                 loading="{{ syncing }}">
           <text>{{ syncing ? '同步中...' : '🔄 立即同步' }}</text>
         </button>
@@ -150,6 +240,48 @@
           backgroundColor="#e5e7eb"
           disabled="{{ !preferences.reminderEnabled }}"
         />
+      </view>
+    </view>
+  </view>
+
+  <!-- 箴言力量库 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="title">💫 箴言力量库</view>
+      
+      <view class="quote-summary">
+        <view class="quote-stats">
+          <view class="stat-item">
+            <text class="stat-number">{{ quoteStats.total }}</text>
+            <text class="stat-label">总箴言</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-number">{{ quoteStats.favorites }}</text>
+            <text class="stat-label">已收藏</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-number">{{ quoteStats.user }}</text>
+            <text class="stat-label">自定义</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-number">{{ quoteStats.categories }}</text>
+            <text class="stat-label">分类</text>
+          </view>
+        </view>
+        
+        <view class="current-quote-preview" wx:if="{{ currentQuotePreview }}">
+          <view class="quote-text">{{ currentQuotePreview.content }}</view>
+          <view class="quote-category">{{ currentQuotePreview.category }}</view>
+        </view>
+      </view>
+      
+      <view class="quote-actions">
+        <button class="btn btn-primary" bindtap="goToQuoteManager">
+          <text>⚙️ 管理箴言库</text>
+        </button>
+        <button class="btn btn-secondary" bindtap="refreshQuote">
+          <text>🎲 随机箴言</text>
+        </button>
       </view>
     </view>
   </view>

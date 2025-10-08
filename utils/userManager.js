@@ -75,8 +75,17 @@ class UserManager {
       notionConfig: {
         enabled: false,
         apiKey: '',
-        databaseId: '',
-        syncEnabled: true
+        // 双数据库架构
+        mainDatabaseId: '',           // 主记录表ID
+        activityDatabaseId: '',       // 活动明细表ID
+        databaseId: '',               // 兼容旧版：主数据库ID
+        syncEnabled: true,
+        autoSync: true,
+        // 数据库初始化状态
+        initialized: false,           // 是否已初始化数据库
+        initializedAt: null,          // 初始化时间戳
+        initializedTables: [],        // 已初始化的表列表 ['main', 'activity']
+        initializationError: null     // 初始化错误信息
       },
       preferences: {
         reminderEnabled: true,
@@ -173,9 +182,48 @@ class UserManager {
     if (user) {
       user.notionConfig = { ...user.notionConfig, ...notionConfig }
       this.saveUsers()
+
+      // 同步到当前用户
+      if (this.currentUser && this.currentUser.id === userId) {
+        this.currentUser = user
+      }
+
       return true
     }
     return false
+  }
+
+  // 更新Notion数据库初始化状态
+  updateNotionInitStatus(userId, initStatus) {
+    const user = this.users.find(u => u.id === userId)
+    if (user && user.notionConfig) {
+      user.notionConfig.initialized = initStatus.success || false
+      user.notionConfig.initializedAt = Date.now()
+      user.notionConfig.initializedFields = initStatus.addedFields || []
+      user.notionConfig.initializationError = initStatus.error || null
+
+      this.saveUsers()
+
+      // 同步到当前用户
+      if (this.currentUser && this.currentUser.id === userId) {
+        this.currentUser = user
+      }
+
+      console.log(`用户 ${userId} 数据库初始化状态已更新:`, {
+        initialized: user.notionConfig.initialized,
+        fieldsCount: user.notionConfig.initializedFields.length,
+        error: user.notionConfig.initializationError
+      })
+
+      return true
+    }
+    return false
+  }
+
+  // 检查用户的Notion数据库是否已初始化
+  isNotionDatabaseInitialized(userId = null) {
+    const user = userId ? this.users.find(u => u.id === userId) : this.currentUser
+    return user && user.notionConfig && user.notionConfig.initialized === true
   }
 
   // 获取用户的备忘录数据键

@@ -321,3 +321,15 @@ page {
 .flex-center { align-items: center; justify-content: center; }
 .flex-between { justify-content: space-between; }
 .flex-1 { flex: 1; }
+
+/* 全局箴言分类颜色主题 */
+.category-inspire { background: #ef4444 !important; color: white; }
+.category-life { background: #10b981 !important; color: white; }
+.category-growth { background: #f59e0b !important; color: white; }
+.category-philosophy { background: #8b5cf6 !important; color: white; }
+.category-record { background: #06b6d4 !important; color: white; }
+.category-time { background: #84cc16 !important; color: white; }
+.category-confidence { background: #f97316 !important; color: white; }
+.category-psychology { background: #ec4899 !important; color: white; }
+.category-decision { background: #6366f1 !important; color: white; }
+.category-custom { background: #64748b !important; color: white; }

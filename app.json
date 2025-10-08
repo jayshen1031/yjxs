@@ -3,10 +3,12 @@
     "pages/login/login",
     "pages/home/home",
     "pages/memo/memo",
-    "pages/timeline/timeline",
-    "pages/history/history",
     "pages/settings/settings",
-    "pages/notion-config/notion-config"
+    "pages/history/history",
+    "pages/notion-config/notion-config",
+    "pages/quote-manager/quote-manager",
+    "pages/goal-manager/goal-manager",
+    "pages/goals-todos/goals-todos"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -31,8 +33,8 @@
         "text": "记录"
       },
       {
-        "pagePath": "pages/timeline/timeline",
-        "text": "时间线"
+        "pagePath": "pages/goals-todos/goals-todos",
+        "text": "目标·待办"
       },
       {
         "pagePath": "pages/history/history",
@@ -43,11 +45,6 @@
         "text": "设置"
       }
     ]
-  },
-  "permission": {
-    "scope.record": {
-      "desc": "需要录音权限来支持语音输入功能"
-    }
   },
   "requiredBackgroundModes": ["audio"],
   "sitemapLocation": "sitemap.json"

@@ -168,6 +168,107 @@ memo-miniprogram/
 3. AI智能分析
 4. 社交分享功能
 
+## Notion四数据库架构设计 ⭐ (2025-01-08)
+
+### 架构概述
+从原有的双数据库（主记录表 + 活动明细表）扩展为**四数据库架构**：
+1. **主记录表（Main Records）** - 每日记录汇总
+2. **活动明细表（Activity Details）** - 每个活动的时间投入
+3. **目标库（Goals）** - 人生目标、阶段目标管理 ⭐ 新增
+4. **待办事项库（Todos）** - 目标导向和临时待办管理 ⭐ 新增
+
+### 1. 目标库（Goals Database）
+
+#### 核心字段
+- **Name**（标题）：目标名称
+- **Description**（富文本）：目标详细描述
+- **Category**（选择）：目标层级
+  - 人生目标（Life Goal）
+  - 年度目标（Yearly Goal）
+  - 季度目标（Quarterly Goal）
+  - 月度目标（Monthly Goal）
+  - 周目标（Weekly Goal）
+- **Type**（选择）：目标类型（事业/健康/财务/学习/人际/兴趣/家庭）
+- **Start Date**（日期）、**Target Date**（日期）、**Actual Completion Date**（日期）
+- **Status**（选择）：未开始/进行中/已完成/已暂停/已取消
+- **Progress**（数字0-100）：完成百分比
+- **Is Quantifiable**（复选框）、**Target Value**（数字）、**Current Value**（数字）、**Unit**（文本）
+- **Priority**（选择）：高/中/低
+- **Importance**（选择）：核心/重要/辅助
+
+#### 关联和统计
+- **Sub Goals**（关联）：子目标（自关联实现层级）
+- **Parent Goal**（关联）：父目标
+- **Related Todos**（关联）：关联的待办事项
+- **Related Activities**（关联）：关联的活动明细
+- **Total Time Invested**（汇总）：总投入时间
+- **Completed Todos**（汇总）、**Total Todos**（汇总）
+- **Todo Completion Rate**（公式）：待办完成率
+- **User ID**（文本）、**Tags**（多选）、**Notes**（富文本）
+
+### 2. 待办事项库（Todos Database）
+
+#### 核心字段
+- **Title**（标题）：待办事项名称
+- **Description**（富文本）：详细描述
+- **Todo Type**（选择）：⭐ 核心字段
+  - 目标导向（Goal-oriented）- 与长期目标相关
+  - 临时待办（Ad-hoc）- 日常琐事、临时任务
+  - 习惯养成（Habit）- 重复性习惯培养
+  - 紧急处理（Urgent）- 突发紧急事项
+- **Category**（选择）：工作/学习/生活/健康/社交/杂事
+- **Due Date**（日期）、**Planned Date**（日期）、**Start Time**（文本）
+- **Estimated Duration**（数字）、**Actual Duration**（汇总）
+- **Priority**（选择）：紧急重要/重要不紧急/紧急不重要/不紧急不重要
+- **Energy Level**（选择）：高/中/低精力
+- **Status**（选择）：待办/进行中/已完成/已取消/延期
+- **Is Completed**（复选框）、**Completion Progress**（数字0-100）
+
+#### 关联关系
+- **Related Goal**（关联）：⚠️ 可选，只有目标导向类型建议关联
+- **Related Activities**（关联）、**Related Main Records**（关联）
+- **Blocking Todos**（关联）、**Blocked By**（关联）
+- **Recurrence**（选择）：无/每日/每周/每月/自定义
+- **Reminder**（复选框）、**Reminder Time**（日期）
+- **User ID**（文本）、**Tags**（多选）、**Difficulty**（选择）
+
+### 3. 活动明细表（现有 + 新增字段）
+
+#### 新增字段 ⭐
+- **Related Goal**（关联）：关联的目标
+- **Related Todo**（关联）：关联的待办事项
+- **Contribution Type**（选择）：贡献类型
+  - 完成待办（Complete Todo）
+  - 推进目标（Advance Goal）
+  - 学习提升（Learning）
+  - 休息恢复（Rest）
+
+### 数据库关联关系图
+```
+Goals (目标库) ─┬─ 一对多 ──> Todos (待办库)
+               └─ 一对多 ──> Activities (活动明细)
+                                  ↑
+                                  │ 一对多
+                           Main Records (主记录)
+```
+
+### 使用场景
+
+#### 场景1：长期目标追踪
+- 创建目标："2025年读完24本书"
+- 创建待办："读完《原则》"（关联目标）
+- 记录活动："阅读《原则》30分钟"（关联待办和目标）
+- 系统自动统计：总投入时间、待办完成率
+
+#### 场景2：临时待办
+- 创建待办："去超市买菜"（Todo Type: Ad-hoc，不关联目标）
+- 记录活动："购物 20分钟"（可选关联待办）
+
+#### 场景3：习惯养成
+- 创建待办："每天做20个俯卧撑"（Todo Type: Habit，Recurrence: Daily）
+- 可选关联长期健身目标
+- 记录活动自动追踪习惯完成情况
+
 ## 维护要点
 1. 定期清理本地存储
 2. 音频文件管理
