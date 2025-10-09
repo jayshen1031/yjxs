@@ -1582,8 +1582,8 @@ async function createMainRecord(data) {
     throw new Error('userId, apiKey和recordData都是必需的')
   }
 
-  // 从users集合查找用户
-  const usersCollection = db.collection('users')
+  // 从memo_users集合查找用户
+  const usersCollection = db.collection('memo_users')
   const userResult = await usersCollection.doc(userId).get()
 
   if (!userResult.data || !userResult.data.notionConfig) {
@@ -1725,8 +1725,8 @@ async function getMainRecords(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  // 从users集合查找用户
-  const usersCollection = db.collection('users')
+  // 从memo_users集合查找用户
+  const usersCollection = db.collection('memo_users')
   const userResult = await usersCollection.doc(userId).get()
 
   if (!userResult.data || !userResult.data.notionConfig) {
@@ -1851,8 +1851,8 @@ async function createActivity(data) {
     throw new Error('userId, apiKey和activityData都是必需的')
   }
 
-  // 从users集合查找用户
-  const usersCollection = db.collection('users')
+  // 从memo_users集合查找用户
+  const usersCollection = db.collection('memo_users')
   const userResult = await usersCollection.doc(userId).get()
 
   if (!userResult.data || !userResult.data.notionConfig) {
@@ -2014,8 +2014,8 @@ async function getActivities(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  // 从users集合查找用户
-  const usersCollection = db.collection('users')
+  // 从memo_users集合查找用户
+  const usersCollection = db.collection('memo_users')
   const userResult = await usersCollection.doc(userId).get()
 
   if (!userResult.data || !userResult.data.notionConfig) {
@@ -2435,8 +2435,8 @@ async function getTimeInvestmentByGoal(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  // 从users集合查找用户
-  const usersCollection = db.collection('users')
+  // 从memo_users集合查找用户
+  const usersCollection = db.collection('memo_users')
   const userResult = await usersCollection.doc(userId).get()
 
   if (!userResult.data || !userResult.data.notionConfig) {
@@ -2526,8 +2526,8 @@ async function getUserTags(data) {
   }
 
   try {
-    // 从users集合获取用户的标签数据
-    const usersCollection = db.collection('users')
+    // 从memo_users集合获取用户的标签数据
+    const usersCollection = db.collection('memo_users')
     const userResult = await usersCollection.where({
       email: email
     }).get()
@@ -2572,8 +2572,8 @@ async function syncUserTags(data) {
   }
 
   try {
-    // 更新users集合中用户的标签数据
-    const usersCollection = db.collection('users')
+    // 更新memo_users集合中用户的标签数据
+    const usersCollection = db.collection('memo_users')
     const userResult = await usersCollection.where({
       email: email
     }).get()
