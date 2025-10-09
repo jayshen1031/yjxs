@@ -117,7 +117,7 @@
           loading="{{ creating }}"
           disabled="{{ creating || !notionConfig.apiKey || !notionConfig.parentPageId }}"
         >
-          <text>{{ creating ? '创建中...' : '🚀 自动创建双数据库' }}</text>
+          <text>{{ creating ? '创建中...' : '🚀 自动创建数据库' }}</text>
         </button>
       </view>
 

@@ -326,7 +326,7 @@ Page({
     })
   },
 
-  // 自动创建双数据库
+  // 自动创建数据库
   autoCreateDatabases: async function() {
     const { apiKey, parentPageId } = this.data.notionConfig
 
@@ -385,7 +385,7 @@ Page({
           confirmText: '好的'
         })
 
-        console.log('双数据库创建成功:', result)
+        console.log('数据库创建成功:', result)
       } else {
         toast.error('创建失败: ' + result.error)
       }
