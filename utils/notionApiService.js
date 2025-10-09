@@ -1523,11 +1523,11 @@ class NotionApiService {
     })
   }
 
-  // 删除备忘录从Notion
+  // 删除备忘录从Notion（包含级联删除Activity Details）
   async deleteMemoFromNotion(apiKey, memo) {
     try {
       console.log('开始从Notion删除备忘录:', memo)
-      
+
       // 检查备忘录是否有notionPageId
       if (!memo.notionPageId) {
         console.log('备忘录没有notionPageId，无需从Notion删除')
@@ -1537,14 +1537,48 @@ class NotionApiService {
         }
       }
 
+      // 1. 级联删除关联的Activity Details（如果有配置）
+      if (memo.activityDatabaseId) {
+        console.log('查询关联的Activity Details...')
+        const queryResult = await this.callApi('/databases/' + memo.activityDatabaseId + '/query', {
+          apiKey: apiKey,
+          method: 'POST',
+          data: {
+            filter: {
+              property: 'Record',
+              relation: {
+                contains: memo.notionPageId
+              }
+            }
+          }
+        })
+
+        if (queryResult.success && queryResult.data && queryResult.data.results) {
+          const activities = queryResult.data.results
+          console.log(`找到 ${activities.length} 条关联的Activity Details，开始删除...`)
+
+          // 批量删除所有Activity Details
+          for (const activity of activities) {
+            await this.deletePage(apiKey, activity.id)
+            console.log('已删除Activity Detail:', activity.id)
+          }
+        } else {
+          console.log('未找到关联的Activity Details或查询失败')
+        }
+      } else {
+        console.log('未配置activityDatabaseId，跳过Activity Details删除')
+      }
+
+      // 2. 删除Main Record
+      console.log('删除Main Record:', memo.notionPageId)
       const result = await this.deletePage(apiKey, memo.notionPageId)
-      
+
       console.log('删除Notion页面结果:', result)
-      
+
       if (result.success) {
         return {
           success: true,
-          message: '已从Notion删除'
+          message: '已从Notion删除（包含关联的活动明细）'
         }
       } else {
         return {
@@ -1855,6 +1889,55 @@ class NotionApiService {
       '已取消': '已取消'
     }
     return statusMap[status] || '待办'
+  }
+
+  /**
+   * 诊断数据库结构 - 获取数据库的所有字段信息
+   * @param {string} apiKey - Notion API密钥
+   * @param {string} databaseId - 数据库ID
+   * @returns {Promise} 包含数据库结构信息的对象
+   */
+  async getDatabaseSchema(apiKey, databaseId) {
+    try {
+      console.log('正在获取数据库结构:', databaseId)
+
+      const result = await this.callApi(`/databases/${databaseId}`, {
+        apiKey: apiKey,
+        method: 'GET'
+      })
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: '获取数据库信息失败: ' + result.error
+        }
+      }
+
+      const database = result.data
+      const properties = database.properties || {}
+
+      // 提取字段名和类型
+      const fields = Object.keys(properties).map(name => ({
+        name: name,
+        type: properties[name].type,
+        id: properties[name].id
+      }))
+
+      return {
+        success: true,
+        databaseId: databaseId,
+        title: database.title?.[0]?.text?.content || '(无标题)',
+        fields: fields,
+        fieldNames: Object.keys(properties),
+        totalFields: fields.length
+      }
+    } catch (error) {
+      console.error('获取数据库结构异常:', error)
+      return {
+        success: false,
+        error: '获取数据库结构失败: ' + error.message
+      }
+    }
   }
 }
 

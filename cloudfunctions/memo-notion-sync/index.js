@@ -150,6 +150,29 @@ exports.main = async (event, context) => {
   }
 }
 
+// ============== 辅助工具函数 ==============
+
+/**
+ * 根据邮箱查询用户（内部辅助函数）
+ * @param {string} email - 用户邮箱
+ * @returns {Promise<Object>} 用户数据
+ */
+async function _getUserByEmail(email) {
+  if (!email) {
+    throw new Error('email参数是必需的')
+  }
+
+  const result = await db.collection('memo_users').where({
+    email: email
+  }).get()
+
+  if (!result.data || result.data.length === 0) {
+    throw new Error(`找不到用户邮箱: ${email}`)
+  }
+
+  return { data: result.data[0] }
+}
+
 // 网络诊断函数
 async function diagnoseNetwork(data) {
   const diagnostics = {
@@ -1282,7 +1305,7 @@ async function createGoal(data) {
   }
 
   // 获取用户的数据库ID
-  const user = await db.collection('memo_users').doc(userId).get()
+  const user = await _getUserByEmail(userId)
   if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
     throw new Error('用户尚未配置Notion四数据库')
   }
@@ -1301,10 +1324,10 @@ async function createGoal(data) {
           rich_text: [{ text: { content: goalData.description || '' } }]
         },
         'Category': {
-          select: { name: goalData.category || '月度目标' }
+          select: { name: goalData.category || '月度目标 (Monthly Goal)' }
         },
         'Type': {
-          select: { name: goalData.type || '个人成长' }
+          select: { name: goalData.type || '学习' }
         },
         'Priority': {
           select: { name: goalData.priority || '中' }
@@ -1382,7 +1405,7 @@ async function getGoals(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
+  const user = await _getUserByEmail(userId)
   if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
     throw new Error('用户尚未配置Notion四数据库')
   }
@@ -1396,13 +1419,8 @@ async function getGoals(data) {
         rich_text: {
           equals: userId
         }
-      },
-      sorts: [
-        {
-          property: 'Target Date',
-          direction: 'ascending'
-        }
-      ]
+      }
+      // 移除排序，避免空数据库报错
     }, {
       headers: {
         'Authorization': `Bearer ${apiKey}`
@@ -1411,9 +1429,19 @@ async function getGoals(data) {
 
     return {
       success: true,
-      goals: response.data.results
+      goals: response.data.results || []
     }
   } catch (error) {
+    console.error('获取目标列表详细错误:', error.response?.data || error.message)
+
+    // 如果是400错误且数据库为空，返回空数组
+    if (error.response?.status === 400) {
+      return {
+        success: true,
+        goals: []
+      }
+    }
+
     throw new Error(`获取目标列表失败: ${error.message}`)
   }
 }
@@ -1430,7 +1458,7 @@ async function createTodo(data) {
     throw new Error('userId, apiKey和todoData都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
+  const user = await _getUserByEmail(userId)
   if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
     throw new Error('用户尚未配置Notion四数据库')
   }
@@ -1537,7 +1565,7 @@ async function getTodos(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
+  const user = await _getUserByEmail(userId)
   if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
     throw new Error('用户尚未配置Notion四数据库')
   }
@@ -1555,13 +1583,8 @@ async function getTodos(data) {
             }
           }
         ]
-      },
-      sorts: [
-        {
-          property: 'Due Date',
-          direction: 'ascending'
-        }
-      ]
+      }
+      // 移除排序，避免空数据库报错
     }
 
     // 添加额外筛选条件
@@ -1589,9 +1612,19 @@ async function getTodos(data) {
 
     return {
       success: true,
-      todos: response.data.results
+      todos: response.data.results || []
     }
   } catch (error) {
+    console.error('获取待办事项列表详细错误:', error.response?.data || error.message)
+
+    // 如果是400错误且数据库为空，返回空数组
+    if (error.response?.status === 400) {
+      return {
+        success: true,
+        todos: []
+      }
+    }
+
     throw new Error(`获取待办事项列表失败: ${error.message}`)
   }
 }
@@ -1670,24 +1703,7 @@ async function createMainRecord(data) {
   }
 
   // 从memo_users集合查找用户
-  const usersCollection = db.collection('memo_users')
-  let userResult
-
-  if (userEmail) {
-    // 使用邮箱查询
-    userResult = await usersCollection.where({
-      email: userEmail
-    }).get()
-
-    if (!userResult.data || userResult.data.length === 0) {
-      throw new Error(`用户不存在: ${userEmail}`)
-    }
-
-    userResult = { data: userResult.data[0] }
-  } else {
-    // 使用userId查询（兼容旧版本）
-    userResult = await usersCollection.doc(userId).get()
-  }
+  const userResult = await _getUserByEmail(queryField)
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -1847,24 +1863,7 @@ async function getMainRecords(data) {
   }
 
   // 从memo_users集合查找用户
-  const usersCollection = db.collection('memo_users')
-  let userResult
-
-  if (userEmail) {
-    // 使用邮箱查询
-    const queryResult = await usersCollection.where({
-      email: userEmail
-    }).get()
-
-    if (!queryResult.data || queryResult.data.length === 0) {
-      throw new Error(`用户不存在: ${userEmail}`)
-    }
-
-    userResult = { data: queryResult.data[0] }
-  } else {
-    // 使用userId查询（兼容旧版本）
-    userResult = await usersCollection.doc(userId).get()
-  }
+  const userResult = await _getUserByEmail(queryField)
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -1992,24 +1991,7 @@ async function createActivity(data) {
   }
 
   // 从memo_users集合查找用户
-  const usersCollection = db.collection('memo_users')
-  let userResult
-
-  if (userEmail) {
-    // 使用邮箱查询
-    const queryResult = await usersCollection.where({
-      email: userEmail
-    }).get()
-
-    if (!queryResult.data || queryResult.data.length === 0) {
-      throw new Error(`用户不存在: ${userEmail}`)
-    }
-
-    userResult = { data: queryResult.data[0] }
-  } else {
-    // 使用userId查询（兼容旧版本）
-    userResult = await usersCollection.doc(userId).get()
-  }
+  const userResult = await _getUserByEmail(queryField)
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -2174,24 +2156,7 @@ async function getActivities(data) {
   }
 
   // 从memo_users集合查找用户
-  const usersCollection = db.collection('memo_users')
-  let userResult
-
-  if (userEmail) {
-    // 使用邮箱查询
-    const queryResult = await usersCollection.where({
-      email: userEmail
-    }).get()
-
-    if (!queryResult.data || queryResult.data.length === 0) {
-      throw new Error(`用户不存在: ${userEmail}`)
-    }
-
-    userResult = { data: queryResult.data[0] }
-  } else {
-    // 使用userId查询（兼容旧版本）
-    userResult = await usersCollection.doc(userId).get()
-  }
+  const userResult = await _getUserByEmail(queryField)
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -2611,8 +2576,7 @@ async function getTimeInvestmentByGoal(data) {
   }
 
   // 从memo_users集合查找用户
-  const usersCollection = db.collection('memo_users')
-  const userResult = await usersCollection.doc(userId).get()
+  const userResult = await _getUserByEmail(userId)
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')

@@ -154,6 +154,15 @@ Page({
       return
     }
 
+    // ⚠️ 重要：重新获取用户配置（可能在设置页面更新了Notion数据库）
+    const currentUser = userManager.getCurrentUser()
+    if (currentUser && currentUser.notionConfig) {
+      console.log('memo onShow: 刷新Notion配置', {
+        mainRecordsDatabaseId: currentUser.notionConfig.mainRecordsDatabaseId,
+        activityDatabaseId: currentUser.notionConfig.activityDatabaseId
+      })
+    }
+
     // 重新加载用户标签（可能在其他页面有更新）
     this.loadUserTags()
 
@@ -1973,7 +1982,13 @@ Page({
     this.setData({ isSaving: true })
 
     // 获取当前用户和Notion配置
-    const currentUser = userManager.getCurrentUser()
+    // ⚠️ 强制从storage重新加载，避免使用缓存的旧配置
+    const { storage } = require('../../utils/util.js')
+    const usersData = storage.get('users') || []
+    const currentUserId = storage.get('currentUserId')
+    const freshUser = usersData.find(u => u.id === currentUserId)
+
+    const currentUser = freshUser || userManager.getCurrentUser()
     if (!currentUser) {
       wx.showToast({
         title: '用户未登录',
@@ -2000,8 +2015,11 @@ Page({
 
     try {
       // 准备Main Record数据
+      // 生成唯一递增ID：使用时间戳
+      const uniqueId = Date.now().toString() // 纯数字ID
+
       const recordData = {
-        title: this.data.recordMode === 'planning' ? '明日规划' : '每日记录',
+        title: uniqueId,
         content: finalContent.trim(),
         date: timestamp.toISOString().split('T')[0],
         recordType: this.data.recordMode === 'planning' ? '明日规划' : '日常记录',
@@ -2023,21 +2041,28 @@ Page({
         throw new Error('未配置主记录表数据库ID')
       }
 
+      // ⚠️ 调试信息：打印完整配置
+      console.log('========== Notion配置详情 ==========')
+      console.log('完整notionConfig:', JSON.stringify(notionConfig, null, 2))
+      console.log('使用的数据库ID:', mainDatabaseId)
+      console.log('currentUser.email:', currentUser.email)
+      console.log('====================================')
+
       const properties = {
-        'Title': {
+        'Name': {
           title: [{ text: { content: recordData.title } }]
         },
-        'Content': {
+        'Summary': {
           rich_text: [{ text: { content: recordData.content || '' } }]
         },
-        'Date': {
+        'Record Date': {
           date: { start: recordData.date }
         },
-        'Record Type': {
-          select: { name: recordData.recordType || '日常记录' }
+        'Type': {
+          select: { name: recordData.recordType === '明日规划' ? 'planning' : 'normal' }
         },
-        'Time Period': {
-          select: { name: recordData.timePeriod || '上午' }
+        'Is Planning': {
+          checkbox: recordData.recordType === '明日规划'
         },
         'User ID': {
           rich_text: [{ text: { content: currentUser.email } }]
@@ -2108,8 +2133,11 @@ Page({
       // 如果是规划模式，创建待办
       if (this.data.recordMode === 'planning') {
         const todoItems = this.splitPlanningContent(memo.content)
+        console.log('📋 规划内容:', memo.content)
+        console.log('✂️ 拆分后的待办项:', todoItems)
+        console.log('📊 待办项数量:', todoItems.length)
         if (todoItems.length > 0) {
-          this.createTodosFromPlanning(memo, todoItems)
+          await this.createTodosFromPlanning(memo, todoItems)
         }
       }
 
@@ -2164,23 +2192,20 @@ Page({
     for (const entry of allEntries) {
       try {
         const properties = {
-          'Name': {
+          'Activity Name': {
             title: [{ text: { content: entry.activity } }]
           },
           'Description': {
             rich_text: [{ text: { content: `${entry.type}活动，投入${entry.minutes}分钟` } }]
           },
-          'Start Time': {
-            date: { start: timestamp.toISOString() }
-          },
-          'End Time': {
-            date: { start: new Date(timestamp.getTime() + entry.minutes * 60000).toISOString() }
-          },
-          'Duration': {
+          'Minutes': {
             number: entry.minutes
           },
-          'Activity Type': {
-            select: { name: entry.type === '有价值' ? '学习' : (entry.type === '中性' ? '生活' : '休息') }
+          'Value Type': {
+            select: { name: entry.type }  // '有价值', '中性', '低效'
+          },
+          'Record Date': {
+            date: { start: timestamp.toISOString().split('T')[0] }
           },
           'User ID': {
             rich_text: [{ text: { content: userEmail } }]
@@ -2196,7 +2221,7 @@ Page({
 
         // 添加关联的主记录
         if (mainRecordId) {
-          properties['Related Main Record'] = {
+          properties['Record'] = {
             relation: [{ id: mainRecordId }]
           }
         }
@@ -2259,7 +2284,7 @@ Page({
       if (this.data.recordMode === 'planning') {
         const todoItems = this.splitPlanningContent(memo.content)
         if (todoItems.length > 0) {
-          this.createTodosFromPlanning(memo, todoItems)
+          await this.createTodosFromPlanning(memo, todoItems)
         }
       }
 
@@ -2707,31 +2732,77 @@ Page({
   },
 
   // 从规划创建今日待办（支持批量）
-  createTodosFromPlanning: function(memo, todoItems) {
+  createTodosFromPlanning: async function(memo, todoItems) {
     try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig || !notionConfig.enabled || !notionConfig.todosDatabaseId) {
+        wx.showToast({ title: '请先配置Notion', icon: 'none' })
+        return
+      }
+
       let successCount = 0
       const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      // 批量创建待办
-      todoItems.forEach(item => {
-        const todoData = {
-          title: item,
-          description: memo.content, // 保留完整规划内容作为描述
-          type: '临时待办',
-          priority: '重要不紧急',
-          scope: '今日', // 关键：标记为今日待办
-          dueDate: tomorrowDate, // 明天的日期
-          tags: ['明日规划', ...memo.tags],
-          relatedGoalId: memo.relatedGoalId || ''
-        }
+      // 生成日期标签（例如："2025-01-10规划"）
+      const dateTag = `${tomorrowDate}规划`
 
+      console.log('🚀 开始批量创建待办，总数:', todoItems.length)
+      console.log('📅 日期标签:', dateTag)
+
+      // 批量创建待办
+      for (const item of todoItems) {
         try {
-          app.createTodo(todoData)
+          console.log('📝 创建待办项:', item)
+          const pageData = {
+            parent: { database_id: notionConfig.todosDatabaseId },
+            properties: {
+              'Todo Name': { // 待办标题：拆分后的单行
+                title: [{ text: { content: item } }]
+              },
+              'Description': { // 描述：简单标注日期来源
+                rich_text: [{ text: { content: `${tomorrowDate}的规划` } }]
+              },
+              'Todo Type': { // 添加英文后缀
+                select: { name: '临时待办 (Ad-hoc)' }
+              },
+              'Priority': {
+                select: { name: '重要不紧急' }
+              },
+              'Status': {
+                select: { name: '待办' }
+              },
+              'Due Date': {
+                date: { start: tomorrowDate }
+              },
+              'Tags': {
+                // 使用日期标签 + 用户自定义标签
+                multi_select: [dateTag, ...memo.tags].map(tag => ({ name: tag }))
+              }
+            }
+          }
+
+          // 如果有关联目标，添加关联字段（需要数据库有 Related Goal 字段）
+          if (memo.relatedGoalId) {
+            pageData.properties['Related Goal'] = {
+              relation: [{ id: memo.relatedGoalId }]
+            }
+          }
+
+          const result = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
+          console.log('✅ 待办创建成功:', result)
           successCount++
         } catch (err) {
-          console.error('创建单个待办失败:', err)
+          console.error('❌ 创建单个待办失败:', err)
         }
-      })
+      }
+
+      console.log('🎉 批量创建完成，成功:', successCount, '失败:', todoItems.length - successCount)
 
       if (successCount > 0) {
         wx.showToast({

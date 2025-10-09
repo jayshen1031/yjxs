@@ -1,6 +1,7 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const apiService = require('../../utils/apiService.js')
+const notionApiService = require('../../utils/notionApiService.js')
 
 // CSS类名映射函数
 const statusClassMap = {
@@ -72,12 +73,12 @@ Page({
     goalFormData: {
       title: '',
       description: '',
-      category: '月度目标',
+      category: '月度目标 (Monthly Goal)',
       priority: '中',
       targetDate: '',
       tags: []
     },
-    goalCategoryOptions: ['人生目标', '年度目标', '季度目标', '月度目标', '周目标'],
+    goalCategoryOptions: ['人生目标 (Life Goal)', '年度目标 (Yearly Goal)', '季度目标 (Quarterly Goal)', '月度目标 (Monthly Goal)', '周目标 (Weekly Goal)'],
     goalCategoryIndex: 3,
     priorityOptions: [
       { value: '高', label: '高优先级' },
@@ -93,7 +94,7 @@ Page({
     todoFormData: {
       title: '',
       description: '',
-      type: '临时待办',
+      type: '临时待办 (Ad-hoc)',
       priority: '重要不紧急',
       dueDate: '',
       estimatedMinutes: '',
@@ -101,10 +102,10 @@ Page({
       tags: []
     },
     todoTypeOptions: [
-      { value: '目标导向', label: '目标导向' },
-      { value: '临时待办', label: '临时待办' },
-      { value: '习惯养成', label: '习惯养成' },
-      { value: '紧急处理', label: '紧急处理' }
+      { value: '目标导向 (Goal-oriented)', label: '目标导向' },
+      { value: '临时待办 (Ad-hoc)', label: '临时待办' },
+      { value: '习惯养成 (Habit)', label: '习惯养成' },
+      { value: '紧急处理 (Urgent)', label: '紧急处理' }
     ],
     todoTypeIndex: 1,
     todoPriorityOptions: [
@@ -157,6 +158,35 @@ Page({
         return
       }
 
+      // 🔧 自动修复配置结构：添加databases字段
+      if (currentUser.notionConfig && currentUser.notionConfig.goalsDatabaseId && !currentUser.notionConfig.databases) {
+        console.log('🔧 Goals页面：检测到旧配置结构，自动添加databases字段...')
+        const notionConfig = {
+          ...currentUser.notionConfig,
+          databases: {
+            goals: currentUser.notionConfig.goalsDatabaseId,
+            todos: currentUser.notionConfig.todosDatabaseId,
+            mainRecords: currentUser.notionConfig.mainDatabaseId || currentUser.notionConfig.mainRecordsDatabaseId,
+            activityDetails: currentUser.notionConfig.activityDatabaseId || currentUser.notionConfig.activitiesDatabaseId
+          }
+        }
+
+        // 保存到本地
+        userManager.configureNotion(currentUser.id, notionConfig)
+
+        // 同步到云端
+        try {
+          const apiService = require('../../utils/apiService.js')
+          await apiService.updateUserByEmail(currentUser.email, { notionConfig })
+          console.log('✅ Goals页面：配置结构已自动修复并同步到云端')
+        } catch (error) {
+          console.error('❌ Goals页面：同步修复后的配置失败:', error)
+        }
+
+        // 重新获取更新后的用户数据
+        currentUser.notionConfig = notionConfig
+      }
+
       const notionConfig = currentUser.notionConfig
       if (!notionConfig || !notionConfig.apiKey || !notionConfig.goalsDatabaseId) {
         console.log('Notion未配置，使用本地数据')
@@ -164,16 +194,39 @@ Page({
         return
       }
 
-      // 从云端加载Goals
-      const result = await apiService.getGoals(currentUser.id, notionConfig.apiKey)
+      // 前端直接查询Notion数据库（不过滤，返回所有记录）
+      console.log('🔍 开始查询Goals数据库:', notionConfig.goalsDatabaseId)
+      const result = await notionApiService.queryDatabase(
+        notionConfig.apiKey,
+        notionConfig.goalsDatabaseId,
+        {} // 空对象表示不过滤
+      )
+
+      console.log('✅ Goals查询结果:', result)
+      console.log('📊 Goals数据条数:', result.data?.results?.length || 0)
 
       if (!result.success) {
-        console.error('加载Goals失败:', result.error)
+        console.error('❌ 加载Goals失败:', result.error)
         this.loadGoalsFromLocal()
         return
       }
 
-      const goals = result.goals || []
+      // 解析Notion返回的数据
+      const goals = (result.data?.results || []).map(page => {
+        const props = page.properties
+        return {
+          id: page.id,
+          title: props['Goal Name']?.title?.[0]?.text?.content || '',
+          description: props.Description?.rich_text?.[0]?.text?.content || '',
+          category: props.Category?.select?.name || '',
+          type: props.Type?.select?.name || '',
+          priority: props.Priority?.select?.name || '中',
+          status: props.Status?.select?.name || '未开始',
+          progress: props.Progress?.number || 0,
+          targetDate: props['Target Date']?.date?.start || '',
+          tags: props.Tags?.multi_select?.map(t => t.name) || []
+        }
+      })
 
       const processedGoals = goals.map(goal => {
         let targetDateText = ''
@@ -194,13 +247,18 @@ Page({
         }
       })
 
+      console.log('📝 解析后的Goals:', goals)
+      console.log('🎨 处理后的Goals:', processedGoals)
+
       this.setData({
         goals: processedGoals,
         availableGoals: processedGoals
       })
 
-      // 同步到本地缓存
-      app.setGoals(goals)
+      console.log('✨ Goals数据已设置到页面')
+
+      // 同步到本地缓存（暂时禁用，数据已通过Notion管理）
+      // app.setGoals(goals)
 
       this.calculateGoalStats()
       this.filterGoals()
@@ -259,6 +317,7 @@ Page({
   },
 
   filterGoals() {
+    console.log('🔍 开始筛选Goals，原始数据条数:', this.data.goals.length)
     let filtered = [...this.data.goals]
 
     if (this.data.goalSearchKeyword) {
@@ -267,12 +326,15 @@ Page({
         goal.title.toLowerCase().includes(keyword) ||
         (goal.description && goal.description.toLowerCase().includes(keyword))
       )
+      console.log('📝 搜索关键词:', this.data.goalSearchKeyword, ', 筛选后:', filtered.length)
     }
 
     if (this.data.selectedGoalCategory) {
       filtered = filtered.filter(goal => goal.category === this.data.selectedGoalCategory)
+      console.log('🏷️ 筛选分类:', this.data.selectedGoalCategory, ', 筛选后:', filtered.length)
     }
 
+    console.log('✅ 最终筛选结果:', filtered.length, '条')
     this.setData({
       filteredGoals: filtered
     })
@@ -402,7 +464,7 @@ Page({
         if (this.data.editingGoal) {
           // 更新目标
           const result = await apiService.updateGoal(
-            currentUser.id,
+            currentUser.email,
             notionConfig.apiKey,
             this.data.editingGoal.id,
             this.data.goalFormData
@@ -414,12 +476,46 @@ Page({
 
           wx.showToast({ title: '目标更新成功', icon: 'success' })
         } else {
-          // 创建目标
-          const result = await apiService.createGoal(
-            currentUser.id,
-            notionConfig.apiKey,
-            this.data.goalFormData
-          )
+          // 前端直接创建目标到Notion
+          const goalData = this.data.goalFormData
+          const pageData = {
+            parent: { database_id: notionConfig.goalsDatabaseId },
+            properties: {
+              'Goal Name': {
+                title: [{ text: { content: goalData.title } }]
+              },
+              'Description': {
+                rich_text: [{ text: { content: goalData.description || '' } }]
+              },
+              'Category': {
+                select: { name: goalData.category }
+              },
+              'Priority': {
+                select: { name: goalData.priority }
+              },
+              'Status': {
+                select: { name: '进行中' }
+              },
+              'Progress': {
+                number: 0
+              }
+            }
+          }
+
+          // 添加可选字段
+          if (goalData.targetDate) {
+            pageData.properties['Target Date'] = {
+              date: { start: goalData.targetDate }
+            }
+          }
+
+          if (goalData.tags && goalData.tags.length > 0) {
+            pageData.properties['Tags'] = {
+              multi_select: goalData.tags.map(tag => ({ name: tag }))
+            }
+          }
+
+          const result = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
 
           if (!result.success) {
             throw new Error(result.error || '创建失败')
@@ -482,7 +578,7 @@ Page({
 
       if (useCloud) {
         const result = await apiService.updateGoal(
-          currentUser.id,
+          currentUser.email,
           notionConfig.apiKey,
           this.data.currentProgressGoalId,
           { progress: this.data.progressValue }
@@ -503,7 +599,7 @@ Page({
             if (res.confirm) {
               if (useCloud) {
                 await apiService.updateGoal(
-                  currentUser.id,
+                  currentUser.email,
                   notionConfig.apiKey,
                   this.data.currentProgressGoalId,
                   {
@@ -568,16 +664,46 @@ Page({
         return
       }
 
-      // 从云端加载Todos
-      const result = await apiService.getTodos(currentUser.id, notionConfig.apiKey, 'all')
+      // 前端直接查询Notion数据库（不过滤，返回所有记录）
+      console.log('🔍 开始查询Todos数据库:', notionConfig.todosDatabaseId)
+      const result = await notionApiService.queryDatabase(
+        notionConfig.apiKey,
+        notionConfig.todosDatabaseId,
+        {} // 空对象表示不过滤
+      )
+
+      console.log('✅ Todos查询结果:', result)
+      console.log('📊 Todos数据条数:', result.data?.results?.length || 0)
+
+      // 打印第一条原始数据看看结构
+      if (result.data?.results?.length > 0) {
+        console.log('🔍 第一条Todo原始数据:', result.data.results[0])
+        console.log('🔍 第一条Todo的properties:', result.data.results[0].properties)
+      }
 
       if (!result.success) {
-        console.error('加载Todos失败:', result.error)
+        console.error('❌ 加载Todos失败:', result.error)
         this.loadTodosFromLocal()
         return
       }
 
-      const todos = result.todos || []
+      // 解析Notion返回的数据
+      const todos = (result.data?.results || []).map(page => {
+        const props = page.properties
+        console.log('📝 解析单条Todo，props:', props)
+        return {
+          id: page.id,
+          title: props['Todo Name']?.title?.[0]?.text?.content || '',
+          description: props.Description?.rich_text?.[0]?.text?.content || '',
+          type: props['Todo Type']?.select?.name || '',
+          priority: props.Priority?.select?.name || '重要不紧急',
+          status: props.Status?.select?.name || '待办',
+          isCompleted: props['Is Completed']?.checkbox || false,
+          dueDate: props['Due Date']?.date?.start || '',
+          estimatedMinutes: props['Estimated Minutes']?.number || 0,
+          tags: props.Tags?.multi_select?.map(t => t.name) || []
+        }
+      })
 
       const processedTodos = todos.map(todo => {
         let dueDateText = ''
@@ -617,9 +743,14 @@ Page({
         }
       })
 
+      console.log('📝 解析后的Todos:', todos)
+      console.log('🎨 处理后的Todos:', processedTodos)
+
       this.setData({
         todos: processedTodos
       })
+
+      console.log('✨ Todos数据已设置到页面')
 
       // 同步到本地缓存
       wx.setStorageSync('todos', todos)
@@ -698,6 +829,7 @@ Page({
   },
 
   filterTodos() {
+    console.log('🔍 开始筛选Todos，原始数据条数:', this.data.todos.length)
     let filtered = [...this.data.todos]
 
     if (this.data.todoSearchKeyword) {
@@ -706,12 +838,15 @@ Page({
         todo.title.toLowerCase().includes(keyword) ||
         (todo.description && todo.description.toLowerCase().includes(keyword))
       )
+      console.log('📝 搜索关键词:', this.data.todoSearchKeyword, ', 筛选后:', filtered.length)
     }
 
     if (this.data.selectedTodoType) {
       filtered = filtered.filter(todo => todo.type === this.data.selectedTodoType)
+      console.log('🏷️ 筛选类型:', this.data.selectedTodoType, ', 筛选后:', filtered.length)
     }
 
+    console.log('✅ 最终筛选结果:', filtered.length, '条')
     this.setData({
       filteredTodos: filtered
     })
@@ -740,7 +875,7 @@ Page({
       todoFormData: {
         title: '',
         description: '',
-        type: '临时待办',
+        type: '临时待办 (Ad-hoc)',
         priority: '重要不紧急',
         dueDate: '',
         estimatedMinutes: '',
@@ -862,7 +997,7 @@ Page({
         if (this.data.editingTodo) {
           // 更新待办
           const result = await apiService.updateTodo(
-            currentUser.id,
+            currentUser.email,
             notionConfig.apiKey,
             this.data.editingTodo.id,
             this.data.todoFormData
@@ -876,7 +1011,7 @@ Page({
         } else {
           // 创建待办
           const result = await apiService.createTodo(
-            currentUser.id,
+            currentUser.email,
             notionConfig.apiKey,
             this.data.todoFormData
           )
@@ -888,7 +1023,7 @@ Page({
           // 如果关联了目标，创建关联
           if (this.data.todoFormData.relatedGoalId) {
             await apiService.linkTodoToGoal(
-              currentUser.id,
+              currentUser.email,
               notionConfig.apiKey,
               result.pageId,
               this.data.todoFormData.relatedGoalId
@@ -959,7 +1094,7 @@ Page({
 
       if (useCloud) {
         const result = await apiService.updateTodo(
-          currentUser.id,
+          currentUser.email,
           notionConfig.apiKey,
           todoId,
           {
@@ -1020,7 +1155,7 @@ Page({
 
             if (useCloud) {
               const result = await apiService.deleteTodo(
-                currentUser.id,
+                currentUser.email,
                 notionConfig.apiKey,
                 todoId
               )

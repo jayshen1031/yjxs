@@ -206,11 +206,18 @@ class ApiService {
   async deleteUserMemo(userEmail, memo) {
     try {
       const user = userManager.getUserByEmail(userEmail)
-      
+
       // 如果用户配置了Notion且备忘录已同步，先从Notion删除
       if (user && user.notionConfig && user.notionConfig.enabled && memo.notionPageId) {
-        const { apiKey } = user.notionConfig
-        const result = await notionApiService.deleteMemoFromNotion(apiKey, memo)
+        const { apiKey, activityDatabaseId, activitiesDatabaseId } = user.notionConfig
+
+        // 传递activityDatabaseId用于级联删除
+        const memoWithDbId = {
+          ...memo,
+          activityDatabaseId: activityDatabaseId || activitiesDatabaseId
+        }
+
+        const result = await notionApiService.deleteMemoFromNotion(apiKey, memoWithDbId)
         
         if (!result.success) {
           console.warn('从Notion删除失败，但继续删除本地记录:', result.error)

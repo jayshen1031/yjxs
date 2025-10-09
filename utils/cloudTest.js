@@ -219,6 +219,61 @@ class CloudTest {
     }
   }
 
+  /**
+   * 诊断Notion数据库结构
+   * 获取指定数据库的所有字段信息，用于排查字段名不匹配问题
+   */
+  async diagnoseDatabaseSchema(apiKey, databaseId, databaseName = '数据库') {
+    try {
+      console.log(`\n========== 开始诊断${databaseName}结构 ==========`)
+      console.log('数据库ID:', databaseId)
+
+      const notionApiService = require('./notionApiService.js')
+      const result = await notionApiService.getDatabaseSchema(apiKey, databaseId)
+
+      if (!result.success) {
+        console.error(`❌ 获取${databaseName}结构失败:`, result.error)
+        wx.showToast({
+          title: '获取数据库结构失败',
+          icon: 'none',
+          duration: 3000
+        })
+        return result
+      }
+
+      console.log(`✅ ${databaseName}结构获取成功`)
+      console.log('数据库标题:', result.title)
+      console.log('字段总数:', result.totalFields)
+      console.log('\n字段列表:')
+      result.fields.forEach((field, index) => {
+        console.log(`  ${index + 1}. ${field.name} (${field.type})`)
+      })
+
+      // 显示结果弹窗
+      const fieldList = result.fields.map((f, i) => `${i + 1}. ${f.name} (${f.type})`).join('\n')
+      wx.showModal({
+        title: `${databaseName}结构`,
+        content: `标题: ${result.title}\n字段数: ${result.totalFields}\n\n字段列表:\n${fieldList}`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+
+      console.log('========== 诊断完成 ==========\n')
+      return result
+    } catch (error) {
+      console.error('诊断数据库结构异常:', error)
+      wx.showToast({
+        title: '诊断失败: ' + error.message,
+        icon: 'none',
+        duration: 3000
+      })
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
   // 获取云开发环境信息
   getEnvironmentInfo() {
     const app = getApp()

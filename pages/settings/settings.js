@@ -33,6 +33,7 @@ Page({
     testing: false,
     syncing: false,
     creating: false, // 正在创建数据库
+    diagnosing: false, // 正在诊断数据库
     // 箴言相关数据
     quoteStats: {
       total: 0,
@@ -125,6 +126,29 @@ Page({
     const notionConfig = currentUser && currentUser.notionConfig
       ? { ...defaultConfig, ...currentUser.notionConfig }
       : defaultConfig
+
+    // 🔧 自动修复配置结构：添加databases字段
+    if (currentUser && notionConfig.goalsDatabaseId && !notionConfig.databases) {
+      console.log('🔧 检测到旧配置结构，自动添加databases字段...')
+      notionConfig.databases = {
+        goals: notionConfig.goalsDatabaseId,
+        todos: notionConfig.todosDatabaseId,
+        mainRecords: notionConfig.mainDatabaseId || notionConfig.mainRecordsDatabaseId,
+        activityDetails: notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
+      }
+
+      // 保存到本地
+      userManager.configureNotion(currentUser.id, notionConfig)
+
+      // 同步到云端
+      try {
+        const apiService = require('../../utils/apiService.js')
+        await apiService.updateUserByEmail(currentUser.email, { notionConfig })
+        console.log('✅ 配置结构已自动修复并同步到云端')
+      } catch (error) {
+        console.error('❌ 同步修复后的配置失败:', error)
+      }
+    }
 
     console.log('最终设置的 notionConfig:', notionConfig)
 
@@ -457,7 +481,14 @@ Page({
           activityDatabaseId: result.activityDatabaseId,
           databaseId: result.mainDatabaseId,  // 兼容旧版
           mainRecordsDatabaseId: result.mainDatabaseId,
-          activitiesDatabaseId: result.activityDatabaseId
+          activitiesDatabaseId: result.activityDatabaseId,
+          // 添加databases结构供云函数使用
+          databases: {
+            goals: result.goalsDatabaseId,
+            todos: result.todosDatabaseId,
+            mainRecords: result.mainDatabaseId,
+            activityDetails: result.activityDatabaseId
+          }
         }
 
         // 保存配置到本地
@@ -493,13 +524,38 @@ Page({
         await this.loadUserData()
         this.loadSyncStatus()
 
+        // ⚠️ 关键：更新全局app状态，确保memo页面使用新配置
+        const app = getApp()
+        if (app.globalData) {
+          app.globalData.currentUser = userManager.getCurrentUser()
+          console.log('✅ 已更新app.globalData.currentUser:', app.globalData.currentUser)
+        }
+
+        // 刷新其他页面数据（重要！）
+        const pages = getCurrentPages()
+        pages.forEach(page => {
+          if (page.route !== 'pages/settings/settings') {
+            // 如果页面有reload方法，调用它
+            if (typeof page.onShow === 'function') {
+              console.log('刷新页面:', page.route)
+              // 触发页面的onShow重新加载数据
+              if (page.loadUserData) {
+                page.loadUserData()
+              } else if (page.checkLoginStatus) {
+                page.checkLoginStatus()
+              }
+            }
+          }
+        })
+
         // 显示成功消息
         let message = '✅ 四数据库创建成功！\n'
         message += `🎯 目标库ID: ${result.goalsDatabaseId.slice(0, 8)}...\n`
         message += `📝 待办库ID: ${result.todosDatabaseId.slice(0, 8)}...\n`
         message += `📋 主记录表ID: ${result.mainDatabaseId.slice(0, 8)}...\n`
         message += `📊 活动明细表ID: ${result.activityDatabaseId.slice(0, 8)}...\n`
-        message += '🎉 数据库字段已自动初始化'
+        message += '🎉 数据库字段已自动初始化\n\n'
+        message += '⚠️ 请返回记录页面重新打开，以使用新数据库'
 
         wx.showModal({
           title: '创建成功',
@@ -648,6 +704,114 @@ Page({
       toast.error('同步失败: ' + error.message)
     } finally {
       this.setData({ syncing: false })
+    }
+  },
+
+  // 诊断Notion数据库结构
+  diagnoseDatabases: async function() {
+    if (!this.data.notionConfigured) {
+      toast.error('请先配置Notion集成')
+      return
+    }
+
+    this.setData({ diagnosing: true })
+
+    try {
+      const notionApiService = require('../../utils/notionApiService.js')
+      const notionConfig = this.data.currentUser.notionConfig
+
+      console.log('\n========== 开始诊断四数据库结构 ==========')
+
+      // 诊断 Main Records
+      const mainResult = await notionApiService.getDatabaseSchema(
+        notionConfig.apiKey,
+        notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
+      )
+
+      // 诊断 Activity Details
+      const activityResult = await notionApiService.getDatabaseSchema(
+        notionConfig.apiKey,
+        notionConfig.activityDatabaseId
+      )
+
+      // 诊断 Goals (如果配置了)
+      let goalsResult = null
+      if (notionConfig.goalsDatabaseId) {
+        goalsResult = await notionApiService.getDatabaseSchema(
+          notionConfig.apiKey,
+          notionConfig.goalsDatabaseId
+        )
+      }
+
+      // 诊断 Todos (如果配置了)
+      let todosResult = null
+      if (notionConfig.todosDatabaseId) {
+        todosResult = await notionApiService.getDatabaseSchema(
+          notionConfig.apiKey,
+          notionConfig.todosDatabaseId
+        )
+      }
+
+      // 打印诊断结果
+      console.log('\n📝 Main Records 数据库:')
+      if (mainResult.success) {
+        console.log('  标题:', mainResult.title)
+        console.log('  字段数:', mainResult.totalFields)
+        console.log('  字段列表:', mainResult.fieldNames.join(', '))
+      } else {
+        console.error('  ❌ 错误:', mainResult.error)
+      }
+
+      console.log('\n⏱️ Activity Details 数据库:')
+      if (activityResult.success) {
+        console.log('  标题:', activityResult.title)
+        console.log('  字段数:', activityResult.totalFields)
+        console.log('  字段列表:', activityResult.fieldNames.join(', '))
+      } else {
+        console.error('  ❌ 错误:', activityResult.error)
+      }
+
+      if (goalsResult) {
+        console.log('\n🎯 Goals 数据库:')
+        if (goalsResult.success) {
+          console.log('  标题:', goalsResult.title)
+          console.log('  字段数:', goalsResult.totalFields)
+          console.log('  字段列表:', goalsResult.fieldNames.join(', '))
+        } else {
+          console.error('  ❌ 错误:', goalsResult.error)
+        }
+      }
+
+      if (todosResult) {
+        console.log('\n✅ Todos 数据库:')
+        if (todosResult.success) {
+          console.log('  标题:', todosResult.title)
+          console.log('  字段数:', todosResult.totalFields)
+          console.log('  字段列表:', todosResult.fieldNames.join(', '))
+        } else {
+          console.error('  ❌ 错误:', todosResult.error)
+        }
+      }
+
+      console.log('\n========== 诊断完成 ==========\n')
+
+      // 显示结果弹窗
+      const mainFields = mainResult.success ? mainResult.fieldNames.join(', ') : '获取失败'
+      const activityFields = activityResult.success ? activityResult.fieldNames.join(', ') : '获取失败'
+
+      wx.showModal({
+        title: '数据库诊断结果',
+        content: `📝 Main Records (${mainResult.totalFields || 0}字段):\n${mainFields}\n\n⏱️ Activities (${activityResult.totalFields || 0}字段):\n${activityFields}\n\n详细信息请查看控制台`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+
+      toast.success('诊断完成，请查看控制台')
+    } catch (error) {
+      console.error('诊断失败:', error)
+      toast.error('诊断失败: ' + error.message)
+    } finally {
+      this.setData({ diagnosing: false })
     }
   },
 

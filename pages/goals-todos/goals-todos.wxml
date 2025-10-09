@@ -190,8 +190,6 @@
               <text class="todo-type type-{{ item.type }}">{{ item.type }}</text>
             </view>
 
-            <text wx:if="{{ item.description }}" class="todo-description">{{ item.description }}</text>
-
             <view class="todo-meta">
               <text class="priority priority-{{ item.priority }}">{{ item.priorityLabel }}</text>
               <text wx:if="{{ item.dueDate }}" class="due-date {{ item.isOverdue ? 'overdue' : '' }}">{{ item.dueDateText }}</text>

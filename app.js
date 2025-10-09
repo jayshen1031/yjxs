@@ -191,9 +191,9 @@ App({
     const memos = userManager.getUserMemos()
     memos.unshift(memo)
     userManager.saveUserMemos(memos)
-    
-    // 异步同步到Notion（如果用户启用了同步）
-    this.tryAutoSyncToNotion(memo)
+
+    // ⚠️ 已在memo页面直接保存到Notion，不需要重复同步
+    // this.tryAutoSyncToNotion(memo)
   },
 
   // 尝试自动同步到Notion
@@ -206,9 +206,9 @@ App({
       }
 
       console.log('开始自动同步到Notion:', memo.content.substring(0, 30) + '...')
-      
+
       const apiService = require('./utils/apiService.js')
-      const result = await apiService.syncUserMemoToNotion(currentUser.id, memo)
+      const result = await apiService.syncUserMemoToNotion(currentUser.email, memo)
       
       if (result.success) {
         console.log('自动同步成功:', result.notionPageId)
@@ -255,7 +255,7 @@ App({
       }
 
       const apiService = require('./utils/apiService.js')
-      const result = await apiService.deleteUserMemo(currentUser.id, memo)
+      const result = await apiService.deleteUserMemo(currentUser.email, memo)
       
       if (result.success) {
         console.log('Notion删除成功:', result.message)

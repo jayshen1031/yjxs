@@ -217,6 +217,11 @@
                 loading="{{ syncing }}">
           <text>{{ syncing ? '同步中...' : '🔄 立即同步' }}</text>
         </button>
+        <button class="btn btn-secondary" bindtap="diagnoseDatabases"
+                wx:if="{{ notionConfig.enabled }}"
+                loading="{{ diagnosing }}">
+          <text>{{ diagnosing ? '诊断中...' : '🔍 诊断数据库' }}</text>
+        </button>
       </view>
     </view>
   </view>
