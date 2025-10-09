@@ -2017,7 +2017,8 @@ Page({
           currentUser.id,
           notionConfig.apiKey,
           this.data.originalMemo.notionPageId,
-          recordData
+          recordData,
+          currentUser.email  // 添加email参数
         )
 
         if (!mainRecordResult.success) {
@@ -2028,7 +2029,8 @@ Page({
         mainRecordResult = await apiService.createMainRecord(
           currentUser.id,
           notionConfig.apiKey,
-          recordData
+          recordData,
+          currentUser.email  // 添加email参数
         )
 
         if (!mainRecordResult.success) {
@@ -2043,7 +2045,8 @@ Page({
         currentUser.id,
         notionConfig.apiKey,
         mainRecordId,
-        timestamp
+        timestamp,
+        currentUser.email  // 添加email参数
       )
 
       // 保存成功，同步到本地存储
@@ -2112,7 +2115,7 @@ Page({
   },
 
   // 创建Activity Details
-  createActivityDetails: async function(userId, apiKey, mainRecordId, timestamp) {
+  createActivityDetails: async function(userId, apiKey, mainRecordId, timestamp, userEmail = null) {
     const allEntries = [
       ...this.data.valuableTimeEntries.map(e => ({ ...e, type: '有价值' })),
       ...this.data.neutralTimeEntries.map(e => ({ ...e, type: '中性' })),
@@ -2133,7 +2136,7 @@ Page({
           relatedGoalId: this.data.selectedGoalId || null
         }
 
-        const result = await apiService.createActivity(userId, apiKey, activityData)
+        const result = await apiService.createActivity(userId, apiKey, activityData, userEmail)
 
         if (!result.success) {
           console.error('创建Activity失败:', result.error)

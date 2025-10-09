@@ -1576,15 +1576,34 @@ async function deleteTodo(data) {
  * 创建主记录
  */
 async function createMainRecord(data) {
-  const { userId, apiKey, recordData } = data
+  const { userId, userEmail, apiKey, recordData } = data
 
-  if (!userId || !apiKey || !recordData) {
-    throw new Error('userId, apiKey和recordData都是必需的')
+  // 优先使用 userEmail，如果没有则使用 userId（兼容性）
+  const queryField = userEmail || userId
+
+  if (!queryField || !apiKey || !recordData) {
+    throw new Error('用户标识、apiKey和recordData都是必需的')
   }
 
   // 从memo_users集合查找用户
   const usersCollection = db.collection('memo_users')
-  const userResult = await usersCollection.doc(userId).get()
+  let userResult
+
+  if (userEmail) {
+    // 使用邮箱查询
+    userResult = await usersCollection.where({
+      email: userEmail
+    }).get()
+
+    if (!userResult.data || userResult.data.length === 0) {
+      throw new Error(`用户不存在: ${userEmail}`)
+    }
+
+    userResult = { data: userResult.data[0] }
+  } else {
+    // 使用userId查询（兼容旧版本）
+    userResult = await usersCollection.doc(userId).get()
+  }
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -1719,15 +1738,34 @@ async function updateMainRecord(data) {
  * 获取主记录列表
  */
 async function getMainRecords(data) {
-  const { userId, apiKey, filter = 'all', startDate, endDate } = data
+  const { userId, userEmail, apiKey, filter = 'all', startDate, endDate } = data
 
-  if (!userId || !apiKey) {
-    throw new Error('userId和apiKey都是必需的')
+  // 优先使用 userEmail，如果没有则使用 userId（兼容性）
+  const queryField = userEmail || userId
+
+  if (!queryField || !apiKey) {
+    throw new Error('用户标识和apiKey都是必需的')
   }
 
   // 从memo_users集合查找用户
   const usersCollection = db.collection('memo_users')
-  const userResult = await usersCollection.doc(userId).get()
+  let userResult
+
+  if (userEmail) {
+    // 使用邮箱查询
+    const queryResult = await usersCollection.where({
+      email: userEmail
+    }).get()
+
+    if (!queryResult.data || queryResult.data.length === 0) {
+      throw new Error(`用户不存在: ${userEmail}`)
+    }
+
+    userResult = { data: queryResult.data[0] }
+  } else {
+    // 使用userId查询（兼容旧版本）
+    userResult = await usersCollection.doc(userId).get()
+  }
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -1845,15 +1883,34 @@ async function deleteMainRecord(data) {
  * 创建活动明细
  */
 async function createActivity(data) {
-  const { userId, apiKey, activityData } = data
+  const { userId, userEmail, apiKey, activityData } = data
 
-  if (!userId || !apiKey || !activityData) {
-    throw new Error('userId, apiKey和activityData都是必需的')
+  // 优先使用 userEmail，如果没有则使用 userId（兼容性）
+  const queryField = userEmail || userId
+
+  if (!queryField || !apiKey || !activityData) {
+    throw new Error('用户标识、apiKey和activityData都是必需的')
   }
 
   // 从memo_users集合查找用户
   const usersCollection = db.collection('memo_users')
-  const userResult = await usersCollection.doc(userId).get()
+  let userResult
+
+  if (userEmail) {
+    // 使用邮箱查询
+    const queryResult = await usersCollection.where({
+      email: userEmail
+    }).get()
+
+    if (!queryResult.data || queryResult.data.length === 0) {
+      throw new Error(`用户不存在: ${userEmail}`)
+    }
+
+    userResult = { data: queryResult.data[0] }
+  } else {
+    // 使用userId查询（兼容旧版本）
+    userResult = await usersCollection.doc(userId).get()
+  }
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')
@@ -2008,15 +2065,34 @@ async function updateActivity(data) {
  * 获取活动明细列表
  */
 async function getActivities(data) {
-  const { userId, apiKey, filter = {}, startDate, endDate } = data
+  const { userId, userEmail, apiKey, filter = {}, startDate, endDate } = data
 
-  if (!userId || !apiKey) {
-    throw new Error('userId和apiKey都是必需的')
+  // 优先使用 userEmail，如果没有则使用 userId（兼容性）
+  const queryField = userEmail || userId
+
+  if (!queryField || !apiKey) {
+    throw new Error('用户标识和apiKey都是必需的')
   }
 
   // 从memo_users集合查找用户
   const usersCollection = db.collection('memo_users')
-  const userResult = await usersCollection.doc(userId).get()
+  let userResult
+
+  if (userEmail) {
+    // 使用邮箱查询
+    const queryResult = await usersCollection.where({
+      email: userEmail
+    }).get()
+
+    if (!queryResult.data || queryResult.data.length === 0) {
+      throw new Error(`用户不存在: ${userEmail}`)
+    }
+
+    userResult = { data: queryResult.data[0] }
+  } else {
+    // 使用userId查询（兼容旧版本）
+    userResult = await usersCollection.doc(userId).get()
+  }
 
   if (!userResult.data || !userResult.data.notionConfig) {
     throw new Error('用户尚未配置Notion')

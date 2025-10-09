@@ -287,18 +287,18 @@ class ApiService {
   // ========== 主记录表（Main Records）API ==========
 
   // 创建主记录
-  async createMainRecord(userId, apiKey, recordData) {
-    return await this.callCloudFunction('createMainRecord', { userId, apiKey, recordData })
+  async createMainRecord(userId, apiKey, recordData, userEmail = null) {
+    return await this.callCloudFunction('createMainRecord', { userId, userEmail, apiKey, recordData })
   }
 
   // 更新主记录
-  async updateMainRecord(userId, apiKey, recordId, updates) {
-    return await this.callCloudFunction('updateMainRecord', { userId, apiKey, recordId, updates })
+  async updateMainRecord(userId, apiKey, recordId, updates, userEmail = null) {
+    return await this.callCloudFunction('updateMainRecord', { userId, userEmail, apiKey, recordId, updates })
   }
 
   // 获取主记录列表
-  async getMainRecords(userId, apiKey, options = {}) {
-    return await this.callCloudFunction('getMainRecords', { userId, apiKey, ...options })
+  async getMainRecords(userId, apiKey, options = {}, userEmail = null) {
+    return await this.callCloudFunction('getMainRecords', { userId, userEmail, apiKey, ...options })
   }
 
   // 删除主记录
@@ -309,18 +309,18 @@ class ApiService {
   // ========== 活动明细表（Activity Details）API ==========
 
   // 创建活动明细
-  async createActivity(userId, apiKey, activityData) {
-    return await this.callCloudFunction('createActivity', { userId, apiKey, activityData })
+  async createActivity(userId, apiKey, activityData, userEmail = null) {
+    return await this.callCloudFunction('createActivity', { userId, userEmail, apiKey, activityData })
   }
 
   // 更新活动明细
-  async updateActivity(userId, apiKey, activityId, updates) {
-    return await this.callCloudFunction('updateActivity', { userId, apiKey, activityId, updates })
+  async updateActivity(userId, apiKey, activityId, updates, userEmail = null) {
+    return await this.callCloudFunction('updateActivity', { userId, userEmail, apiKey, activityId, updates })
   }
 
   // 获取活动明细列表
-  async getActivities(userId, apiKey, options = {}) {
-    return await this.callCloudFunction('getActivities', { userId, apiKey, ...options })
+  async getActivities(userId, apiKey, options = {}, userEmail = null) {
+    return await this.callCloudFunction('getActivities', { userId, userEmail, apiKey, ...options })
   }
 
   // 删除活动明细
