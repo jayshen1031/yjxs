@@ -168,6 +168,57 @@ class CloudTest {
     })
   }
 
+  // 网络诊断
+  async diagnoseNetwork(apiKey = null) {
+    try {
+      console.log('开始网络诊断...')
+
+      const result = await wx.cloud.callFunction({
+        name: 'memo-notion-sync',
+        config: {
+          env: 'yjxs-3gbxme0rd1c50635'
+        },
+        data: {
+          action: 'diagnoseNetwork',
+          data: {
+            apiKey: apiKey
+          }
+        }
+      })
+
+      console.log('=== 网络诊断报告 ===')
+      console.log('完整结果:', result)
+
+      if (result.result && result.result.diagnostics) {
+        const diag = result.result.diagnostics
+        console.log('\n时间:', diag.timestamp)
+        console.log('\n测试结果:')
+        diag.tests.forEach((test, index) => {
+          console.log(`\n${index + 1}. ${test.name}`)
+          console.log('  状态:', test.status)
+          if (test.message) console.log('  消息:', test.message)
+          if (test.result) console.log('  结果:', test.result)
+          if (test.error) console.log('  错误:', test.error)
+          if (test.code) console.log('  错误代码:', test.code)
+          if (test.config) console.log('  配置:', JSON.stringify(test.config, null, 2))
+        })
+
+        return {
+          success: true,
+          diagnostics: diag
+        }
+      }
+
+      return result
+    } catch (error) {
+      console.error('网络诊断失败:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
   // 获取云开发环境信息
   getEnvironmentInfo() {
     const app = getApp()
