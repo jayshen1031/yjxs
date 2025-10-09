@@ -352,10 +352,12 @@ Page({
           todosDatabaseId: result.todosDatabaseId,
           mainDatabaseId: result.mainDatabaseId,
           activityDatabaseId: result.activityDatabaseId,
-          databaseId: result.mainDatabaseId  // 兼容旧版
+          databaseId: result.mainDatabaseId,  // 兼容旧版
+          mainRecordsDatabaseId: result.mainDatabaseId,
+          activitiesDatabaseId: result.activityDatabaseId
         }
 
-        // 保存配置到用户数据
+        // 保存配置到本地
         userManager.configureNotion(this.data.currentUser.id, notionConfig)
 
         // 更新初始化状态
@@ -365,6 +367,24 @@ Page({
           error: null
         }
         userManager.updateNotionInitStatus(this.data.currentUser.id, initStatus)
+
+        // 同步配置到云端用户数据库
+        try {
+          const apiService = require('../../utils/apiService.js')
+          const updateResult = await apiService.updateUserByEmail(
+            this.data.currentUser.email,
+            { notionConfig: notionConfig }
+          )
+
+          if (updateResult.success) {
+            console.log('Notion配置已同步到云端')
+          } else {
+            console.warn('同步到云端失败，但本地配置已保存:', updateResult.error)
+          }
+        } catch (syncError) {
+          console.error('同步配置到云端失败:', syncError)
+          // 即使云端同步失败，本地配置也已保存，继续执行
+        }
 
         // 刷新页面数据
         await this.loadUserData()
@@ -429,6 +449,24 @@ Page({
           }
           userManager.updateNotionInitStatus(this.data.currentUser.id, initStatus)
           console.log('数据库初始化状态已保存:', initStatus)
+        }
+
+        // 同步配置到云端用户数据库
+        try {
+          const apiService = require('../../utils/apiService.js')
+          const updateResult = await apiService.updateUserByEmail(
+            this.data.currentUser.email,
+            { notionConfig: this.data.notionConfig }
+          )
+
+          if (updateResult.success) {
+            console.log('Notion配置已同步到云端')
+          } else {
+            console.warn('同步到云端失败，但本地配置已保存:', updateResult.error)
+          }
+        } catch (syncError) {
+          console.error('同步配置到云端失败:', syncError)
+          // 即使云端同步失败，本地配置也已保存，继续执行
         }
 
         this.loadSyncStatus()
