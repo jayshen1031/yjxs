@@ -1582,12 +1582,28 @@ async function createMainRecord(data) {
     throw new Error('userId, apiKey和recordData都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
-  if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
-    throw new Error('用户尚未配置Notion四数据库')
+  // 从users集合查找用户
+  const usersCollection = db.collection('users')
+  const userResult = await usersCollection.doc(userId).get()
+
+  if (!userResult.data || !userResult.data.notionConfig) {
+    throw new Error('用户尚未配置Notion')
   }
 
-  const mainRecordsDbId = user.data.notionConfig.databases.mainRecords
+  const notionConfig = userResult.data.notionConfig
+
+  // 兼容性处理：支持旧的databaseId和新的四数据库配置
+  let mainRecordsDbId
+  if (notionConfig.mainDatabaseId || notionConfig.mainRecordsDatabaseId) {
+    mainRecordsDbId = notionConfig.mainDatabaseId || notionConfig.mainRecordsDatabaseId
+  } else if (notionConfig.databases && notionConfig.databases.mainRecords) {
+    mainRecordsDbId = notionConfig.databases.mainRecords
+  } else if (notionConfig.databaseId) {
+    // 兼容旧版本配置，使用主数据库ID
+    mainRecordsDbId = notionConfig.databaseId
+  } else {
+    throw new Error('用户尚未配置主记录表数据库ID')
+  }
 
   try {
     const properties = {
@@ -1709,12 +1725,27 @@ async function getMainRecords(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
-  if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
-    throw new Error('用户尚未配置Notion四数据库')
+  // 从users集合查找用户
+  const usersCollection = db.collection('users')
+  const userResult = await usersCollection.doc(userId).get()
+
+  if (!userResult.data || !userResult.data.notionConfig) {
+    throw new Error('用户尚未配置Notion')
   }
 
-  const mainRecordsDbId = user.data.notionConfig.databases.mainRecords
+  const notionConfig = userResult.data.notionConfig
+
+  // 兼容性处理
+  let mainRecordsDbId
+  if (notionConfig.mainDatabaseId || notionConfig.mainRecordsDatabaseId) {
+    mainRecordsDbId = notionConfig.mainDatabaseId || notionConfig.mainRecordsDatabaseId
+  } else if (notionConfig.databases && notionConfig.databases.mainRecords) {
+    mainRecordsDbId = notionConfig.databases.mainRecords
+  } else if (notionConfig.databaseId) {
+    mainRecordsDbId = notionConfig.databaseId
+  } else {
+    throw new Error('用户尚未配置主记录表数据库ID')
+  }
 
   try {
     const queryData = {
@@ -1820,12 +1851,25 @@ async function createActivity(data) {
     throw new Error('userId, apiKey和activityData都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
-  if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
-    throw new Error('用户尚未配置Notion四数据库')
+  // 从users集合查找用户
+  const usersCollection = db.collection('users')
+  const userResult = await usersCollection.doc(userId).get()
+
+  if (!userResult.data || !userResult.data.notionConfig) {
+    throw new Error('用户尚未配置Notion')
   }
 
-  const activityDbId = user.data.notionConfig.databases.activityDetails
+  const notionConfig = userResult.data.notionConfig
+
+  // 兼容性处理
+  let activityDbId
+  if (notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId) {
+    activityDbId = notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
+  } else if (notionConfig.databases && notionConfig.databases.activityDetails) {
+    activityDbId = notionConfig.databases.activityDetails
+  } else {
+    throw new Error('用户尚未配置活动明细表数据库ID')
+  }
 
   try {
     const properties = {
@@ -1970,12 +2014,25 @@ async function getActivities(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
-  if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
-    throw new Error('用户尚未配置Notion四数据库')
+  // 从users集合查找用户
+  const usersCollection = db.collection('users')
+  const userResult = await usersCollection.doc(userId).get()
+
+  if (!userResult.data || !userResult.data.notionConfig) {
+    throw new Error('用户尚未配置Notion')
   }
 
-  const activityDbId = user.data.notionConfig.databases.activityDetails
+  const notionConfig = userResult.data.notionConfig
+
+  // 兼容性处理
+  let activityDbId
+  if (notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId) {
+    activityDbId = notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
+  } else if (notionConfig.databases && notionConfig.databases.activityDetails) {
+    activityDbId = notionConfig.databases.activityDetails
+  } else {
+    throw new Error('用户尚未配置活动明细表数据库ID')
+  }
 
   try {
     const queryData = {
@@ -2378,12 +2435,25 @@ async function getTimeInvestmentByGoal(data) {
     throw new Error('userId和apiKey都是必需的')
   }
 
-  const user = await db.collection('memo_users').doc(userId).get()
-  if (!user.data || !user.data.notionConfig || !user.data.notionConfig.databases) {
-    throw new Error('用户尚未配置Notion四数据库')
+  // 从users集合查找用户
+  const usersCollection = db.collection('users')
+  const userResult = await usersCollection.doc(userId).get()
+
+  if (!userResult.data || !userResult.data.notionConfig) {
+    throw new Error('用户尚未配置Notion')
   }
 
-  const activityDbId = user.data.notionConfig.databases.activityDetails
+  const notionConfig = userResult.data.notionConfig
+
+  // 兼容性处理
+  let activityDbId
+  if (notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId) {
+    activityDbId = notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
+  } else if (notionConfig.databases && notionConfig.databases.activityDetails) {
+    activityDbId = notionConfig.databases.activityDetails
+  } else {
+    throw new Error('用户尚未配置活动明细表数据库ID')
+  }
 
   try {
     const queryData = {
