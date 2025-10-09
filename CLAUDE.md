@@ -381,5 +381,150 @@ Goals (目标库) ─┬─ 一对多 ──> Todos (待办库)
 5. **标准化流程**: 每个新用户注册时自动执行
 
 ---
+
+### 2025-10-09: 用户标签系统与Notion API调用优化 ⭐
+
+**核心成果**: 实现用户标签管理系统，修复Notion同步问题
+
+#### 1. 用户标签管理系统 ✅
+
+**实现内容**：
+- 文件：`utils/tagManager.js` - 标签管理工具类
+- 存储方式：按用户邮箱组织标签（本地 + 云端双存储）
+- 默认标签：['工作', '生活', '学习', '心情', '想法', '计划', '总结', '感悟']
+- 自定义标签：用户可添加/删除自定义标签
+
+**核心功能**：
+```javascript
+// 获取用户标签（默认 + 自定义，去重）
+tagManager.getUserTags(userEmail)
+
+// 添加标签（本地 + 云端同步）
+tagManager.addTag(userEmail, tag)
+
+// 从云端加载标签
+tagManager.loadFromCloud(userEmail)
+
+// 同步标签到云端
+tagManager.syncToCloud(userEmail, tags)
+```
+
+**云函数集成**：
+- 新增 `getUserTags` action - 根据邮箱获取用户标签
+- 新增 `syncUserTags` action - 同步标签到云端数据库
+- 数据库集合：`memo_users`
+
+**前端集成**：
+- `pages/memo/memo.js` - 在记录时间投入时使用标签
+- 标签选择提供视觉反馈（Toast提示）
+- 页面加载时自动从云端同步标签
+
+#### 2. 用户查询方式优化 ✅
+
+**问题根源**：
+- 之前使用 `userId` (格式：`user_xxx`) 通过 `doc(userId)` 查询
+- `userId` 格式与数据库 `_id` 字段不匹配
+- 导致错误："document with _id xxx does not exist"
+
+**解决方案**：
+- 改用 `email` 字段查询：`where({ email: userEmail })`
+- 保持向后兼容：如果没有 email 参数，仍使用 userId
+
+**修改文件**：
+- `utils/apiService.js` - 所有方法添加 `userEmail` 参数
+- `pages/memo/memo.js` - 所有API调用传递 `currentUser.email`
+- `cloudfunctions/memo-notion-sync/index.js` - 四个核心函数改用email查询
+  - createMainRecord
+  - createActivity
+  - getMainRecords
+  - getActivities
+
+#### 3. Notion API调用架构重构 ⭐⭐⭐
+
+**问题发现**：
+- ✅ 前端可以直接访问 Notion API（创建数据库成功）
+- ❌ 云函数无法访问 Notion API（保存记录失败 ECONNREFUSED 208.103.161.1:443）
+- 原因：微信云函数访问外网有限制
+
+**解决方案**：
+**改用前端直接调用 Notion API**，绕过云函数网络限制
+
+**技术架构变更**：
+```
+旧架构：
+前端 → 云函数 → Notion API ❌ (云函数无法访问外网)
+
+新架构：
+前端 → Notion API ✅ (前端可以直接访问)
+```
+
+**修改内容**：
+- `pages/memo/memo.js`:
+  - 引入 `notionApiService`
+  - `saveToNotion()`: 改用 `notionApiService.createPageGeneric()` 创建主记录
+  - `createActivityDetails()`: 改用前端直接调用创建活动记录
+  - 移除云函数调用（apiService.createMainRecord/createActivity）
+  - 在properties中直接添加关联关系（Related Goal, Related Main Record）
+
+**优势**：
+- ✅ 绕过云函数网络限制，成功保存到Notion
+- ✅ 减少云函数调用，降低成本
+- ✅ 响应更快（无中间层）
+- ✅ 与创建数据库的调用方式保持一致
+
+#### 4. 网络诊断工具 ✅
+
+**实现内容**：
+- 云函数：`diagnoseNetwork` action
+- 前端工具：`utils/cloudTest.js` - `diagnoseNetwork()` 方法
+
+**诊断功能**：
+1. DNS解析测试 - 检查是否能解析 `api.notion.com`
+2. HTTP连接测试 - 检查是否能连接到Notion API
+3. Axios配置显示 - 查看当前网络配置
+
+**使用方法**：
+```javascript
+const cloudTest = require('./utils/cloudTest.js')
+await cloudTest.diagnoseNetwork(apiKey)
+```
+
+#### 5. 数据库集合名称修复 ✅
+
+**问题**：
+- 错误集合名：`users` → 正确集合名：`memo_users`
+- 导致错误："database collection not exists"
+
+**解决**：
+- 使用 sed 批量替换所有 `db.collection('users')` 为 `db.collection('memo_users')`
+- 更新所有云函数中的集合引用
+
+#### 技术亮点
+
+1. **标签系统架构**：本地存储 + 云端同步 + 默认标签合并
+2. **邮箱作为唯一标识**：更符合业务逻辑，避免ID匹配问题
+3. **前端直接调用API**：绕过云函数限制，提升稳定性和性能
+4. **完整的诊断工具**：便于排查网络和配置问题
+5. **向后兼容设计**：支持 userId 和 email 双查询方式
+
+#### 代码提交记录
+
+- `4d8abf0` feat: 实现用户标签管理系统
+- `1e2b459` fix: 修复云函数数据库集合名称错误
+- `3a2a5b4` fix: 修正云函数集合名称为memo_users
+- `065b1dc` fix: 改用email查询用户而非userId
+- `258d377` debug: 添加详细的Notion API错误日志
+- `e4a2632` fix: 添加网络诊断功能解决Notion API连接问题
+- `17c14cc` feat: 添加网络诊断工具到cloudTest.js
+- `553d517` fix: 改用前端直接调用Notion API绕过云函数网络限制
+
+#### 下一步计划
+
+- [ ] 实现记录编辑功能（目前新建可用）
+- [ ] 优化标签管理界面
+- [ ] 添加标签使用统计
+- [ ] 实现批量标签操作
+
+---
 *开发完成日期：2025年1月*
-*最新更新：2025-01-09 (Notion四数据库架构)*
+*最新更新：2025-10-09 (用户标签系统与Notion API调用优化)*
