@@ -2,6 +2,7 @@ const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const MarkdownHelper = require('../../utils/markdownHelper.js')
 const apiService = require('../../utils/apiService.js')
+const tagManager = require('../../utils/tagManager.js')
 
 Page({
   data: {
@@ -44,7 +45,7 @@ Page({
     canSave: false,
     isSaving: false, // 防止重复提交
     editFromPage: 'timeline', // 编辑模式来源页面
-    availableTags: ['工作', '生活', '学习', '心情', '想法', '计划', '总结', '感悟'],
+    availableTags: [], // 将从tagManager加载用户标签
     // 时间选择相关
     selectedDateType: 'today', // 'today' | 'yesterday' | 'custom'
     startTimeIndex: 0, // 开始时间选项索引
@@ -107,6 +108,9 @@ Page({
       return
     }
 
+    // 加载用户标签
+    this.loadUserTags()
+
     // 检查是否为编辑模式
     if (options.editId) {
       this.initEditMode(options.editId)
@@ -117,7 +121,7 @@ Page({
           inputType: options.type
         })
       }
-      
+
       if (options.mode) {
         this.setData({
           recordMode: options.mode
@@ -130,10 +134,10 @@ Page({
 
     // 初始化录音管理器
     this.initRecorderManager()
-    
+
     // 初始化音频播放器
     this.initAudioContext()
-    
+
     // 初始化时间段设置
     this.initTimeSettings()
 
@@ -143,36 +147,39 @@ Page({
 
   onShow: function() {
     console.log('memo page onShow called')
-    
+
     // 检查登录状态
     if (!this.checkLoginStatus()) {
       return
     }
-    
+
+    // 重新加载用户标签（可能在其他页面有更新）
+    this.loadUserTags()
+
     // 检查是否有通过全局数据传递的编辑参数（用于tabBar页面编辑）
     console.log('checking globalData.editMemo:', app.globalData.editMemo)
     if (app.globalData.editMemo) {
       const { editId, type, fromPage } = app.globalData.editMemo
       console.log('onShow: found edit params in globalData:', editId, type, 'from:', fromPage)
-      
+
       // 记住来源页面用于取消编辑时返回
       this.setData({
         editFromPage: fromPage || 'timeline'
       })
-      
+
       // 清除全局数据，避免重复触发
       app.globalData.editMemo = null
-      
+
       // 初始化编辑模式
       console.log('calling initEditMode with editId:', editId)
       this.initEditMode(editId)
     } else {
       console.log('no edit params found in globalData')
     }
-    
+
     // 重新加载目标数据，以防其他页面有更新
     this.loadAvailableGoals()
-    
+
     // 更新保存按钮状态
     this.updateCanSave()
   },
@@ -187,6 +194,49 @@ Page({
       return false
     }
     return true
+  },
+
+  // 加载用户标签
+  loadUserTags: function() {
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser || !currentUser.email) {
+      console.warn('用户未登录或邮箱不存在，使用默认标签')
+      this.setData({
+        availableTags: tagManager.getUserTags(null)
+      })
+      return
+    }
+
+    try {
+      // 从tagManager加载用户标签
+      const userTags = tagManager.getUserTags(currentUser.email)
+      console.log(`加载用户 [${currentUser.email}] 标签:`, userTags)
+
+      this.setData({
+        availableTags: userTags
+      })
+
+      // 异步从云端加载最新标签
+      tagManager.loadFromCloud(currentUser.email).then(cloudTags => {
+        if (cloudTags && cloudTags.length > 0) {
+          // 合并默认标签和云端标签
+          const allTags = tagManager.getUserTags(currentUser.email)
+          this.setData({
+            availableTags: allTags
+          })
+          console.log('云端标签已同步:', allTags)
+        }
+      }).catch(err => {
+        console.error('从云端加载标签失败:', err)
+        // 不影响使用，已经加载了本地标签
+      })
+    } catch (error) {
+      console.error('加载用户标签失败:', error)
+      // 使用默认标签
+      this.setData({
+        availableTags: tagManager.getUserTags(null)
+      })
+    }
   },
 
 
@@ -821,15 +871,25 @@ Page({
 
     const index = currentTags.indexOf(tag)
     let newTags = [...currentTags]
+    let action = ''
 
     if (index > -1) {
       newTags.splice(index, 1)
+      action = '移除'
     } else {
       newTags.push(tag)
+      action = '添加'
     }
 
     this.setData({
       [tagsKey]: newTags
+    })
+
+    // 提供视觉反馈
+    wx.showToast({
+      title: `${action}标签: ${tag}`,
+      icon: 'success',
+      duration: 800
     })
   },
 
@@ -866,8 +926,30 @@ Page({
       return
     }
 
-    // 添加到可用标签列表
-    const newAvailableTags = [...this.data.availableTags, customTag]
+    // 获取当前用户
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser || !currentUser.email) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'error'
+      })
+      return
+    }
+
+    // 使用tagManager添加标签（会自动持久化）
+    const success = tagManager.addTag(currentUser.email, customTag)
+
+    if (!success) {
+      wx.showToast({
+        title: '标签添加失败',
+        icon: 'error',
+        duration: 1500
+      })
+      return
+    }
+
+    // 重新加载标签列表
+    const newAvailableTags = tagManager.getUserTags(currentUser.email)
     console.log('新标签列表:', newAvailableTags)
 
     // 同时选中这个新标签
@@ -892,7 +974,7 @@ Page({
       currentCustomTag: ''
     })
 
-    console.log('标签添加成功')
+    console.log('标签添加成功并已持久化')
     wx.showToast({
       title: '标签已添加',
       icon: 'success',

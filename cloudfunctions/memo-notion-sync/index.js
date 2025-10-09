@@ -123,7 +123,13 @@ exports.main = async (event, context) => {
         return await updateUserByEmail(data)
       case 'deleteUser':
         return await deleteUser(data)
-        
+
+      // 标签管理功能
+      case 'getUserTags':
+        return await getUserTags(data)
+      case 'syncUserTags':
+        return await syncUserTags(data)
+
       default:
         throw new Error(`未知操作: ${action}`)
     }
@@ -2432,5 +2438,97 @@ async function getTimeInvestmentByGoal(data) {
     }
   } catch (error) {
     throw new Error(`获取时间投入统计失败: ${error.message}`)
+  }
+}
+
+// ============ 标签管理功能 ============
+
+/**
+ * 获取用户标签
+ * @param {Object} data - { email: 用户邮箱 }
+ * @returns {Object} { success: true, tags: [...] }
+ */
+async function getUserTags(data) {
+  const { email } = data
+
+  if (!email) {
+    throw new Error('用户邮箱不能为空')
+  }
+
+  try {
+    // 从users集合获取用户的标签数据
+    const usersCollection = db.collection('users')
+    const userResult = await usersCollection.where({
+      email: email
+    }).get()
+
+    if (userResult.data.length === 0) {
+      // 用户不存在，返回空数组
+      return {
+        success: true,
+        tags: []
+      }
+    }
+
+    const user = userResult.data[0]
+    const tags = user.tags || []
+
+    console.log(`获取用户标签成功 [${email}]:`, tags)
+
+    return {
+      success: true,
+      tags: tags
+    }
+  } catch (error) {
+    console.error('获取用户标签失败:', error)
+    throw new Error(`获取用户标签失败: ${error.message}`)
+  }
+}
+
+/**
+ * 同步用户标签到云端
+ * @param {Object} data - { email: 用户邮箱, tags: 标签数组 }
+ * @returns {Object} { success: true }
+ */
+async function syncUserTags(data) {
+  const { email, tags } = data
+
+  if (!email) {
+    throw new Error('用户邮箱不能为空')
+  }
+
+  if (!Array.isArray(tags)) {
+    throw new Error('标签数据格式错误')
+  }
+
+  try {
+    // 更新users集合中用户的标签数据
+    const usersCollection = db.collection('users')
+    const userResult = await usersCollection.where({
+      email: email
+    }).get()
+
+    if (userResult.data.length === 0) {
+      throw new Error(`用户不存在: ${email}`)
+    }
+
+    const userId = userResult.data[0]._id
+
+    await usersCollection.doc(userId).update({
+      data: {
+        tags: tags,
+        lastModified: db.serverDate()
+      }
+    })
+
+    console.log(`同步用户标签成功 [${email}]:`, tags.length, '个标签')
+
+    return {
+      success: true,
+      message: '标签同步成功'
+    }
+  } catch (error) {
+    console.error('同步用户标签失败:', error)
+    throw new Error(`同步用户标签失败: ${error.message}`)
   }
 }
