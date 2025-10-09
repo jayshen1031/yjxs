@@ -312,6 +312,97 @@ Page({
     console.log('保存Parent Page ID结果:', saveResult)
   },
 
+  // 目标库ID输入
+  onGoalsDatabaseIdInput: function(e) {
+    const goalsDatabaseId = e.detail.value
+    const notionConfig = { ...this.data.notionConfig, goalsDatabaseId }
+    this.setData({ notionConfig })
+  },
+
+  // 待办库ID输入
+  onTodosDatabaseIdInput: function(e) {
+    const todosDatabaseId = e.detail.value
+    const notionConfig = { ...this.data.notionConfig, todosDatabaseId }
+    this.setData({ notionConfig })
+  },
+
+  // 主记录表ID输入
+  onMainDatabaseIdInput: function(e) {
+    const mainDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      mainDatabaseId,
+      mainRecordsDatabaseId: mainDatabaseId, // 兼容字段
+      databaseId: mainDatabaseId // 兼容旧版
+    }
+    this.setData({ notionConfig })
+  },
+
+  // 活动明细表ID输入
+  onActivityDatabaseIdInput: function(e) {
+    const activityDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      activityDatabaseId,
+      activitiesDatabaseId: activityDatabaseId // 兼容字段
+    }
+    this.setData({ notionConfig })
+  },
+
+  // 保存手动配置
+  saveManualConfig: async function() {
+    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId } = this.data.notionConfig
+
+    if (!apiKey) {
+      toast.error('请输入API Key')
+      return
+    }
+
+    if (!goalsDatabaseId || !todosDatabaseId || !mainDatabaseId || !activityDatabaseId) {
+      toast.error('请输入所有四个数据库的ID')
+      return
+    }
+
+    try {
+      // 保存配置到本地
+      const notionConfig = {
+        ...this.data.notionConfig,
+        enabled: true,
+        mainRecordsDatabaseId: mainDatabaseId,
+        activitiesDatabaseId: activityDatabaseId,
+        databaseId: mainDatabaseId
+      }
+
+      userManager.configureNotion(this.data.currentUser.id, notionConfig)
+
+      // 同步配置到云端
+      const apiService = require('../../utils/apiService.js')
+      const updateResult = await apiService.updateUserByEmail(
+        this.data.currentUser.email,
+        { notionConfig: notionConfig }
+      )
+
+      if (updateResult.success) {
+        console.log('手动配置已同步到云端')
+      } else {
+        console.warn('同步到云端失败，但本地配置已保存:', updateResult.error)
+      }
+
+      // 刷新页面数据
+      await this.loadUserData()
+      this.loadSyncStatus()
+
+      wx.showToast({
+        title: '配置保存成功',
+        icon: 'success'
+      })
+
+    } catch (error) {
+      console.error('保存手动配置失败:', error)
+      toast.error('保存失败: ' + error.message)
+    }
+  },
+
   // 切换配置模式
   onConfigModeChange: function(e) {
     const configMode = e.detail.value

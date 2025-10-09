@@ -132,25 +132,51 @@
             bindinput="onNotionApiKeyInput"
           />
         </view>
+
+        <view class="section-title">📊 四数据库配置</view>
+
         <view class="input-group">
-          <view class="input-label">主记录数据库ID</view>
+          <view class="input-label">🎯 目标库ID (Goals)</view>
           <input
             class="notion-input"
-            placeholder="请输入主记录数据库ID"
+            placeholder="请输入目标库数据库ID"
+            value="{{ notionConfig.goalsDatabaseId }}"
+            bindinput="onGoalsDatabaseIdInput"
+          />
+        </view>
+
+        <view class="input-group">
+          <view class="input-label">📝 待办库ID (Todos)</view>
+          <input
+            class="notion-input"
+            placeholder="请输入待办库数据库ID"
+            value="{{ notionConfig.todosDatabaseId }}"
+            bindinput="onTodosDatabaseIdInput"
+          />
+        </view>
+
+        <view class="input-group">
+          <view class="input-label">📋 主记录表ID (Main Records)</view>
+          <input
+            class="notion-input"
+            placeholder="请输入主记录表数据库ID"
             value="{{ notionConfig.mainDatabaseId }}"
-            bindinput="onNotionDatabaseIdInput"
+            bindinput="onMainDatabaseIdInput"
           />
         </view>
+
         <view class="input-group">
-          <view class="input-label">活动明细数据库ID（可选）</view>
+          <view class="input-label">📊 活动明细表ID (Activities)</view>
           <input
             class="notion-input"
-            placeholder="请输入活动明细数据库ID"
+            placeholder="请输入活动明细表数据库ID"
             value="{{ notionConfig.activityDatabaseId }}"
+            bindinput="onActivityDatabaseIdInput"
           />
         </view>
-        <button class="btn btn-primary" bindtap="testNotionConnection">
-          <text>✓ 验证连接</text>
+
+        <button class="btn btn-primary" bindtap="saveManualConfig">
+          <text>💾 保存配置</text>
         </button>
       </view>
 
