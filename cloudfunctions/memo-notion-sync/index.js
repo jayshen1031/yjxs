@@ -1625,6 +1625,9 @@ async function createMainRecord(data) {
   }
 
   try {
+    // 使用 email 或 userId，优先使用 email
+    const userIdentifier = userEmail || userId
+
     const properties = {
       'Title': {
         title: [{ text: { content: recordData.title } }]
@@ -1642,9 +1645,12 @@ async function createMainRecord(data) {
         select: { name: recordData.timePeriod || '上午' }
       },
       'User ID': {
-        rich_text: [{ text: { content: userId } }]
+        rich_text: [{ text: { content: userIdentifier } }]
       }
     }
+
+    console.log('创建主记录 - 数据库ID:', mainRecordsDbId)
+    console.log('创建主记录 - properties:', JSON.stringify(properties, null, 2))
 
     // 添加关联的待办事项
     if (recordData.relatedTodoIds && recordData.relatedTodoIds.length > 0) {
@@ -1676,13 +1682,22 @@ async function createMainRecord(data) {
       }
     })
 
+    console.log('主记录创建成功，pageId:', response.data.id)
+
     return {
       success: true,
       recordId: response.data.id,
+      pageId: response.data.id,  // 添加 pageId 字段以兼容前端
       message: '主记录创建成功'
     }
   } catch (error) {
-    throw new Error(`创建主记录失败: ${error.message}`)
+    console.error('创建主记录失败 - 详细错误:', error)
+    console.error('错误状态码:', error.response?.status)
+    console.error('错误数据:', JSON.stringify(error.response?.data, null, 2))
+
+    // 提供更详细的错误信息
+    const errorDetail = error.response?.data?.message || error.message
+    throw new Error(`创建主记录失败: ${errorDetail}`)
   }
 }
 
