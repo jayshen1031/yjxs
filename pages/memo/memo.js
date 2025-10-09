@@ -3,6 +3,7 @@ const userManager = require('../../utils/userManager.js')
 const MarkdownHelper = require('../../utils/markdownHelper.js')
 const apiService = require('../../utils/apiService.js')
 const tagManager = require('../../utils/tagManager.js')
+const notionApiService = require('../../utils/notionApiService.js')
 
 Page({
   data: {
@@ -2012,41 +2013,73 @@ Page({
       let mainRecordResult
 
       if (this.data.isEditMode && this.data.originalMemo.notionPageId) {
-        // 编辑模式：更新现有Main Record
-        mainRecordResult = await apiService.updateMainRecord(
-          currentUser.id,
-          notionConfig.apiKey,
-          this.data.originalMemo.notionPageId,
-          recordData,
-          currentUser.email  // 添加email参数
-        )
+        // 编辑模式：更新现有Main Record (暂不支持，先创建新的)
+        console.warn('编辑模式暂时创建新记录而非更新')
+      }
 
-        if (!mainRecordResult.success) {
-          throw new Error(mainRecordResult.error || '更新Main Record失败')
-        }
-      } else {
-        // 新建模式：创建Main Record
-        mainRecordResult = await apiService.createMainRecord(
-          currentUser.id,
-          notionConfig.apiKey,
-          recordData,
-          currentUser.email  // 添加email参数
-        )
+      // 使用前端直接调用创建Main Record（绕过云函数网络限制）
+      const mainDatabaseId = notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
+      if (!mainDatabaseId) {
+        throw new Error('未配置主记录表数据库ID')
+      }
 
-        if (!mainRecordResult.success) {
-          throw new Error(mainRecordResult.error || '创建Main Record失败')
+      const properties = {
+        'Title': {
+          title: [{ text: { content: recordData.title } }]
+        },
+        'Content': {
+          rich_text: [{ text: { content: recordData.content || '' } }]
+        },
+        'Date': {
+          date: { start: recordData.date }
+        },
+        'Record Type': {
+          select: { name: recordData.recordType || '日常记录' }
+        },
+        'Time Period': {
+          select: { name: recordData.timePeriod || '上午' }
+        },
+        'User ID': {
+          rich_text: [{ text: { content: currentUser.email } }]
         }
       }
 
-      const mainRecordId = mainRecordResult.pageId
+      // 添加标签
+      if (recordData.tags && recordData.tags.length > 0) {
+        properties['Tags'] = {
+          multi_select: recordData.tags.map(tag => ({ name: tag }))
+        }
+      }
+
+      const pageData = {
+        parent: { database_id: mainDatabaseId },
+        properties: properties
+      }
+
+      console.log('创建Main Record - 数据库ID:', mainDatabaseId)
+      console.log('创建Main Record - properties:', properties)
+
+      mainRecordResult = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
+
+      if (!mainRecordResult.success) {
+        throw new Error(mainRecordResult.error || '创建Main Record失败')
+      }
+
+      const mainRecordId = mainRecordResult.pageId || mainRecordResult.data?.id
+
+      if (!mainRecordId) {
+        console.error('未获取到mainRecordId:', mainRecordResult)
+        throw new Error('创建主记录成功但未返回页面ID')
+      }
+
+      console.log('主记录创建成功，ID:', mainRecordId)
 
       // 创建Activity Details（时间投入记录）
       await this.createActivityDetails(
-        currentUser.id,
-        notionConfig.apiKey,
+        notionConfig,
         mainRecordId,
         timestamp,
-        currentUser.email  // 添加email参数
+        currentUser.email
       )
 
       // 保存成功，同步到本地存储
@@ -2115,41 +2148,77 @@ Page({
   },
 
   // 创建Activity Details
-  createActivityDetails: async function(userId, apiKey, mainRecordId, timestamp, userEmail = null) {
+  createActivityDetails: async function(notionConfig, mainRecordId, timestamp, userEmail) {
     const allEntries = [
       ...this.data.valuableTimeEntries.map(e => ({ ...e, type: '有价值' })),
       ...this.data.neutralTimeEntries.map(e => ({ ...e, type: '中性' })),
       ...this.data.wastefulTimeEntries.map(e => ({ ...e, type: '低效' }))
     ]
 
+    const activityDatabaseId = notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
+    if (!activityDatabaseId) {
+      console.warn('未配置活动明细表数据库ID，跳过活动记录')
+      return
+    }
+
     for (const entry of allEntries) {
       try {
-        const activityData = {
-          name: entry.activity,
-          description: `${entry.type}活动，投入${entry.minutes}分钟`,
-          startTime: timestamp.toISOString(),
-          endTime: new Date(timestamp.getTime() + entry.minutes * 60000).toISOString(),
-          duration: entry.minutes,
-          activityType: entry.type === '有价值' ? '学习' : (entry.type === '中性' ? '生活' : '休息'),
-          tags: entry.tags || [],
-          relatedMainRecordId: mainRecordId,
-          relatedGoalId: this.data.selectedGoalId || null
+        const properties = {
+          'Name': {
+            title: [{ text: { content: entry.activity } }]
+          },
+          'Description': {
+            rich_text: [{ text: { content: `${entry.type}活动，投入${entry.minutes}分钟` } }]
+          },
+          'Start Time': {
+            date: { start: timestamp.toISOString() }
+          },
+          'End Time': {
+            date: { start: new Date(timestamp.getTime() + entry.minutes * 60000).toISOString() }
+          },
+          'Duration': {
+            number: entry.minutes
+          },
+          'Activity Type': {
+            select: { name: entry.type === '有价值' ? '学习' : (entry.type === '中性' ? '生活' : '休息') }
+          },
+          'User ID': {
+            rich_text: [{ text: { content: userEmail } }]
+          }
         }
 
-        const result = await apiService.createActivity(userId, apiKey, activityData, userEmail)
+        // 添加标签
+        if (entry.tags && entry.tags.length > 0) {
+          properties['Tags'] = {
+            multi_select: entry.tags.map(tag => ({ name: tag }))
+          }
+        }
+
+        // 添加关联的主记录
+        if (mainRecordId) {
+          properties['Related Main Record'] = {
+            relation: [{ id: mainRecordId }]
+          }
+        }
+
+        // 添加关联的目标
+        if (this.data.selectedGoalId) {
+          properties['Related Goal'] = {
+            relation: [{ id: this.data.selectedGoalId }]
+          }
+        }
+
+        const pageData = {
+          parent: { database_id: activityDatabaseId },
+          properties: properties
+        }
+
+        const result = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
 
         if (!result.success) {
           console.error('创建Activity失败:', result.error)
-        }
-
-        // 如果关联了目标，创建Activity到Goal的关联
-        if (this.data.selectedGoalId && result.pageId) {
-          await apiService.linkActivityToGoal(
-            userId,
-            apiKey,
-            result.pageId,
-            this.data.selectedGoalId
-          )
+        } else {
+          console.log('Activity创建成功，ID:', result.pageId)
         }
 
       } catch (error) {
