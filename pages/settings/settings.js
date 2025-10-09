@@ -108,11 +108,23 @@ Page({
       }
     })
 
-    const notionConfig = currentUser && currentUser.notionConfig ? currentUser.notionConfig : {
+    // 确保notionConfig包含所有字段
+    const defaultConfig = {
       enabled: false,
       apiKey: '',
-      databaseId: ''
+      databaseId: '',
+      parentPageId: '',
+      goalsDatabaseId: '',
+      todosDatabaseId: '',
+      mainDatabaseId: '',
+      activityDatabaseId: '',
+      mainRecordsDatabaseId: '',
+      activitiesDatabaseId: ''
     }
+
+    const notionConfig = currentUser && currentUser.notionConfig
+      ? { ...defaultConfig, ...currentUser.notionConfig }
+      : defaultConfig
 
     console.log('最终设置的 notionConfig:', notionConfig)
 
