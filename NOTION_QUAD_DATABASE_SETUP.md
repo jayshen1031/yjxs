@@ -44,13 +44,13 @@
 
 ### 步骤2: 在小程序中配置
 
-1. 登录小程序账号：`jayshen1031@gmail.com`
+1. 登录小程序账号
 
 2. 进入"设置" → "Notion配置"
 
 3. 填写以下信息：
-   - **API Key**: `ntn_YOUR_NOTION_API_KEY_HERE`（从Notion获取你的API Key）
-   - **页面ID**: `YOUR_NOTION_PAGE_ID_HERE`（从Notion页面URL获取）
+   - **API Key**: 从Notion获取你的Integration Secret
+   - **页面ID**: 从Notion页面URL中复制（格式如：`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）
 
 4. 点击"测试连接"
 
