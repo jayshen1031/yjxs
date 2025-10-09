@@ -21,11 +21,15 @@ const NOTION_VERSION = '2022-06-28'
 // 创建axios实例
 const notionApi = axios.create({
   baseURL: NOTION_API_BASE,
-  timeout: 10000,
+  timeout: 20000,  // 增加超时时间到20秒
   headers: {
     'Notion-Version': NOTION_VERSION,
     'Content-Type': 'application/json'
-  }
+  },
+  // 添加代理配置（如果需要）
+  proxy: false,
+  // 强制使用IPv4
+  family: 4
 })
 
 // 云函数入口
@@ -34,6 +38,10 @@ exports.main = async (event, context) => {
   
   try {
     switch (action) {
+      // 网络诊断
+      case 'diagnoseNetwork':
+        return await diagnoseNetwork(data)
+
       // Notion相关功能
       case 'testConnection':
         return await testNotionConnection(data)
@@ -138,6 +146,82 @@ exports.main = async (event, context) => {
     return {
       success: false,
       error: error.message
+    }
+  }
+}
+
+// 网络诊断函数
+async function diagnoseNetwork(data) {
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    tests: []
+  }
+
+  try {
+    // 测试1: DNS解析
+    console.log('开始DNS解析测试...')
+    const dns = require('dns').promises
+    try {
+      const addresses = await dns.resolve4('api.notion.com')
+      diagnostics.tests.push({
+        name: 'DNS解析',
+        status: 'success',
+        result: addresses,
+        message: `成功解析到IP: ${addresses.join(', ')}`
+      })
+    } catch (dnsError) {
+      diagnostics.tests.push({
+        name: 'DNS解析',
+        status: 'failed',
+        error: dnsError.message
+      })
+    }
+
+    // 测试2: HTTP连接
+    console.log('开始HTTP连接测试...')
+    try {
+      const testResponse = await axios.get('https://api.notion.com/v1/users/me', {
+        headers: {
+          'Authorization': `Bearer ${data.apiKey || 'test'}`,
+          'Notion-Version': NOTION_VERSION
+        },
+        timeout: 10000
+      })
+      diagnostics.tests.push({
+        name: 'HTTP连接',
+        status: 'success',
+        message: '成功连接到Notion API'
+      })
+    } catch (httpError) {
+      diagnostics.tests.push({
+        name: 'HTTP连接',
+        status: 'failed',
+        error: httpError.message,
+        code: httpError.code,
+        response: httpError.response?.status
+      })
+    }
+
+    // 测试3: axios配置
+    diagnostics.tests.push({
+      name: 'Axios配置',
+      status: 'info',
+      config: {
+        baseURL: notionApi.defaults.baseURL,
+        timeout: notionApi.defaults.timeout,
+        proxy: notionApi.defaults.proxy
+      }
+    })
+
+    return {
+      success: true,
+      diagnostics
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      diagnostics
     }
   }
 }

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "openapi": [
+      "wxacode.get",
+      "wxacode.getUnlimited"
+    ]
+  },
+  "envVariables": {},
+  "installDependency": true,
+  "timeout": 20
+}
