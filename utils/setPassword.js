@@ -17,7 +17,7 @@ async function setUserPassword(email, password) {
     const result = await wx.cloud.callFunction({
       name: 'memo-notion-sync',
       config: {
-        env: 'cloud1-2g49srond2b01891'
+        env: 'yjxs-3gbxme0rd1c50635'
       },
       data: {
         action: 'setPasswordForUser',

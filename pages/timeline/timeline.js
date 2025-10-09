@@ -1,5 +1,6 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
+const apiService = require('../../utils/apiService.js')
 
 Page({
   data: {
@@ -78,14 +79,85 @@ Page({
   },
 
   // 加载备忘录列表（时间线模式：最近数据为主）
-  loadMemos: function() {
+  loadMemos: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.log('用户未登录，使用本地数据')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainRecordsDatabaseId) {
+        console.log('Notion未配置，使用本地数据')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      // 从云端加载Main Records
+      const result = await apiService.getMainRecords(
+        currentUser.id,
+        notionConfig.apiKey,
+        { limit: 30 } // 只加载最近30条
+      )
+
+      if (!result.success) {
+        console.error('加载Main Records失败:', result.error)
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const mainRecords = result.records || []
+
+      // 转换Main Records为memo格式
+      const processedMemos = mainRecords
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map(record => ({
+          id: record.id,
+          content: record.content,
+          timestamp: new Date(record.date).getTime(),
+          type: 'text', // Main Records都是文本类型
+          recordMode: record.recordType === '明日规划' ? 'planning' : 'normal',
+          tags: record.tags || [],
+          notionPageId: record.id,
+          timeDisplay: this.formatTimeDisplay(new Date(record.date)),
+          timePeriod: record.timePeriod || this.getTimePeriodFromDate(new Date(record.date)),
+          periodColor: this.getTimePeriodColorByName(record.timePeriod),
+          category: record.recordType || '日常记录',
+          categoryColor: this.getCategoryColorByType(record.recordType),
+          isPlaying: false
+        }))
+
+      this.setData({
+        memoList: processedMemos
+      })
+
+      // 同步到本地缓存
+      const localMemos = processedMemos.map(memo => ({
+        ...memo,
+        timestamp: memo.timestamp,
+        content: memo.content
+      }))
+      app.setMemoList(localMemos)
+
+      this.applyFilter()
+
+    } catch (error) {
+      console.error('加载Main Records异常:', error)
+      this.loadMemosFromLocal()
+    }
+  },
+
+  // 从本地加载备忘录
+  loadMemosFromLocal: function() {
     const allMemos = app.getMemoList()
-    
+
     // 时间线只显示最近30条记录，按时间倒序
     const recentMemos = allMemos
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 30)
-    
+
     const processedMemos = recentMemos.map(memo => ({
       ...memo,
       timeDisplay: this.formatTimeDisplay(new Date(memo.timestamp)),
@@ -101,6 +173,39 @@ Page({
     })
 
     this.applyFilter()
+  },
+
+  // 根据日期获取时间段
+  getTimePeriodFromDate: function(date) {
+    const hour = date.getHours()
+    if (hour >= 5 && hour < 8) return '早晨'
+    if (hour >= 8 && hour < 12) return '上午'
+    if (hour >= 12 && hour < 14) return '中午'
+    if (hour >= 14 && hour < 18) return '下午'
+    if (hour >= 18 && hour < 22) return '晚上'
+    return '深夜'
+  },
+
+  // 根据时间段名称获取颜色
+  getTimePeriodColorByName: function(periodName) {
+    const colorMap = {
+      '早晨': '#f59e0b',
+      '上午': '#10b981',
+      '中午': '#ef4444',
+      '下午': '#3b82f6',
+      '晚上': '#8b5cf6',
+      '深夜': '#6b7280'
+    }
+    return colorMap[periodName] || '#3b82f6'
+  },
+
+  // 根据记录类型获取分类颜色
+  getCategoryColorByType: function(recordType) {
+    const colorMap = {
+      '日常记录': '#3b82f6',
+      '明日规划': '#f59e0b'
+    }
+    return colorMap[recordType] || '#3b82f6'
   },
 
   // 格式化时间显示

@@ -12,7 +12,7 @@ class ApiService {
     // 使用云函数进行真正的数据库操作
     this.useDirectApi = false
     this.mockMode = false // 禁用模拟模式，使用真正的云函数
-    this.envId = 'cloud1-2g49srond2b01891' // 云环境ID
+    this.envId = 'yjxs-3gbxme0rd1c50635' // 云环境ID（语寄心声独立云环境）
     this.isInitialized = false
   }
 
@@ -50,7 +50,7 @@ class ApiService {
       wx.cloud.callFunction({
         name: 'memo-notion-sync',
         config: {
-          env: 'cloud1-2g49srond2b01891'  // 强制指定云环境
+          env: 'yjxs-3gbxme0rd1c50635'  // 强制指定云环境（语寄心声独立云环境）
         },
         data: {
           action,
@@ -282,6 +282,140 @@ class ApiService {
   // 为现有用户设置密码（临时功能）
   async setPasswordForUser(email, password) {
     return await this.callCloudFunction('setPasswordForUser', { email, password })
+  }
+
+  // ========== 主记录表（Main Records）API ==========
+
+  // 创建主记录
+  async createMainRecord(userId, apiKey, recordData) {
+    return await this.callCloudFunction('createMainRecord', { userId, apiKey, recordData })
+  }
+
+  // 更新主记录
+  async updateMainRecord(userId, apiKey, recordId, updates) {
+    return await this.callCloudFunction('updateMainRecord', { userId, apiKey, recordId, updates })
+  }
+
+  // 获取主记录列表
+  async getMainRecords(userId, apiKey, options = {}) {
+    return await this.callCloudFunction('getMainRecords', { userId, apiKey, ...options })
+  }
+
+  // 删除主记录
+  async deleteMainRecord(userId, apiKey, recordId) {
+    return await this.callCloudFunction('deleteMainRecord', { userId, apiKey, recordId })
+  }
+
+  // ========== 活动明细表（Activity Details）API ==========
+
+  // 创建活动明细
+  async createActivity(userId, apiKey, activityData) {
+    return await this.callCloudFunction('createActivity', { userId, apiKey, activityData })
+  }
+
+  // 更新活动明细
+  async updateActivity(userId, apiKey, activityId, updates) {
+    return await this.callCloudFunction('updateActivity', { userId, apiKey, activityId, updates })
+  }
+
+  // 获取活动明细列表
+  async getActivities(userId, apiKey, options = {}) {
+    return await this.callCloudFunction('getActivities', { userId, apiKey, ...options })
+  }
+
+  // 删除活动明细
+  async deleteActivity(userId, apiKey, activityId) {
+    return await this.callCloudFunction('deleteActivity', { userId, apiKey, activityId })
+  }
+
+  // ========== 目标管理API ==========
+
+  // 创建目标
+  async createGoal(userId, apiKey, goalData) {
+    return await this.callCloudFunction('createGoal', { userId, apiKey, goalData })
+  }
+
+  // 更新目标
+  async updateGoal(userId, apiKey, goalId, updates) {
+    return await this.callCloudFunction('updateGoal', { userId, apiKey, goalId, updates })
+  }
+
+  // 获取目标列表
+  async getGoals(userId, apiKey) {
+    return await this.callCloudFunction('getGoals', { userId, apiKey })
+  }
+
+  // 删除目标
+  async deleteGoal(userId, apiKey, goalId) {
+    return await this.callCloudFunction('deleteGoal', { userId, apiKey, goalId })
+  }
+
+  // ========== 待办管理API ==========
+
+  // 创建待办
+  async createTodo(userId, apiKey, todoData) {
+    return await this.callCloudFunction('createTodo', { userId, apiKey, todoData })
+  }
+
+  // 更新待办
+  async updateTodo(userId, apiKey, todoId, updates) {
+    return await this.callCloudFunction('updateTodo', { userId, apiKey, todoId, updates })
+  }
+
+  // 获取待办列表
+  async getTodos(userId, apiKey, filter = 'all') {
+    return await this.callCloudFunction('getTodos', { userId, apiKey, filter })
+  }
+
+  // 删除待办
+  async deleteTodo(userId, apiKey, todoId) {
+    return await this.callCloudFunction('deleteTodo', { userId, apiKey, todoId })
+  }
+
+  // ========== 关联关系管理API ==========
+
+  // 将待办关联到目标
+  async linkTodoToGoal(userId, apiKey, todoId, goalId) {
+    return await this.callCloudFunction('linkTodoToGoal', { userId, apiKey, todoId, goalId })
+  }
+
+  // 将活动关联到待办
+  async linkActivityToTodo(userId, apiKey, activityId, todoId) {
+    return await this.callCloudFunction('linkActivityToTodo', { userId, apiKey, activityId, todoId })
+  }
+
+  // 将活动关联到目标
+  async linkActivityToGoal(userId, apiKey, activityId, goalId) {
+    return await this.callCloudFunction('linkActivityToGoal', { userId, apiKey, activityId, goalId })
+  }
+
+  // 将活动关联到主记录
+  async linkActivityToMainRecord(userId, apiKey, activityId, mainRecordId) {
+    return await this.callCloudFunction('linkActivityToMainRecord', { userId, apiKey, activityId, mainRecordId })
+  }
+
+  // ========== 统计分析API ==========
+
+  // 获取目标统计
+  async getGoalStatistics(userId, apiKey) {
+    return await this.callCloudFunction('getGoalStatistics', { userId, apiKey })
+  }
+
+  // 获取待办统计
+  async getTodoStatistics(userId, apiKey) {
+    return await this.callCloudFunction('getTodoStatistics', { userId, apiKey })
+  }
+
+  // 按目标统计时间投入
+  async getTimeInvestmentByGoal(userId, apiKey, goalId = null) {
+    return await this.callCloudFunction('getTimeInvestmentByGoal', { userId, apiKey, goalId })
+  }
+
+  // ========== 四数据库架构创建API ==========
+
+  // 创建四数据库架构
+  async createQuadDatabases(userId, apiKey, parentPageId) {
+    return await this.callCloudFunction('createQuadDatabases', { userId, apiKey, parentPageId })
   }
 
   // 格式化错误信息

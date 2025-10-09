@@ -1,4 +1,6 @@
 const app = getApp()
+const userManager = require('../../utils/userManager.js')
+const apiService = require('../../utils/apiService.js')
 
 // CSS类名映射函数
 const statusClassMap = {
@@ -146,7 +148,70 @@ Page({
 
   // ========== 目标相关功能 ==========
 
-  loadGoals() {
+  async loadGoals() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.log('用户未登录，使用本地数据')
+        this.loadGoalsFromLocal()
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig || !notionConfig.apiKey || !notionConfig.goalsDatabaseId) {
+        console.log('Notion未配置，使用本地数据')
+        this.loadGoalsFromLocal()
+        return
+      }
+
+      // 从云端加载Goals
+      const result = await apiService.getGoals(currentUser.id, notionConfig.apiKey)
+
+      if (!result.success) {
+        console.error('加载Goals失败:', result.error)
+        this.loadGoalsFromLocal()
+        return
+      }
+
+      const goals = result.goals || []
+
+      const processedGoals = goals.map(goal => {
+        let targetDateText = ''
+        if (goal.targetDate) {
+          const date = new Date(goal.targetDate)
+          targetDateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        }
+
+        return {
+          ...goal,
+          targetDateText,
+          statusText: this.getGoalStatusText(goal.status),
+          priorityText: goal.priority || '中',
+          timeInvestmentDisplay: this.formatTime(goal.totalTimeInvestment || 0),
+          // CSS类名
+          status: statusClassMap[goal.status] || statusClassMap['未开始'],
+          priority: priorityClassMap[goal.priority] || priorityClassMap['中']
+        }
+      })
+
+      this.setData({
+        goals: processedGoals,
+        availableGoals: processedGoals
+      })
+
+      // 同步到本地缓存
+      app.setGoals(goals)
+
+      this.calculateGoalStats()
+      this.filterGoals()
+
+    } catch (error) {
+      console.error('加载Goals异常:', error)
+      this.loadGoalsFromLocal()
+    }
+  },
+
+  loadGoalsFromLocal() {
     const goals = app.getGoals ? app.getGoals() : []
 
     const processedGoals = goals.map(goal => {
@@ -317,25 +382,67 @@ Page({
     })
   },
 
-  confirmAddGoal() {
+  async confirmAddGoal() {
     if (!this.data.goalFormData.title.trim()) {
       wx.showToast({ title: '请输入目标名称', icon: 'none' })
       return
     }
 
     try {
-      if (this.data.editingGoal) {
-        app.updateGoal(this.data.editingGoal.id, this.data.goalFormData)
-        wx.showToast({ title: '目标更新成功', icon: 'success' })
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '用户未登录', icon: 'none' })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.goalsDatabaseId
+
+      if (useCloud) {
+        if (this.data.editingGoal) {
+          // 更新目标
+          const result = await apiService.updateGoal(
+            currentUser.id,
+            notionConfig.apiKey,
+            this.data.editingGoal.id,
+            this.data.goalFormData
+          )
+
+          if (!result.success) {
+            throw new Error(result.error || '更新失败')
+          }
+
+          wx.showToast({ title: '目标更新成功', icon: 'success' })
+        } else {
+          // 创建目标
+          const result = await apiService.createGoal(
+            currentUser.id,
+            notionConfig.apiKey,
+            this.data.goalFormData
+          )
+
+          if (!result.success) {
+            throw new Error(result.error || '创建失败')
+          }
+
+          wx.showToast({ title: '目标创建成功', icon: 'success' })
+        }
       } else {
-        app.createGoal(this.data.goalFormData)
-        wx.showToast({ title: '目标创建成功', icon: 'success' })
+        // 降级到本地存储
+        if (this.data.editingGoal) {
+          app.updateGoal(this.data.editingGoal.id, this.data.goalFormData)
+          wx.showToast({ title: '目标更新成功（本地）', icon: 'success' })
+        } else {
+          app.createGoal(this.data.goalFormData)
+          wx.showToast({ title: '目标创建成功（本地）', icon: 'success' })
+        }
       }
 
       this.closeGoalModal()
       this.loadGoals()
     } catch (error) {
-      wx.showToast({ title: '操作失败', icon: 'none' })
+      console.error('目标操作失败:', error)
+      wx.showToast({ title: '操作失败：' + error.message, icon: 'none' })
     }
   },
 
@@ -362,20 +469,54 @@ Page({
     })
   },
 
-  confirmUpdateProgress() {
+  async confirmUpdateProgress() {
     try {
-      app.updateGoalProgress(this.data.currentProgressGoalId, this.data.progressValue)
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '用户未登录', icon: 'none' })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.goalsDatabaseId
+
+      if (useCloud) {
+        const result = await apiService.updateGoal(
+          currentUser.id,
+          notionConfig.apiKey,
+          this.data.currentProgressGoalId,
+          { progress: this.data.progressValue }
+        )
+
+        if (!result.success) {
+          throw new Error(result.error || '更新失败')
+        }
+      } else {
+        app.updateGoalProgress(this.data.currentProgressGoalId, this.data.progressValue)
+      }
 
       if (this.data.progressValue >= 100) {
         wx.showModal({
           title: '恭喜',
           content: '进度已达到100%，是否将目标标记为已完成？',
-          success: (res) => {
+          success: async (res) => {
             if (res.confirm) {
-              app.updateGoal(this.data.currentProgressGoalId, {
-                status: '已完成',
-                completedTime: new Date().toISOString()
-              })
+              if (useCloud) {
+                await apiService.updateGoal(
+                  currentUser.id,
+                  notionConfig.apiKey,
+                  this.data.currentProgressGoalId,
+                  {
+                    status: '已完成',
+                    completedTime: new Date().toISOString()
+                  }
+                )
+              } else {
+                app.updateGoal(this.data.currentProgressGoalId, {
+                  status: '已完成',
+                  completedTime: new Date().toISOString()
+                })
+              }
             }
             this.loadGoals()
           }
@@ -387,7 +528,8 @@ Page({
       wx.showToast({ title: '进度更新成功', icon: 'success' })
       this.closeProgressModal()
     } catch (error) {
-      wx.showToast({ title: '更新失败', icon: 'none' })
+      console.error('进度更新失败:', error)
+      wx.showToast({ title: '更新失败：' + error.message, icon: 'none' })
     }
   },
 
@@ -410,7 +552,88 @@ Page({
 
   // ========== 待办相关功能 ==========
 
-  loadTodos() {
+  async loadTodos() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.log('用户未登录，使用本地数据')
+        this.loadTodosFromLocal()
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig || !notionConfig.apiKey || !notionConfig.todosDatabaseId) {
+        console.log('Notion未配置，使用本地数据')
+        this.loadTodosFromLocal()
+        return
+      }
+
+      // 从云端加载Todos
+      const result = await apiService.getTodos(currentUser.id, notionConfig.apiKey, 'all')
+
+      if (!result.success) {
+        console.error('加载Todos失败:', result.error)
+        this.loadTodosFromLocal()
+        return
+      }
+
+      const todos = result.todos || []
+
+      const processedTodos = todos.map(todo => {
+        let dueDateText = ''
+        let isOverdue = false
+        if (todo.dueDate) {
+          const dueDate = new Date(todo.dueDate)
+          const now = new Date()
+          const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24))
+
+          if (diffDays < 0) {
+            dueDateText = `已过期 ${Math.abs(diffDays)} 天`
+            isOverdue = true
+          } else if (diffDays === 0) {
+            dueDateText = '今天截止'
+          } else if (diffDays <= 7) {
+            dueDateText = `${diffDays} 天后截止`
+          } else {
+            dueDateText = `${Math.ceil(diffDays / 7)} 周后截止`
+          }
+        }
+
+        let relatedGoalName = ''
+        if (todo.relatedGoalId) {
+          const goal = this.data.availableGoals.find(g => g.id === todo.relatedGoalId)
+          if (goal) relatedGoalName = goal.title
+        }
+
+        return {
+          ...todo,
+          dueDateText,
+          isOverdue,
+          relatedGoalName,
+          priorityLabel: this.getTodoPriorityLabel(todo.priority),
+          // CSS类名
+          type: typeClassMap[todo.type] || typeClassMap['临时待办'],
+          priority: priorityClassMap[todo.priority] || priorityClassMap['重要不紧急']
+        }
+      })
+
+      this.setData({
+        todos: processedTodos
+      })
+
+      // 同步到本地缓存
+      wx.setStorageSync('todos', todos)
+
+      this.calculateTodoStats()
+      this.filterTodos()
+
+    } catch (error) {
+      console.error('加载Todos异常:', error)
+      this.loadTodosFromLocal()
+    }
+  },
+
+  loadTodosFromLocal() {
     const todos = wx.getStorageSync('todos') || []
 
     const processedTodos = todos.map(todo => {
@@ -619,44 +842,96 @@ Page({
     })
   },
 
-  confirmAddTodo() {
+  async confirmAddTodo() {
     if (!this.data.todoFormData.title.trim()) {
       wx.showToast({ title: '请输入待办标题', icon: 'none' })
       return
     }
 
     try {
-      const todos = this.data.todos
-
-      if (this.data.editingTodo) {
-        const index = todos.findIndex(t => t.id === this.data.editingTodo.id)
-        if (index >= 0) {
-          todos[index] = {
-            ...todos[index],
-            ...this.data.todoFormData,
-            updateTime: new Date().toISOString()
-          }
-        }
-        wx.showToast({ title: '待办更新成功', icon: 'success' })
-      } else {
-        const newTodo = {
-          id: 'todo_' + Date.now(),
-          ...this.data.todoFormData,
-          status: '待办',
-          actualTime: 0,
-          createTime: new Date().toISOString(),
-          updateTime: new Date().toISOString()
-        }
-        todos.unshift(newTodo)
-        wx.showToast({ title: '待办创建成功', icon: 'success' })
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '用户未登录', icon: 'none' })
+        return
       }
 
-      wx.setStorageSync('todos', todos)
+      const notionConfig = currentUser.notionConfig
+      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.todosDatabaseId
+
+      if (useCloud) {
+        if (this.data.editingTodo) {
+          // 更新待办
+          const result = await apiService.updateTodo(
+            currentUser.id,
+            notionConfig.apiKey,
+            this.data.editingTodo.id,
+            this.data.todoFormData
+          )
+
+          if (!result.success) {
+            throw new Error(result.error || '更新失败')
+          }
+
+          wx.showToast({ title: '待办更新成功', icon: 'success' })
+        } else {
+          // 创建待办
+          const result = await apiService.createTodo(
+            currentUser.id,
+            notionConfig.apiKey,
+            this.data.todoFormData
+          )
+
+          if (!result.success) {
+            throw new Error(result.error || '创建失败')
+          }
+
+          // 如果关联了目标，创建关联
+          if (this.data.todoFormData.relatedGoalId) {
+            await apiService.linkTodoToGoal(
+              currentUser.id,
+              notionConfig.apiKey,
+              result.pageId,
+              this.data.todoFormData.relatedGoalId
+            )
+          }
+
+          wx.showToast({ title: '待办创建成功', icon: 'success' })
+        }
+      } else {
+        // 降级到本地存储
+        const todos = this.data.todos
+
+        if (this.data.editingTodo) {
+          const index = todos.findIndex(t => t.id === this.data.editingTodo.id)
+          if (index >= 0) {
+            todos[index] = {
+              ...todos[index],
+              ...this.data.todoFormData,
+              updateTime: new Date().toISOString()
+            }
+          }
+          wx.showToast({ title: '待办更新成功（本地）', icon: 'success' })
+        } else {
+          const newTodo = {
+            id: 'todo_' + Date.now(),
+            ...this.data.todoFormData,
+            status: '待办',
+            actualTime: 0,
+            createTime: new Date().toISOString(),
+            updateTime: new Date().toISOString()
+          }
+          todos.unshift(newTodo)
+          wx.showToast({ title: '待办创建成功（本地）', icon: 'success' })
+        }
+
+        wx.setStorageSync('todos', todos)
+      }
 
       this.closeTodoModal()
       this.loadTodos()
     } catch (error) {
-      wx.showToast({ title: '操作失败', icon: 'none' })
+      console.error('待办操作失败:', error)
+      wx.showToast({ title: '操作失败：' + error.message, icon: 'none' })
     }
   },
 
@@ -664,29 +939,64 @@ Page({
     this.setData({ showTodoModal: false })
   },
 
-  toggleTodoStatus(e) {
+  async toggleTodoStatus(e) {
     const todoId = e.currentTarget.dataset.id
-    const todos = this.data.todos
-    const index = todos.findIndex(t => t.id === todoId)
+    const todo = this.data.todos.find(t => t.id === todoId)
 
-    if (index >= 0) {
-      const todo = todos[index]
-      const newStatus = todo.status === '已完成' ? '待办' : '已完成'
+    if (!todo) return
 
-      todos[index] = {
-        ...todo,
-        status: newStatus,
-        completedTime: newStatus === '已完成' ? new Date().toISOString() : '',
-        updateTime: new Date().toISOString()
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '用户未登录', icon: 'none' })
+        return
       }
 
-      wx.setStorageSync('todos', todos)
+      const notionConfig = currentUser.notionConfig
+      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.todosDatabaseId
+
+      const newStatus = todo.status === '已完成' ? '待办' : '已完成'
+
+      if (useCloud) {
+        const result = await apiService.updateTodo(
+          currentUser.id,
+          notionConfig.apiKey,
+          todoId,
+          {
+            status: newStatus,
+            completedTime: newStatus === '已完成' ? new Date().toISOString() : ''
+          }
+        )
+
+        if (!result.success) {
+          throw new Error(result.error || '更新失败')
+        }
+      } else {
+        // 降级到本地存储
+        const todos = this.data.todos
+        const index = todos.findIndex(t => t.id === todoId)
+
+        if (index >= 0) {
+          todos[index] = {
+            ...todo,
+            status: newStatus,
+            completedTime: newStatus === '已完成' ? new Date().toISOString() : '',
+            updateTime: new Date().toISOString()
+          }
+          wx.setStorageSync('todos', todos)
+        }
+      }
+
       this.loadTodos()
 
       wx.showToast({
         title: newStatus === '已完成' ? '已完成' : '已恢复',
         icon: 'success'
       })
+
+    } catch (error) {
+      console.error('状态切换失败:', error)
+      wx.showToast({ title: '操作失败：' + error.message, icon: 'none' })
     }
   },
 
@@ -696,12 +1006,41 @@ Page({
     wx.showModal({
       title: '确认删除',
       content: '确定要删除这个待办事项吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          let todos = this.data.todos.filter(t => t.id !== todoId)
-          wx.setStorageSync('todos', todos)
-          this.loadTodos()
-          wx.showToast({ title: '删除成功', icon: 'success' })
+          try {
+            const currentUser = userManager.getCurrentUser()
+            if (!currentUser) {
+              wx.showToast({ title: '用户未登录', icon: 'none' })
+              return
+            }
+
+            const notionConfig = currentUser.notionConfig
+            const useCloud = notionConfig && notionConfig.apiKey && notionConfig.todosDatabaseId
+
+            if (useCloud) {
+              const result = await apiService.deleteTodo(
+                currentUser.id,
+                notionConfig.apiKey,
+                todoId
+              )
+
+              if (!result.success) {
+                throw new Error(result.error || '删除失败')
+              }
+            } else {
+              // 降级到本地存储
+              let todos = this.data.todos.filter(t => t.id !== todoId)
+              wx.setStorageSync('todos', todos)
+            }
+
+            this.loadTodos()
+            wx.showToast({ title: '删除成功', icon: 'success' })
+
+          } catch (error) {
+            console.error('删除待办失败:', error)
+            wx.showToast({ title: '删除失败：' + error.message, icon: 'none' })
+          }
         }
       }
     })

@@ -31,14 +31,14 @@ class CloudTest {
       return {
         success: true,
         message: '云开发环境连接正常',
-        envId: 'cloud1-2g49srond2b01891'
+        envId: 'yjxs-3gbxme0rd1c50635'
       }
     } catch (error) {
       console.error('云开发环境测试失败:', error)
       return {
         success: false,
         error: error.message,
-        envId: 'cloud1-2g49srond2b01891'
+        envId: 'yjxs-3gbxme0rd1c50635'
       }
     }
   }
@@ -173,7 +173,7 @@ class CloudTest {
     const app = getApp()
     return {
       cloudReady: app.globalData.cloudReady,
-      envId: 'cloud1-2g49srond2b01891',
+      envId: 'yjxs-3gbxme0rd1c50635',
       isReady: this.isReady
     }
   }

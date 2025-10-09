@@ -1,6 +1,7 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const MarkdownHelper = require('../../utils/markdownHelper.js')
+const apiService = require('../../utils/apiService.js')
 
 Page({
   data: {
@@ -1873,10 +1874,10 @@ Page({
     if (this.data.isSaving) {
       return
     }
-    
+
     // 获取最终内容
     const finalContent = this.getFinalContent()
-    
+
     if (!finalContent.trim()) {
       wx.showToast({
         title: '请输入内容',
@@ -1888,170 +1889,242 @@ Page({
     // 设置保存状态
     this.setData({ isSaving: true })
 
-    // 获取最终时间戳（可能是当前时间或用户选择的时间）
-    const finalTimestamp = this.getFinalTimestamp()
-    
-    let memo
-    if (this.data.isEditMode) {
-      // 编辑模式：更新现有记录
-      memo = {
-        ...this.data.originalMemo,
-        content: finalContent.trim(),
-        type: this.data.inputType,
-        recordMode: this.data.recordMode,
-        tags: this.data.selectedTags,
-        timestamp: finalTimestamp,
-        audioPath: this.data.inputType === 'voice' ? this.tempFilePath : null,
-        isPlanning: this.data.recordMode === 'planning',
-        // 用户ID（从userManager获取）
-        userId: userManager.getCurrentUser()?.id || 'default_user',
-        // 时间信息
-        startTime: this.data.startTimeDisplay || '',
-        endTime: this.data.endTimeDisplay || '',
-        // 价值分类内容
-        valuableContent: this.data.valuableContent || '',
-        neutralContent: this.data.neutralContent || '',
-        wastefulContent: this.data.wastefulContent || '',
-        // 时间投入统计数据
-        valuableTimeEntries: this.data.valuableTimeEntries || [],
-        totalValuableMinutes: this.data.totalValuableMinutes || 0,
-        neutralTimeEntries: this.data.neutralTimeEntries || [],
-        totalNeutralMinutes: this.data.totalNeutralMinutes || 0,
-        wastefulTimeEntries: this.data.wastefulTimeEntries || [],
-        totalWastefulMinutes: this.data.totalWastefulMinutes || 0,
-        // 目标关联
-        goalId: this.data.selectedGoalId || '',
-        relatedGoalId: this.data.selectedGoalId,
-        goalTimeInvestment: this.data.selectedGoalId ? this.data.goalTimeInvestment : 0,
-        goalValueAssessment: this.data.selectedGoalId ? this.data.goalValueAssessment : null,
-        goalInvestmentNote: this.data.selectedGoalId ? this.data.goalInvestmentNote : '',
-        updateTime: new Date().toISOString() // 添加更新时间
-      }
-    } else {
-      // 新建模式：创建新记录
-      memo = {
-        id: 'memo_' + Date.now(),
-        content: finalContent.trim(),
-        type: this.data.inputType,
-        recordMode: this.data.recordMode,
-        tags: this.data.selectedTags,
-        timestamp: finalTimestamp,
-        audioPath: this.data.inputType === 'voice' ? this.tempFilePath : null,
-        isPlanning: this.data.recordMode === 'planning',
-        // 用户ID（从userManager获取）
-        userId: userManager.getCurrentUser()?.id || 'default_user',
-        // 时间信息
-        startTime: this.data.startTimeDisplay || '',
-        endTime: this.data.endTimeDisplay || '',
-        // 价值分类内容
-        valuableContent: this.data.valuableContent || '',
-        neutralContent: this.data.neutralContent || '',
-        wastefulContent: this.data.wastefulContent || '',
-        // 时间投入统计数据
-        valuableTimeEntries: this.data.valuableTimeEntries || [],
-        totalValuableMinutes: this.data.totalValuableMinutes || 0,
-        neutralTimeEntries: this.data.neutralTimeEntries || [],
-        totalNeutralMinutes: this.data.totalNeutralMinutes || 0,
-        wastefulTimeEntries: this.data.wastefulTimeEntries || [],
-        totalWastefulMinutes: this.data.totalWastefulMinutes || 0,
-        // 目标关联
-        goalId: this.data.selectedGoalId || '',
-        relatedGoalId: this.data.selectedGoalId,
-        goalTimeInvestment: this.data.selectedGoalId ? this.data.goalTimeInvestment : 0,
-        goalValueAssessment: this.data.selectedGoalId ? this.data.goalValueAssessment : null,
-        goalInvestmentNote: this.data.selectedGoalId ? this.data.goalInvestmentNote : ''
-      }
+    // 获取当前用户和Notion配置
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser) {
+      wx.showToast({
+        title: '用户未登录',
+        icon: 'error'
+      })
+      this.setData({ isSaving: false })
+      return
     }
 
-    console.log('准备保存备忘录:', memo)
+    const notionConfig = currentUser.notionConfig
+    if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainRecordsDatabaseId) {
+      wx.showToast({
+        title: 'Notion未配置，保存到本地',
+        icon: 'none'
+      })
+      // 降级到本地存储
+      await this.saveToLocal()
+      return
+    }
+
+    // 获取最终时间戳
+    const finalTimestamp = this.getFinalTimestamp()
+    const timestamp = new Date(finalTimestamp)
+
+    try {
+      // 准备Main Record数据
+      const recordData = {
+        title: this.data.recordMode === 'planning' ? '明日规划' : '每日记录',
+        content: finalContent.trim(),
+        date: timestamp.toISOString().split('T')[0],
+        recordType: this.data.recordMode === 'planning' ? '明日规划' : '日常记录',
+        timePeriod: this.getTimePeriod(timestamp),
+        tags: this.data.selectedTags,
+        relatedGoalId: this.data.selectedGoalId || null
+      }
+
+      let mainRecordResult
+
+      if (this.data.isEditMode && this.data.originalMemo.notionPageId) {
+        // 编辑模式：更新现有Main Record
+        mainRecordResult = await apiService.updateMainRecord(
+          currentUser.id,
+          notionConfig.apiKey,
+          this.data.originalMemo.notionPageId,
+          recordData
+        )
+
+        if (!mainRecordResult.success) {
+          throw new Error(mainRecordResult.error || '更新Main Record失败')
+        }
+      } else {
+        // 新建模式：创建Main Record
+        mainRecordResult = await apiService.createMainRecord(
+          currentUser.id,
+          notionConfig.apiKey,
+          recordData
+        )
+
+        if (!mainRecordResult.success) {
+          throw new Error(mainRecordResult.error || '创建Main Record失败')
+        }
+      }
+
+      const mainRecordId = mainRecordResult.pageId
+
+      // 创建Activity Details（时间投入记录）
+      await this.createActivityDetails(
+        currentUser.id,
+        notionConfig.apiKey,
+        mainRecordId,
+        timestamp
+      )
+
+      // 保存成功，同步到本地存储
+      const memo = {
+        id: this.data.isEditMode ? this.data.originalMemo.id : 'memo_' + Date.now(),
+        content: finalContent.trim(),
+        type: this.data.inputType,
+        recordMode: this.data.recordMode,
+        tags: this.data.selectedTags,
+        timestamp: finalTimestamp,
+        isPlanning: this.data.recordMode === 'planning',
+        userId: currentUser.id,
+        notionPageId: mainRecordId,
+        valuableTimeEntries: this.data.valuableTimeEntries || [],
+        neutralTimeEntries: this.data.neutralTimeEntries || [],
+        wastefulTimeEntries: this.data.wastefulTimeEntries || [],
+        relatedGoalId: this.data.selectedGoalId
+      }
+
+      if (this.data.isEditMode) {
+        app.updateMemo(memo)
+      } else {
+        app.saveMemo(memo)
+      }
+
+      // 如果是规划模式，创建待办
+      if (this.data.recordMode === 'planning') {
+        const todoItems = this.splitPlanningContent(memo.content)
+        if (todoItems.length > 0) {
+          this.createTodosFromPlanning(memo, todoItems)
+        }
+      }
+
+      wx.showToast({
+        title: this.data.isEditMode ? '更新成功' : '保存成功',
+        icon: 'success',
+        complete: () => {
+          this.setData({ isSaving: false })
+          this.resetForm()
+          setTimeout(() => {
+            wx.navigateBack()
+          }, 1500)
+        }
+      })
+
+    } catch (error) {
+      console.error('保存到Notion失败:', error)
+      wx.showToast({
+        title: '保存失败：' + error.message,
+        icon: 'none',
+        duration: 2000
+      })
+      this.setData({ isSaving: false })
+    }
+  },
+
+  // 获取时间段
+  getTimePeriod: function(date) {
+    const hour = date.getHours()
+    if (hour >= 5 && hour < 8) return '早晨'
+    if (hour >= 8 && hour < 12) return '上午'
+    if (hour >= 12 && hour < 14) return '中午'
+    if (hour >= 14 && hour < 18) return '下午'
+    if (hour >= 18 && hour < 22) return '晚上'
+    return '深夜'
+  },
+
+  // 创建Activity Details
+  createActivityDetails: async function(userId, apiKey, mainRecordId, timestamp) {
+    const allEntries = [
+      ...this.data.valuableTimeEntries.map(e => ({ ...e, type: '有价值' })),
+      ...this.data.neutralTimeEntries.map(e => ({ ...e, type: '中性' })),
+      ...this.data.wastefulTimeEntries.map(e => ({ ...e, type: '低效' }))
+    ]
+
+    for (const entry of allEntries) {
+      try {
+        const activityData = {
+          name: entry.activity,
+          description: `${entry.type}活动，投入${entry.minutes}分钟`,
+          startTime: timestamp.toISOString(),
+          endTime: new Date(timestamp.getTime() + entry.minutes * 60000).toISOString(),
+          duration: entry.minutes,
+          activityType: entry.type === '有价值' ? '学习' : (entry.type === '中性' ? '生活' : '休息'),
+          tags: entry.tags || [],
+          relatedMainRecordId: mainRecordId,
+          relatedGoalId: this.data.selectedGoalId || null
+        }
+
+        const result = await apiService.createActivity(userId, apiKey, activityData)
+
+        if (!result.success) {
+          console.error('创建Activity失败:', result.error)
+        }
+
+        // 如果关联了目标，创建Activity到Goal的关联
+        if (this.data.selectedGoalId && result.pageId) {
+          await apiService.linkActivityToGoal(
+            userId,
+            apiKey,
+            result.pageId,
+            this.data.selectedGoalId
+          )
+        }
+
+      } catch (error) {
+        console.error('创建Activity Detail失败:', error)
+      }
+    }
+  },
+
+  // 降级到本地存储
+  saveToLocal: async function() {
+    const finalContent = this.getFinalContent()
+    const finalTimestamp = this.getFinalTimestamp()
+    const currentUser = userManager.getCurrentUser()
+
+    const memo = {
+      id: this.data.isEditMode ? this.data.originalMemo.id : 'memo_' + Date.now(),
+      content: finalContent.trim(),
+      type: this.data.inputType,
+      recordMode: this.data.recordMode,
+      tags: this.data.selectedTags,
+      timestamp: finalTimestamp,
+      isPlanning: this.data.recordMode === 'planning',
+      userId: currentUser?.id || 'default_user',
+      valuableTimeEntries: this.data.valuableTimeEntries || [],
+      neutralTimeEntries: this.data.neutralTimeEntries || [],
+      wastefulTimeEntries: this.data.wastefulTimeEntries || [],
+      relatedGoalId: this.data.selectedGoalId
+    }
 
     try {
       if (this.data.isEditMode) {
-        // 编辑模式：更新记录
         app.updateMemo(memo)
-        
-        // 更新云数据库中的时间投入统计
-        // 时间投入数据已包含在memo中，会随主记录一起同步到Notion
-        
-        // 处理目标关联变更
-        this.handleGoalLinkChange(memo)
-        
-        wx.showToast({
-          title: '更新成功',
-          icon: 'success',
-          complete: () => {
-            this.setData({ isSaving: false })
-            setTimeout(() => {
-              wx.navigateBack()
-            }, 1500)
-          }
-        })
       } else {
-        // 新建模式：保存新记录
         app.saveMemo(memo)
-        
-        // 时间投入数据已包含在memo中，会随主记录一起同步到Notion
-        
-        // 如果关联了目标，将记录添加到目标的相关记录中，并累计时间投入
-        if (this.data.selectedGoalId) {
-          try {
-            app.linkMemoToGoal(this.data.selectedGoalId, memo.id)
-            // 累计时间投入
-            if (memo.goalTimeInvestment > 0) {
-              app.addGoalTimeInvestment(this.data.selectedGoalId, memo.goalTimeInvestment)
-            }
-          } catch (error) {
-            console.error('关联目标失败:', error)
-          }
-        }
-        
-        // 如果是规划模式，自动创建今日待办
-        if (this.data.recordMode === 'planning') {
-          // 智能拆分规划内容
-          const todoItems = this.splitPlanningContent(memo.content)
-          const itemCount = todoItems.length
+      }
 
-          // 如果有有效内容，直接创建待办
-          if (itemCount > 0) {
-            this.createTodosFromPlanning(memo, todoItems)
-          }
-
-          // 显示保存成功提示
-          const message = itemCount > 0
-            ? `保存成功，已创建${itemCount}个待办`
-            : '保存成功'
-
-          wx.showToast({
-            title: message,
-            icon: 'success',
-            duration: 2000,
-            complete: () => {
-              this.setData({ isSaving: false })
-              this.resetForm()
-              setTimeout(() => {
-                wx.navigateBack()
-              }, 1500)
-            }
-          })
-        } else {
-          wx.showToast({
-            title: '保存成功',
-            icon: 'success',
-            complete: () => {
-              this.setData({ isSaving: false })
-              this.resetForm()
-              setTimeout(() => {
-                wx.navigateBack()
-              }, 1500)
-            }
-          })
+      // 如果是规划模式，创建待办
+      if (this.data.recordMode === 'planning') {
+        const todoItems = this.splitPlanningContent(memo.content)
+        if (todoItems.length > 0) {
+          this.createTodosFromPlanning(memo, todoItems)
         }
       }
+
+      wx.showToast({
+        title: '保存成功',
+        icon: 'success',
+        complete: () => {
+          this.setData({ isSaving: false })
+          this.resetForm()
+          setTimeout(() => {
+            wx.navigateBack()
+          }, 1500)
+        }
+      })
     } catch (error) {
-      console.error('保存记录失败:', error)
+      console.error('保存到本地失败:', error)
       this.setData({ isSaving: false })
       wx.showToast({
-        title: '保存失败，请重试',
+        title: '保存失败',
         icon: 'error'
       })
     }

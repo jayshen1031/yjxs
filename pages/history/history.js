@@ -1,5 +1,6 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
+const apiService = require('../../utils/apiService.js')
 
 Page({
   data: {
@@ -119,13 +120,98 @@ Page({
   },
 
   // 加载所有备忘录
-  loadAllMemos: function() {
+  loadAllMemos: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.log('用户未登录，使用本地数据')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig || !notionConfig.apiKey || !notionConfig.activitiesDatabaseId) {
+        console.log('Notion未配置，使用本地数据')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      // 从云端加载Activity Details
+      const result = await apiService.getActivities(
+        currentUser.id,
+        notionConfig.apiKey,
+        {} // 加载所有活动
+      )
+
+      if (!result.success) {
+        console.error('加载Activities失败:', result.error)
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const activities = result.activities || []
+
+      // 转换Activities为memo格式
+      const processedMemos = activities.map(activity => {
+        const startTime = new Date(activity.startTime)
+        return {
+          id: activity.id,
+          content: activity.description || activity.name,
+          timestamp: startTime.getTime(),
+          type: 'text',
+          tags: activity.tags || [],
+          notionPageId: activity.id,
+          timeStr: this.formatTime(startTime),
+          dateStr: this.formatDate(startTime),
+          timePeriodDisplay: this.formatActivityTimePeriodDisplay(activity),
+          timePeriod: this.getTimePeriodFromTime(startTime),
+          periodColor: this.getTimePeriodColorFromTime(startTime),
+          category: activity.activityType || '未分类',
+          categoryColor: this.getActivityCategoryColor(activity.activityType),
+          isPlaying: false,
+          // 活动特有信息
+          activityName: activity.name,
+          duration: activity.duration,
+          activityType: activity.activityType
+        }
+      })
+
+      // 提取所有标签
+      const allTags = new Set()
+      activities.forEach(activity => {
+        if (activity.tags) {
+          activity.tags.forEach(tag => allTags.add(tag))
+        }
+      })
+
+      // 计算统计数据
+      const stats = this.calculateStats(processedMemos)
+
+      this.setData({
+        allMemos: processedMemos,
+        allTags: Array.from(allTags),
+        stats: stats
+      })
+
+      // 同步到本地缓存
+      app.setMemoList(processedMemos)
+
+      this.applyFilters()
+
+    } catch (error) {
+      console.error('加载Activities异常:', error)
+      this.loadMemosFromLocal()
+    }
+  },
+
+  // 从本地加载备忘录
+  loadMemosFromLocal: function() {
     const memoList = app.getMemoList()
     const processedMemos = memoList.map(memo => ({
       ...memo,
       timeStr: this.formatTime(new Date(memo.timestamp)),
       dateStr: this.formatDate(new Date(memo.timestamp)),
-      timePeriodDisplay: this.formatTimePeriodDisplay(memo),  // 新增：时间段显示
+      timePeriodDisplay: this.formatTimePeriodDisplay(memo),
       timePeriod: this.getTimePeriod(memo),
       periodColor: this.getTimePeriodColor(memo),
       category: this.getCategory(memo),
@@ -151,6 +237,58 @@ Page({
     })
 
     this.applyFilters()
+  },
+
+  // 格式化活动时间段显示
+  formatActivityTimePeriodDisplay: function(activity) {
+    if (!activity || !activity.startTime) {
+      return '时间未知'
+    }
+
+    const startTime = new Date(activity.startTime)
+    const endTime = new Date(activity.endTime)
+
+    const startTimeStr = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`
+    const endTimeStr = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`
+
+    return `${startTimeStr} - ${endTimeStr} (${activity.duration}分钟)`
+  },
+
+  // 根据时间获取时间段
+  getTimePeriodFromTime: function(date) {
+    const hour = date.getHours()
+    if (hour >= 5 && hour < 8) return '早晨'
+    if (hour >= 8 && hour < 12) return '上午'
+    if (hour >= 12 && hour < 14) return '中午'
+    if (hour >= 14 && hour < 18) return '下午'
+    if (hour >= 18 && hour < 22) return '晚上'
+    return '深夜'
+  },
+
+  // 根据时间段获取颜色
+  getTimePeriodColorFromTime: function(date) {
+    const period = this.getTimePeriodFromTime(date)
+    const colorMap = {
+      '早晨': '#f59e0b',
+      '上午': '#10b981',
+      '中午': '#ef4444',
+      '下午': '#3b82f6',
+      '晚上': '#8b5cf6',
+      '深夜': '#6b7280'
+    }
+    return colorMap[period] || '#3b82f6'
+  },
+
+  // 根据活动类型获取颜色
+  getActivityCategoryColor: function(activityType) {
+    const colorMap = {
+      '工作': '#3b82f6',
+      '学习': '#10b981',
+      '运动': '#f59e0b',
+      '休息': '#8b5cf6',
+      '生活': '#6b7280'
+    }
+    return colorMap[activityType] || '#3b82f6'
   },
 
   // 计算统计数据
