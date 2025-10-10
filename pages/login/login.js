@@ -17,7 +17,7 @@ Page({
     loading: false,
     hasUsers: false,
     showCreateUser: false,  // 控制创建新用户区域的显示
-    showExistingLogin: true,  // 控制已有账号登录区域的显示，默认展开
+    showExistingLogin: false,  // 控制已有账号登录区域的显示，根据用户数量动态设置
     loginEmail: '',
     loginPassword: '',
     loginEmailError: '',
@@ -95,7 +95,8 @@ Page({
       this.setData({
         users: users,
         hasUsers: users.length > 0,
-        showCreateUser: users.length === 0
+        showCreateUser: users.length === 0,
+        showExistingLogin: users.length === 0  // 有用户时默认折叠，无用户时默认展开
       })
     } catch (error) {
       console.error('加载用户列表失败:', error)
@@ -103,7 +104,8 @@ Page({
       this.setData({
         users: [],
         hasUsers: false,
-        showCreateUser: true
+        showCreateUser: true,
+        showExistingLogin: true  // 无用户时展开已有账号登录区域
       })
     }
   },

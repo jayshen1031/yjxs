@@ -152,6 +152,8 @@ Page({
         return
       }
 
+      console.log('🔍 准备查询Notion - 邮箱:', currentUser.email, '数据库ID:', mainDatabaseId)
+
       const result = await notionApiService.queryMainRecords(
         notionConfig.apiKey,
         mainDatabaseId,
@@ -160,7 +162,12 @@ Page({
       )
 
       if (!result.success) {
-        console.error('加载Main Records失败:', result.error)
+        console.error('❌ 加载Main Records失败:', result.error)
+        wx.showToast({
+          title: `Notion查询失败: ${result.error}`,
+          icon: 'none',
+          duration: 3000
+        })
         this.loadMemosFromLocal()
         return
       }
@@ -169,6 +176,28 @@ Page({
 
       console.log('📊 从Notion获取的主记录数据:', records)
       console.log('📊 主记录数量:', records.length)
+
+      // 如果没有记录，给用户明确提示
+      if (records.length === 0) {
+        console.warn('⚠️ 未查询到任何主记录')
+        console.log('检查项:')
+        console.log('  1. 用户邮箱:', currentUser.email)
+        console.log('  2. 主数据库ID:', mainDatabaseId)
+        console.log('  3. 是否已创建过记录?')
+
+        wx.showModal({
+          title: '未找到记录',
+          content: `Notion数据库中没有找到记录。\n\n当前用户: ${currentUser.email}\n\n请确认:\n1. 是否已创建过记录？\n2. Notion数据库ID是否正确？`,
+          showCancel: true,
+          cancelText: '使用本地数据',
+          confirmText: '知道了',
+          success: (res) => {
+            if (res.cancel) {
+              this.loadMemosFromLocal()
+            }
+          }
+        })
+      }
       if (records.length > 0) {
         console.log('📊 第一条主记录详情:', records[0])
       }

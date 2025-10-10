@@ -1975,7 +1975,15 @@ class NotionApiService {
         queryData.page_size = options.limit
       }
 
+      console.log('🔍 Notion查询参数:', JSON.stringify(queryData, null, 2))
+
       const result = await this.queryDatabase(apiKey, databaseId, queryData)
+
+      console.log('📥 Notion查询结果:', {
+        success: result.success,
+        error: result.error,
+        resultCount: result.data?.results?.length || 0
+      })
 
       if (!result.success) {
         throw new Error(result.error || '查询主记录表失败')
@@ -2007,7 +2015,32 @@ class NotionApiService {
         }
       })
 
-      console.log(`查询到 ${records.length} 条主记录`)
+      console.log(`✅ 查询到 ${records.length} 条主记录`)
+
+      // 🔍 如果没有找到记录，尝试诊断查询（获取前5条记录看看数据库是否有数据）
+      if (records.length === 0) {
+        console.log('⚠️ 未找到匹配的记录，执行诊断查询...')
+        const diagnosticQuery = {
+          sorts: [{ property: 'Record Date', direction: 'descending' }],
+          page_size: 5
+        }
+        const diagnosticResult = await this.queryDatabase(apiKey, databaseId, diagnosticQuery)
+
+        if (diagnosticResult.success && diagnosticResult.data.results.length > 0) {
+          console.log('🔍 数据库中存在记录，但不匹配当前用户邮箱')
+          console.log('🔍 数据库中的User ID示例:')
+          diagnosticResult.data.results.forEach((page, index) => {
+            const storedUserId = page.properties['User ID']?.rich_text?.[0]?.text?.content || '(无User ID)'
+            console.log(`  ${index + 1}. ${storedUserId}`)
+          })
+          console.log('🔍 当前查询的邮箱:', userEmail)
+          console.log('💡 提示: User ID不匹配可能的原因:')
+          console.log('   1. 记录是用其他邮箱创建的')
+          console.log('   2. User ID字段格式不一致（空格、大小写等）')
+        } else {
+          console.log('🔍 数据库为空，没有任何记录')
+        }
+      }
 
       return {
         success: true,
