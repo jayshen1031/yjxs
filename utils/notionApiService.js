@@ -1981,15 +1981,26 @@ class NotionApiService {
         throw new Error(result.error || '查询主记录表失败')
       }
 
-      // 解析结果
+      // 解析结果（兼容多种字段名）
       const records = result.data.results.map(page => {
         const props = page.properties
+
+        // 获取类型字段（支持不同的字段名）
+        let recordType = '日常记录'
+        if (props['Type']?.select?.name) {
+          // 如果Type是planning/normal，需要转换
+          const typeValue = props['Type'].select.name
+          recordType = typeValue === 'planning' ? '明日规划' : '日常记录'
+        } else if (props['Record Type']?.select?.name) {
+          recordType = props['Record Type'].select.name
+        }
+
         return {
           id: page.id,
           title: props['Name']?.title?.[0]?.text?.content || props['Title']?.title?.[0]?.text?.content || '',
           content: props['Summary']?.rich_text?.[0]?.text?.content || props['Content']?.rich_text?.[0]?.text?.content || '',
           date: props['Record Date']?.date?.start || props['Date']?.date?.start || '',
-          recordType: props['Record Type']?.select?.name || props['Type']?.select?.name || '日常记录',
+          recordType: recordType,
           timePeriod: props['Time Period']?.select?.name || '',
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
           userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
@@ -2036,7 +2047,7 @@ class NotionApiService {
         filter: filter,
         sorts: [
           {
-            property: 'Start Time',
+            property: 'Record Date',  // 使用实际存在的字段
             direction: 'descending'
           }
         ]
@@ -2053,17 +2064,17 @@ class NotionApiService {
         throw new Error(result.error || '查询活动明细表失败')
       }
 
-      // 解析结果
+      // 解析结果（使用实际的字段名）
       const activities = result.data.results.map(page => {
         const props = page.properties
         return {
           id: page.id,
-          name: props['Name']?.title?.[0]?.text?.content || '',
+          name: props['Activity Name']?.title?.[0]?.text?.content || '',
           description: props['Description']?.rich_text?.[0]?.text?.content || '',
-          startTime: props['Start Time']?.date?.start || '',
-          endTime: props['End Time']?.date?.start || '',
-          duration: props['Duration']?.number || 0,
-          activityType: props['Activity Type']?.select?.name || '',
+          startTime: props['Record Date']?.date?.start || '',  // 使用Record Date作为startTime
+          endTime: props['Record Date']?.date?.start || '',    // 同样使用Record Date
+          duration: props['Minutes']?.number || 0,              // 使用Minutes字段
+          activityType: props['Value Type']?.select?.name || '', // 使用Value Type字段
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
           userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
         }
