@@ -202,9 +202,6 @@ Page({
         stats: stats
       })
 
-      // 同步到本地缓存
-      app.setMemoList(processedMemos)
-
       this.applyFilters()
 
     } catch (error) {

@@ -142,14 +142,6 @@ Page({
         memoList: processedMemos
       })
 
-      // 同步到本地缓存
-      const localMemos = processedMemos.map(memo => ({
-        ...memo,
-        timestamp: memo.timestamp,
-        content: memo.content
-      }))
-      app.setMemoList(localMemos)
-
       this.applyFilter()
 
     } catch (error) {
