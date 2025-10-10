@@ -134,93 +134,127 @@ Page({
       console.log('🔍 History - 用户Notion配置:', {
         hasConfig: !!notionConfig,
         hasApiKey: !!notionConfig?.apiKey,
-        activitiesDatabaseId: notionConfig?.activitiesDatabaseId,
-        activityDatabaseId: notionConfig?.activityDatabaseId,
+        mainDatabaseId: notionConfig?.mainDatabaseId,
         email: currentUser.email
       })
 
-      if (!notionConfig || !notionConfig.apiKey || !notionConfig.activitiesDatabaseId) {
+      if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainDatabaseId) {
         console.log('Notion未配置，使用本地数据')
         this.loadMemosFromLocal()
         return
       }
 
-      // 从云端加载Activity Details（前端直接调用，绕过云函数）
-      const activitiesDatabaseId = notionConfig.activitiesDatabaseId || notionConfig.activityDatabaseId
-      if (!activitiesDatabaseId) {
-        console.error('未配置活动明细表数据库ID')
+      // 从云端加载Main Records（主记录表）
+      const mainDatabaseId = notionConfig.mainDatabaseId
+      if (!mainDatabaseId) {
+        console.error('未配置主记录表数据库ID')
         this.loadMemosFromLocal()
         return
       }
 
-      const result = await notionApiService.queryActivities(
+      const result = await notionApiService.queryMainRecords(
         notionConfig.apiKey,
-        activitiesDatabaseId,
+        mainDatabaseId,
         currentUser.email,
-        {} // 加载所有活动
+        {} // 加载所有主记录
       )
 
       if (!result.success) {
-        console.error('加载Activities失败:', result.error)
+        console.error('加载Main Records失败:', result.error)
         this.loadMemosFromLocal()
         return
       }
 
-      const activities = result.activities || []
+      const records = result.records || []
 
-      console.log('📊 从Notion获取的活动数据:', activities)
-      console.log('📊 活动数量:', activities.length)
-      if (activities.length > 0) {
-        console.log('📊 第一条活动详情:', activities[0])
+      console.log('📊 从Notion获取的主记录数据:', records)
+      console.log('📊 主记录数量:', records.length)
+      if (records.length > 0) {
+        console.log('📊 第一条主记录详情:', records[0])
       }
-      console.log('📋 所有活动记录:')
-      activities.forEach((act, index) => {
-        console.log(`  ${index + 1}. ${act.name} - ${act.description} (${act.startTime})`)
+
+      // ⚠️ 根据ID去重（防止重复记录）
+      const uniqueRecords = []
+      const seenIds = new Set()
+      records.forEach(record => {
+        if (!seenIds.has(record.id)) {
+          seenIds.add(record.id)
+          uniqueRecords.push(record)
+        } else {
+          console.warn('⚠️ 发现重复记录ID:', record.id, record.title)
+        }
       })
 
-      // 转换Activities为memo格式
-      const processedMemos = activities.map(activity => {
-        const startTime = new Date(activity.startTime)
+      console.log('📋 去重后主记录数量:', uniqueRecords.length)
+      if (uniqueRecords.length !== records.length) {
+        console.warn(`⚠️ 去除了 ${records.length - uniqueRecords.length} 条重复记录`)
+      }
+
+      uniqueRecords.forEach((rec, index) => {
+        console.log(`  ${index + 1}. ${rec.title} - ${rec.content} (${rec.date})`)
+      })
+
+      // 转换Main Records为memo格式
+      const processedMemos = uniqueRecords.map(record => {
+        const recordDate = new Date(record.date)
+        const timePeriod = record.timePeriod || this.getTimePeriodFromTime(recordDate)
         return {
-          id: activity.id,
-          content: activity.description || activity.name,
-          timestamp: startTime.getTime(),
+          id: record.id,
+          content: record.content, // Summary字段的内容
+          timestamp: recordDate.getTime(),
           type: 'text',
-          tags: activity.tags || [],
-          notionPageId: activity.id,
-          timeStr: this.formatTime(startTime),
-          dateStr: this.formatDate(startTime),
-          timePeriodDisplay: this.formatActivityTimePeriodDisplay(activity),
-          timePeriod: this.getTimePeriodFromTime(startTime),
-          periodColor: this.getTimePeriodColorFromTime(startTime),
-          category: activity.activityType || '未分类',
-          categoryColor: this.getActivityCategoryColor(activity.activityType),
+          tags: record.tags || [],
+          notionPageId: record.id,
+          timeStr: this.formatTime(recordDate),
+          dateStr: this.formatDate(recordDate),
+          timePeriod: timePeriod,
+          timePeriodDisplay: this.formatMainRecordTimePeriodDisplay(record, recordDate, timePeriod),
+          periodColor: this.getTimePeriodColorFromTime(recordDate),
+          category: this.getCategoryFromContent(record.content),
+          categoryColor: this.getCategoryColorFromContent(record.content),
           isPlaying: false,
-          // 活动特有信息
-          activityName: activity.name,
-          duration: activity.duration,
-          activityType: activity.activityType
+          isPlanning: record.recordType === '明日规划',
+          // 主记录特有信息
+          title: record.title,
+          recordType: record.recordType
         }
       })
 
       // 提取所有标签
       const allTags = new Set()
-      activities.forEach(activity => {
-        if (activity.tags) {
-          activity.tags.forEach(tag => allTags.add(tag))
+      uniqueRecords.forEach(record => {
+        if (record.tags) {
+          record.tags.forEach(tag => allTags.add(tag))
         }
       })
 
-      // 计算统计数据
-      const stats = this.calculateStats(processedMemos)
+      // ⚠️ 再次对processedMemos进行ID去重（双重保险）
+      const uniqueMemos = []
+      const seenMemoIds = new Set()
+      processedMemos.forEach(memo => {
+        if (!seenMemoIds.has(memo.id)) {
+          seenMemoIds.add(memo.id)
+          uniqueMemos.push(memo)
+        } else {
+          console.warn('⚠️ processedMemos中发现重复ID:', memo.id, memo.content?.substring(0, 20))
+        }
+      })
 
       console.log('📌 转换后的processedMemos数量:', processedMemos.length)
-      if (processedMemos.length > 0) {
-        console.log('📌 第一条转换后的memo:', processedMemos[0])
+      console.log('📌 去重后的uniqueMemos数量:', uniqueMemos.length)
+      if (processedMemos.length !== uniqueMemos.length) {
+        console.warn(`⚠️ processedMemos中去除了 ${processedMemos.length - uniqueMemos.length} 条重复`)
       }
 
+      if (uniqueMemos.length > 0) {
+        console.log('📌 第一条转换后的memo:', uniqueMemos[0])
+      }
+
+      // 计算统计数据
+      const stats = this.calculateStats(uniqueMemos)
+
       this.setData({
-        allMemos: processedMemos,
+        allMemos: uniqueMemos,
         allTags: Array.from(allTags),
         stats: stats
       })
@@ -228,6 +262,20 @@ Page({
       console.log('📌 setData完成，准备applyFilters')
       this.applyFilters()
       console.log('📌 applyFilters完成，当前groupedMemos数量:', this.data.groupedMemos?.length || 0)
+
+      // 详细输出第一个分组的内容
+      if (this.data.groupedMemos && this.data.groupedMemos.length > 0) {
+        const firstGroup = this.data.groupedMemos[0]
+        console.log('📌 第一个分组详情:')
+        console.log('  - 日期:', firstGroup.dateDisplay)
+        console.log('  - 记录数:', firstGroup.memos?.length || 0)
+        if (firstGroup.memos && firstGroup.memos.length > 0) {
+          console.log('  - 前3条记录ID:')
+          firstGroup.memos.slice(0, 3).forEach((m, i) => {
+            console.log(`    ${i + 1}. ID: ${m.id}, 内容: ${m.content?.substring(0, 30)}...`)
+          })
+        }
+      }
 
     } catch (error) {
       console.error('加载Activities异常:', error)
@@ -270,7 +318,32 @@ Page({
     this.applyFilters()
   },
 
-  // 格式化活动时间段显示
+  // 格式化主记录时间段显示
+  formatMainRecordTimePeriodDisplay: function(record, recordDate, timePeriod) {
+    if (!recordDate) {
+      return '时间未知'
+    }
+
+    // 获取日期显示
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+    const memoDate = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
+
+    let dateStr = ''
+    if (memoDate.getTime() === today.getTime()) {
+      dateStr = '今天'
+    } else if (memoDate.getTime() === yesterday.getTime()) {
+      dateStr = '昨天'
+    } else {
+      dateStr = `${recordDate.getMonth() + 1}月${recordDate.getDate()}日`
+    }
+
+    // 返回日期 + 时间段
+    return `${dateStr} ${timePeriod}`
+  },
+
+  // 格式化活动时间段显示（保留用于兼容性）
   formatActivityTimePeriodDisplay: function(activity) {
     if (!activity || !activity.startTime) {
       return '时间未知'
@@ -611,7 +684,7 @@ Page({
     console.log('editMemo clicked', e)
     const { id, type } = e.currentTarget.dataset
     console.log('memo id:', id, 'type:', type)
-    
+
     if (!id) {
       console.error('memo data is invalid. id:', id, 'type:', type)
       wx.showToast({
@@ -620,18 +693,40 @@ Page({
       })
       return
     }
-    
+
+    // 查找完整的memo对象
+    let memoData = null
+    for (const group of this.data.groupedMemos) {
+      const found = group.memos.find(m => m.id === id)
+      if (found) {
+        memoData = found
+        break
+      }
+    }
+
+    if (!memoData) {
+      console.error('memo not found in groupedMemos for id:', id)
+      wx.showToast({
+        title: '找不到记录',
+        icon: 'none'
+      })
+      return
+    }
+
+    console.log('found memo data:', memoData)
+
     // type字段可能为undefined（历史记录兼容），这是正常的
-    
+
     // 由于memo页面是tabBar页面，不能使用navigateTo传参
-    // 使用全局数据传递编辑参数
+    // 使用全局数据传递编辑参数和完整memo对象
     const app = getApp()
     app.globalData.editMemo = {
       type: type,
       editId: id,
+      memoData: memoData,  // 传递完整memo对象
       fromPage: 'history'
     }
-    
+
     console.log('switching to memo tab with edit params:', type, id)
     wx.switchTab({
       url: '/pages/memo/memo',
@@ -842,6 +937,89 @@ Page({
   // 获取内容分类对应的颜色
   getCategoryColor: function(memo) {
     const category = this.getCategory(memo)
+    const colorMap = {
+      '生活': 'life',
+      '工作': 'work',
+      '学习': 'study',
+      '成长': 'growth',
+      '理财': 'finance',
+      '健康': 'health',
+      '社交': 'social',
+      '目标': 'goal',
+      '想法': 'idea',
+      '心情': 'mood'
+    }
+    return colorMap[category] || 'default'
+  },
+
+  // 从内容文本中识别分类
+  getCategoryFromContent: function(content) {
+    if (!content) {
+      return '生活'
+    }
+    const contentLower = content.toLowerCase()
+
+    // 工作相关关键词
+    const workKeywords = ['工作', '项目', '会议', '同事', '客户', '业务', '任务', '汇报', '加班', '绩效', '考核']
+    if (workKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '工作'
+    }
+
+    // 学习相关关键词
+    const studyKeywords = ['学习', '学到', '课程', '书', '知识', '技能', '培训', '考试', '阅读', '笔记']
+    if (studyKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '学习'
+    }
+
+    // 成长相关关键词
+    const growthKeywords = ['反思', '总结', '成长', '进步', '改进', '提升', '收获', '感悟', '经验', '教训']
+    if (growthKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '成长'
+    }
+
+    // 理财相关关键词
+    const financeKeywords = ['理财', '投资', '消费', '买', '花费', '存钱', '基金', '股票', '财务', '预算']
+    if (financeKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '理财'
+    }
+
+    // 健康相关关键词
+    const healthKeywords = ['健康', '运动', '锻炼', '跑步', '健身', '饮食', '吃', '睡觉', '休息', '医生']
+    if (healthKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '健康'
+    }
+
+    // 社交相关关键词
+    const socialKeywords = ['朋友', '聚会', '聊天', '约', '见面', '社交', '聚餐', '派对', '活动', '相处']
+    if (socialKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '社交'
+    }
+
+    // 目标相关关键词
+    const goalKeywords = ['目标', '计划', '打算', '准备', '要做', '完成', '达成', '实现', '规划']
+    if (goalKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '目标'
+    }
+
+    // 心情相关关键词
+    const moodKeywords = ['开心', '难过', '生气', '焦虑', '紧张', '兴奋', '失落', '感觉', '心情', '情绪']
+    if (moodKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '心情'
+    }
+
+    // 想法相关关键词
+    const ideaKeywords = ['想法', '想到', '思考', '觉得', '认为', '想起', '突然', '灵感', '想象']
+    if (ideaKeywords.some(keyword => contentLower.includes(keyword))) {
+      return '想法'
+    }
+
+    // 默认返回生活
+    return '生活'
+  },
+
+  // 从内容文本中获取分类颜色
+  getCategoryColorFromContent: function(content) {
+    const category = this.getCategoryFromContent(content)
     const colorMap = {
       '生活': 'life',
       '工作': 'work',

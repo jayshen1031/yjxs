@@ -37,8 +37,36 @@
 
         <!-- 价值分类输入 -->
         <view wx:if="{{ recordMode === 'normal' }}" class="value-categories">
+          <!-- Tab导航栏 -->
+          <view class="activity-tabs">
+            <view
+              class="tab-item {{ activeTab === 'valuable' ? 'active' : '' }}"
+              bindtap="switchTab"
+              data-tab="valuable"
+            >
+              <text class="tab-icon">🌟</text>
+              <text class="tab-label">有价值</text>
+            </view>
+            <view
+              class="tab-item {{ activeTab === 'neutral' ? 'active' : '' }}"
+              bindtap="switchTab"
+              data-tab="neutral"
+            >
+              <text class="tab-icon">😐</text>
+              <text class="tab-label">中性</text>
+            </view>
+            <view
+              class="tab-item {{ activeTab === 'wasteful' ? 'active' : '' }}"
+              bindtap="switchTab"
+              data-tab="wasteful"
+            >
+              <text class="tab-icon">🗑️</text>
+              <text class="tab-label">低效</text>
+            </view>
+          </view>
+
           <!-- 有价值内容 -->
-          <view class="value-category valuable">
+          <view wx:if="{{ activeTab === 'valuable' }}" class="value-category valuable">
             <view class="category-header">
               <text class="category-icon">🌟</text>
               <text class="category-title">有价值的活动</text>
@@ -132,24 +160,18 @@
                     >
                       <text>{{ tag }}</text>
                     </view>
-                  </view>
-                  <!-- 自定义标签输入 -->
-                  <view class="custom-tag-input">
-                    <input
-                      class="custom-tag-field"
-                      placeholder="输入自定义标签"
-                      value="{{ currentCustomTag }}"
-                      bindinput="onCustomTagInput"
-                      data-type="valuable"
-                      maxlength="10"
-                    />
-                    <button
-                      class="add-custom-tag-btn"
-                      bindtap="addCustomTag"
-                      data-type="valuable"
-                    >
-                      <text>+</text>
-                    </button>
+                    <!-- 自定义标签输入（紧凑版，作为标签按钮） -->
+                    <view class="tag-option custom-tag-compact">
+                      <input
+                        class="custom-tag-field-compact"
+                        placeholder="+ 新建"
+                        value="{{ currentCustomTag }}"
+                        bindinput="onCustomTagInput"
+                        bindblur="addCustomTag"
+                        data-type="valuable"
+                        maxlength="6"
+                      />
+                    </view>
                   </view>
                 </view>
 
@@ -170,7 +192,7 @@
           </view>
 
           <!-- 中性内容 -->
-          <view class="value-category neutral">
+          <view wx:if="{{ activeTab === 'neutral' }}" class="value-category neutral">
             <view class="category-header">
               <text class="category-icon">😐</text>
               <text class="category-title">中性的活动</text>
@@ -264,24 +286,18 @@
                     >
                       <text>{{ tag }}</text>
                     </view>
-                  </view>
-                  <!-- 自定义标签输入 -->
-                  <view class="custom-tag-input">
-                    <input
-                      class="custom-tag-field"
-                      placeholder="输入自定义标签"
-                      value="{{ currentCustomTag }}"
-                      bindinput="onCustomTagInput"
-                      data-type="neutral"
-                      maxlength="10"
-                    />
-                    <button
-                      class="add-custom-tag-btn"
-                      bindtap="addCustomTag"
-                      data-type="neutral"
-                    >
-                      <text>+</text>
-                    </button>
+                    <!-- 紧凑的自定义标签输入 -->
+                    <view class="tag-option custom-tag-compact">
+                      <input
+                        class="custom-tag-field-compact"
+                        placeholder="+ 新建"
+                        value="{{ currentCustomTag }}"
+                        bindinput="onCustomTagInput"
+                        bindblur="addCustomTag"
+                        data-type="neutral"
+                        maxlength="6"
+                      />
+                    </view>
                   </view>
                 </view>
 
@@ -302,7 +318,7 @@
           </view>
 
           <!-- 无价值内容 -->
-          <view class="value-category wasteful">
+          <view wx:if="{{ activeTab === 'wasteful' }}" class="value-category wasteful">
             <view class="category-header">
               <text class="category-icon">🗑️</text>
               <text class="category-title">低效的活动</text>
@@ -396,24 +412,18 @@
                     >
                       <text>{{ tag }}</text>
                     </view>
-                  </view>
-                  <!-- 自定义标签输入 -->
-                  <view class="custom-tag-input">
-                    <input
-                      class="custom-tag-field"
-                      placeholder="输入自定义标签"
-                      value="{{ currentCustomTag }}"
-                      bindinput="onCustomTagInput"
-                      data-type="wasteful"
-                      maxlength="10"
-                    />
-                    <button
-                      class="add-custom-tag-btn"
-                      bindtap="addCustomTag"
-                      data-type="wasteful"
-                    >
-                      <text>+</text>
-                    </button>
+                    <!-- 紧凑的自定义标签输入 -->
+                    <view class="tag-option custom-tag-compact">
+                      <input
+                        class="custom-tag-field-compact"
+                        placeholder="+ 新建"
+                        value="{{ currentCustomTag }}"
+                        bindinput="onCustomTagInput"
+                        bindblur="addCustomTag"
+                        data-type="wasteful"
+                        maxlength="6"
+                      />
+                    </view>
                   </view>
                 </view>
 
@@ -479,17 +489,6 @@
       </view>
     </view>
 
-    <!-- 快速模板 -->
-    <view class="card">
-      <view class="card-content">
-        <view class="subtitle">{{ recordMode === 'planning' ? '规划模板' : '快速模板' }}</view>
-        <view class="template-list">
-          <view class="template-item" wx:for="{{ currentTemplates }}" wx:key="index" bindtap="useTemplate" data-template="{{ item }}">
-            {{ item }}
-          </view>
-        </view>
-      </view>
-    </view>
   </view>
 
 
@@ -596,38 +595,6 @@
       <view class="selected-time-display">
         <text class="display-icon">⏱️</text>
         <text class="display-text">{{ selectedTimeDisplay }}</text>
-      </view>
-    </view>
-  </view>
-
-  <!-- 标签选择 -->
-  <view class="card">
-    <view class="card-content">
-      <view class="subtitle">添加标签</view>
-      
-      
-      <view class="tag-selector">
-        <view 
-          class="tag-item {{ selectedTags.indexOf(item) !== -1 ? 'selected' : '' }}"
-          wx:for="{{ availableTags }}" 
-          wx:key="index"
-          bindtap="toggleTag"
-          data-tag="{{ item }}"
-        >
-          {{ item }}
-        </view>
-      </view>
-      
-      <!-- 自定义标签输入 -->
-      <view class="custom-tag-input">
-        <input 
-          class="input"
-          placeholder="添加自定义标签"
-          value="{{ customTag }}"
-          bindinput="onCustomTagInput"
-          bindconfirm="addCustomTag"
-        />
-        <button wx:if="{{ customTag.length > 0 }}" class="btn btn-secondary" bindtap="addCustomTag">添加</button>
       </view>
     </view>
   </view>

@@ -8,11 +8,12 @@ const notionApiService = require('../../utils/notionApiService.js')
 Page({
   data: {
     recordMode: 'normal', // 'normal' | 'planning'
+    activeTab: 'valuable', // 当前活动tab: 'valuable' | 'neutral' | 'wasteful'
     inputType: 'text', // 默认为文本输入类型
     textContent: '',
     // 价值分类内容
     neutralContent: '',    // 中性内容
-    valuableContent: '',   // 有价值内容  
+    valuableContent: '',   // 有价值内容
     wastefulContent: '',   // 无价值内容
     // 有价值时间投入统计
     valuableTimeEntries: [], // 格式: [{activity: '', minutes: 0, tags: []}]
@@ -47,6 +48,7 @@ Page({
     isSaving: false, // 防止重复提交
     editFromPage: 'timeline', // 编辑模式来源页面
     availableTags: [], // 将从tagManager加载用户标签
+    availableTagsWithAdd: [], // 包含"+ 新建标签"选项的标签列表
     // 时间选择相关
     selectedDateType: 'today', // 'today' | 'yesterday' | 'custom'
     startTimeIndex: 0, // 开始时间选项索引
@@ -211,8 +213,10 @@ Page({
     const currentUser = userManager.getCurrentUser()
     if (!currentUser || !currentUser.email) {
       console.warn('用户未登录或邮箱不存在，使用默认标签')
+      const defaultTags = tagManager.getUserTags(null)
       this.setData({
-        availableTags: tagManager.getUserTags(null)
+        availableTags: defaultTags,
+        availableTagsWithAdd: [...defaultTags, '+ 新建标签']
       })
       return
     }
@@ -223,7 +227,8 @@ Page({
       console.log(`加载用户 [${currentUser.email}] 标签:`, userTags)
 
       this.setData({
-        availableTags: userTags
+        availableTags: userTags,
+        availableTagsWithAdd: [...userTags, '+ 新建标签']
       })
 
       // 异步从云端加载最新标签
@@ -232,7 +237,8 @@ Page({
           // 合并默认标签和云端标签
           const allTags = tagManager.getUserTags(currentUser.email)
           this.setData({
-            availableTags: allTags
+            availableTags: allTags,
+            availableTagsWithAdd: [...allTags, '+ 新建标签']
           })
           console.log('云端标签已同步:', allTags)
         }
@@ -243,8 +249,10 @@ Page({
     } catch (error) {
       console.error('加载用户标签失败:', error)
       // 使用默认标签
+      const defaultTags = tagManager.getUserTags(null)
       this.setData({
-        availableTags: tagManager.getUserTags(null)
+        availableTags: defaultTags,
+        availableTagsWithAdd: [...defaultTags, '+ 新建标签']
       })
     }
   },
@@ -330,6 +338,12 @@ Page({
   selectPlanningMode: function() {
     this.setData({ recordMode: 'planning' })
     this.updateCurrentTemplates()
+  },
+
+  // 切换活动类型tab
+  switchTab: function(e) {
+    const tab = e.currentTarget.dataset.tab
+    this.setData({ activeTab: tab })
   },
 
   // 更新当前模板
@@ -863,6 +877,125 @@ Page({
     })
   },
 
+  // 快速标签选择（下拉框）
+  onQuickTagSelect: function(e) {
+    const selectedIndex = parseInt(e.detail.value)
+    const type = e.currentTarget.dataset.type || 'valuable'
+    const selectedTag = this.data.availableTagsWithAdd[selectedIndex]
+
+    if (!selectedTag) return
+
+    // 如果选择的是"+ 新建标签"，弹出输入框
+    if (selectedTag === '+ 新建标签') {
+      wx.showModal({
+        title: '新建标签',
+        editable: true,
+        placeholderText: '输入标签名称',
+        success: (res) => {
+          if (res.confirm && res.content && res.content.trim()) {
+            const newTag = res.content.trim()
+            this.handleAddNewTag(newTag, type)
+          }
+        }
+      })
+      return
+    }
+
+    let tagsKey, currentTags, indexKey
+    if (type === 'neutral') {
+      tagsKey = 'currentNeutralActivityTags'
+      currentTags = this.data.currentNeutralActivityTags
+      indexKey = 'quickTagIndexNeutral'
+    } else if (type === 'wasteful') {
+      tagsKey = 'currentWastefulActivityTags'
+      currentTags = this.data.currentWastefulActivityTags
+      indexKey = 'quickTagIndexWasteful'
+    } else {
+      tagsKey = 'currentActivityTags'
+      currentTags = this.data.currentActivityTags
+      indexKey = 'quickTagIndex'
+    }
+
+    // 检查标签是否已添加
+    if (currentTags.indexOf(selectedTag) > -1) {
+      wx.showToast({
+        title: `标签"${selectedTag}"已存在`,
+        icon: 'none',
+        duration: 1000
+      })
+      return
+    }
+
+    // 添加标签
+    const newTags = [...currentTags, selectedTag]
+
+    this.setData({
+      [tagsKey]: newTags,
+      [indexKey]: selectedIndex
+    })
+
+    wx.showToast({
+      title: `已添加标签: ${selectedTag}`,
+      icon: 'success',
+      duration: 800
+    })
+  },
+
+  // 处理添加新标签
+  handleAddNewTag: function(newTag, type) {
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser || !currentUser.email) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'error'
+      })
+      return
+    }
+
+    // 检查标签是否已存在于标签库
+    if (this.data.availableTags.indexOf(newTag) > -1) {
+      wx.showToast({
+        title: '标签已存在',
+        icon: 'none',
+        duration: 1500
+      })
+      return
+    }
+
+    // 添加到标签库
+    tagManager.addTag(currentUser.email, newTag)
+
+    // 更新界面
+    const newAvailableTags = [...this.data.availableTags, newTag]
+    this.setData({
+      availableTags: newAvailableTags,
+      availableTagsWithAdd: [...newAvailableTags, '+ 新建标签']
+    })
+
+    // 添加到当前活动的标签列表
+    let tagsKey, currentTags
+    if (type === 'neutral') {
+      tagsKey = 'currentNeutralActivityTags'
+      currentTags = this.data.currentNeutralActivityTags
+    } else if (type === 'wasteful') {
+      tagsKey = 'currentWastefulActivityTags'
+      currentTags = this.data.currentWastefulActivityTags
+    } else {
+      tagsKey = 'currentActivityTags'
+      currentTags = this.data.currentActivityTags
+    }
+
+    this.setData({
+      [tagsKey]: [...currentTags, newTag]
+    })
+
+    wx.showToast({
+      title: `已创建并添加标签: ${newTag}`,
+      icon: 'success',
+      duration: 1500
+    })
+  },
+
   toggleActivityTag: function(e) {
     const tag = e.currentTarget.dataset.tag
     const type = e.currentTarget.dataset.type || 'valuable'
@@ -980,6 +1113,7 @@ Page({
 
     this.setData({
       availableTags: newAvailableTags,
+      availableTagsWithAdd: [...newAvailableTags, '+ 新建标签'],
       [tagsKey]: newCurrentTags,
       currentCustomTag: ''
     })
@@ -1872,9 +2006,10 @@ Page({
       this.setData({
         selectedTags,
         availableTags,
+        availableTagsWithAdd: [...availableTags, '+ 新建标签'],
         customTag: ''
       })
-      
+
       wx.showToast({
         title: `添加标签: ${customTag}`,
         icon: 'success',
@@ -1961,9 +2096,13 @@ Page({
   },
 
   // 保存备忘录
+  // 防重复提交标记（使用实例变量，立即生效）
+  _isSavingFlag: false,
+
   saveMemo: async function() {
-    // 防止重复提交
-    if (this.data.isSaving) {
+    // ⚠️ 双重防护：使用实例变量立即阻止重复点击
+    if (this._isSavingFlag || this.data.isSaving) {
+      console.warn('⚠️ 阻止重复提交')
       return
     }
 
@@ -1978,7 +2117,9 @@ Page({
       return
     }
 
-    // 设置保存状态
+    // ⚠️ 立即设置标记，阻止后续点击
+    this._isSavingFlag = true
+    // 设置保存状态（UI显示）
     this.setData({ isSaving: true })
 
     // 获取当前用户和Notion配置
@@ -1994,6 +2135,7 @@ Page({
         title: '用户未登录',
         icon: 'error'
       })
+      this._isSavingFlag = false
       this.setData({ isSaving: false })
       return
     }
@@ -2047,6 +2189,35 @@ Page({
       console.log('使用的数据库ID:', mainDatabaseId)
       console.log('currentUser.email:', currentUser.email)
       console.log('====================================')
+
+      // 计算开始和结束时间
+      const startTimeOption = this.data.timeOptions[this.data.startTimeIndex]
+      const endTimeOption = this.data.timeOptions[this.data.endTimeIndex]
+
+      const getFullTimestamp = (baseTimestamp, timeValue) => {
+        const date = new Date(baseTimestamp)
+        let hour = Math.floor(timeValue)
+        const minute = (timeValue % 1) === 0.5 ? 30 : 0
+
+        // 处理跨日情况（晚睡时间段）
+        if (timeValue >= 24) {
+          date.setDate(date.getDate() + 1)
+          hour = hour - 24
+        }
+
+        date.setHours(hour, minute, 0, 0)
+        return date
+      }
+
+      const startDateTime = getFullTimestamp(timestamp, startTimeOption.value)
+      const endDateTime = getFullTimestamp(timestamp, endTimeOption.value)
+
+      console.log('⏰ 时间段:', {
+        start: startDateTime.toISOString(),
+        end: endDateTime.toISOString(),
+        startLabel: startTimeOption.label,
+        endLabel: endTimeOption.label
+      })
 
       const properties = {
         'Name': {
@@ -2145,6 +2316,7 @@ Page({
         title: this.data.isEditMode ? '更新成功' : '保存成功',
         icon: 'success',
         complete: () => {
+          this._isSavingFlag = false
           this.setData({ isSaving: false })
           this.resetForm()
           setTimeout(() => {
@@ -2160,6 +2332,7 @@ Page({
         icon: 'none',
         duration: 2000
       })
+      this._isSavingFlag = false
       this.setData({ isSaving: false })
     }
   },
@@ -2188,6 +2361,29 @@ Page({
       console.warn('未配置活动明细表数据库ID，跳过活动记录')
       return
     }
+
+    // 获取用户选择的时间段
+    const startTimeOption = this.data.timeOptions[this.data.startTimeIndex]
+    const endTimeOption = this.data.timeOptions[this.data.endTimeIndex]
+
+    // 计算开始和结束时间的完整时间戳
+    const getFullTimestamp = (baseTimestamp, timeValue) => {
+      const date = new Date(baseTimestamp)
+      let hour = Math.floor(timeValue)
+      const minute = (timeValue % 1) === 0.5 ? 30 : 0
+
+      // 处理跨日情况（晚睡时间段）
+      if (timeValue >= 24) {
+        date.setDate(date.getDate() + 1)
+        hour = hour - 24
+      }
+
+      date.setHours(hour, minute, 0, 0)
+      return date
+    }
+
+    const startDateTime = getFullTimestamp(timestamp, startTimeOption.value)
+    const endDateTime = getFullTimestamp(timestamp, endTimeOption.value)
 
     for (const entry of allEntries) {
       try {
@@ -2292,6 +2488,7 @@ Page({
         title: '保存成功',
         icon: 'success',
         complete: () => {
+          this._isSavingFlag = false
           this.setData({ isSaving: false })
           this.resetForm()
           setTimeout(() => {
@@ -2301,6 +2498,7 @@ Page({
       })
     } catch (error) {
       console.error('保存到本地失败:', error)
+      this._isSavingFlag = false
       this.setData({ isSaving: false })
       wx.showToast({
         title: '保存失败',
@@ -2502,11 +2700,31 @@ Page({
   // 初始化编辑模式
   initEditMode: function(memoId) {
     console.log('initEditMode called with memoId:', memoId)
-    const memoList = app.getMemoList()
-    console.log('total memos in list:', memoList.length)
-    const memo = memoList.find(m => m.id === memoId)
+
+    // 优先使用从全局数据传递过来的完整memo对象
+    let memo = null
+    if (app.globalData.editMemo && app.globalData.editMemo.memoData) {
+      console.log('using memoData from globalData')
+      memo = app.globalData.editMemo.memoData
+    }
+
+    // 如果没有传递memoData，则从本地memoList中查找
+    if (!memo) {
+      console.log('memoData not found in globalData, searching in memoList')
+      const memoList = app.getMemoList()
+      console.log('total memos in list:', memoList.length)
+
+      // 优先通过id查找（timestamp格式），如果找不到则通过notionPageId查找（UUID格式）
+      memo = memoList.find(m => m.id === memoId)
+
+      if (!memo) {
+        console.log('memo not found by id, trying notionPageId...')
+        memo = memoList.find(m => m.notionPageId === memoId)
+      }
+    }
+
     console.log('found memo:', memo)
-    
+
     if (!memo) {
       console.error('memo not found for id:', memoId)
       wx.showToast({
@@ -2765,8 +2983,8 @@ Page({
               'Todo Name': { // 待办标题：拆分后的单行
                 title: [{ text: { content: item } }]
               },
-              'Description': { // 描述：简单标注日期来源
-                rich_text: [{ text: { content: `${tomorrowDate}的规划` } }]
+              'Description': { // 描述：保存完整的规划内容
+                rich_text: [{ text: { content: memo.content || '' } }]
               },
               'Todo Type': { // 添加英文后缀
                 select: { name: '临时待办 (Ad-hoc)' }

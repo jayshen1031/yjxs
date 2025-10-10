@@ -554,6 +554,29 @@
   transform: translateY(-4rpx);
 }
 
+/* 单个统计卡片样式 */
+.stat-card-single {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
+  margin: 20rpx 0;
+}
+
+.stat-card-single .stat-number {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8rpx;
+}
+
+.stat-card-single .stat-label {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
 .quick-action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -12,6 +12,7 @@ Page({
     reminderInterval: 60,
     todayPlanning: null,
     planningDate: '',
+    todayValueMinutes: 0, // 今日价值分钟总数
     // 箴言相关
     quoteCategories: [],
     selectedQuoteCategory: '',
@@ -173,17 +174,49 @@ Page({
     const memoList = app.getMemoList()
     const today = new Date()
     const todayStr = today.toDateString()
-    
-    // 计算连续记录天数
-    const continuousDays = this.calculateContinuousDays(memoList)
-    
-    // 计算今日价值度
-    const todayValueScore = this.calculateTodayValueScore(memoList, todayStr)
+
+    // 计算今日价值分钟总数
+    const todayValueMinutes = this.calculateTodayValueMinutes(memoList, todayStr)
 
     this.setData({
-      continuousDays: continuousDays,
-      todayValueScore: todayValueScore
+      todayValueMinutes: todayValueMinutes
     })
+  },
+
+  // 计算今日价值分钟总数
+  calculateTodayValueMinutes: function(memoList, todayStr) {
+    const todayMemos = memoList.filter(memo => {
+      const memoDateStr = new Date(memo.timestamp).toDateString()
+      return memoDateStr === todayStr && !memo.isPlanning
+    })
+
+    if (todayMemos.length === 0) return 0
+
+    let totalMinutes = 0
+
+    // 从记录中提取valuableTimeEntries
+    todayMemos.forEach(memo => {
+      // 如果memo有valuableTimeEntries字段
+      if (memo.valuableTimeEntries && Array.isArray(memo.valuableTimeEntries)) {
+        memo.valuableTimeEntries.forEach(entry => {
+          totalMinutes += entry.minutes || 0
+        })
+      }
+
+      // 兼容：从content中解析时间投入（格式：活动名称 (X分钟)）
+      if (memo.content && memo.content.includes('🌟 有价值的活动')) {
+        const valuableSection = memo.content.split('😐 中性的活动')[0]
+        const timeMatches = valuableSection.match(/\((\d+)分钟\)/g)
+        if (timeMatches) {
+          timeMatches.forEach(match => {
+            const minutes = parseInt(match.match(/\d+/)[0])
+            totalMinutes += minutes
+          })
+        }
+      }
+    })
+
+    return totalMinutes
   },
 
   // 计算连续记录天数
@@ -282,14 +315,14 @@ Page({
     })
   },
 
-  // 加载今日规划
+  // 加载今日待办（昨日规划）
   loadTodayPlanning: function() {
     const memoList = app.getMemoList()
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     const yesterdayStr = yesterday.toDateString()
-    
-    // 找到昨天最后一条规划记录
+
+    // 找到昨天最后一条规划记录（作为今日待办）
     const yesterdayPlannings = memoList.filter(memo => {
       const memoDate = new Date(memo.timestamp).toDateString()
       return memoDate === yesterdayStr && memo.isPlanning
@@ -299,16 +332,17 @@ Page({
       // 按时间排序，取最后一条
       yesterdayPlannings.sort((a, b) => b.timestamp - a.timestamp)
       const latestPlanning = yesterdayPlannings[0]
-      
+      const planningDate = new Date(latestPlanning.timestamp)
+
       this.setData({
         todayPlanning: {
           ...latestPlanning,
-          formattedTime: this.formatRelativeTime(new Date(latestPlanning.timestamp))
+          formattedTime: this.formatRelativeTime(planningDate)
         },
-        planningDate: '昨日规划'
+        planningDate: `昨日规划（${planningDate.getMonth() + 1}月${planningDate.getDate()}日）`
       })
     } else {
-      // 如果没有昨天的规划，查找今天的规划
+      // 如果没有昨天的规划，查找今天的规划（刚制定的今日规划）
       const today = new Date().toDateString()
       const todayPlannings = memoList.filter(memo => {
         const memoDate = new Date(memo.timestamp).toDateString()
@@ -318,13 +352,19 @@ Page({
       if (todayPlannings.length > 0) {
         todayPlannings.sort((a, b) => b.timestamp - a.timestamp)
         const latestPlanning = todayPlannings[0]
-        
+
         this.setData({
           todayPlanning: {
             ...latestPlanning,
             formattedTime: this.formatRelativeTime(new Date(latestPlanning.timestamp))
           },
-          planningDate: '今日规划'
+          planningDate: '今日规划（刚制定）'
+        })
+      } else {
+        // 清空显示
+        this.setData({
+          todayPlanning: null,
+          planningDate: ''
         })
       }
     }

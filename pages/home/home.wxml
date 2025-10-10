@@ -71,35 +71,12 @@ module.exports = {
       </view>
     </view>
 
-    <!-- 快速箴言分类 -->
-    <scroll-view class="quick-categories" scroll-x="true" wx:if="{{ quoteCategories.length > 0 }}">
-      <view 
-        class="category-chip {{selectedQuoteCategory === category ? 'active' : ''}}" 
-        wx:for="{{ quoteCategories }}" 
-        wx:key="*this"
-        wx:for-item="category"
-        bindtap="quickFilterByCategory"
-        data-category="{{ category }}"
-      >
-        {{ category }}
-      </view>
-    </scroll-view>
   </view>
 
-  <!-- 快速统计 -->
-  <view class="grid grid-2 mb-20">
-    <view class="grid-item">
-      <view class="stat-card">
-        <view class="stat-number">{{ continuousDays }}</view>
-        <view class="stat-label">连续记录</view>
-      </view>
-    </view>
-    <view class="grid-item">
-      <view class="stat-card">
-        <view class="stat-number">{{ todayValueScore }}%</view>
-        <view class="stat-label">今日价值度</view>
-      </view>
-    </view>
+  <!-- 今日价值统计 -->
+  <view class="stat-card-single">
+    <view class="stat-number">{{ todayValueMinutes }}</view>
+    <view class="stat-label">今日价值分钟</view>
   </view>
 
   <!-- 目标进展 -->
@@ -196,11 +173,11 @@ module.exports = {
     </view>
   </view>
 
-  <!-- 明日规划重点 -->
+  <!-- 今日待办重点（昨日规划） -->
   <view wx:if="{{ todayPlanning }}" class="card planning-highlight">
     <view class="card-content">
       <view class="planning-header">
-        <view class="title">📋 明日规划重点</view>
+        <view class="title">📋 今日待办重点</view>
         <view class="planning-date">{{ planningDate }}</view>
       </view>
       <view class="planning-content">
@@ -208,110 +185,7 @@ module.exports = {
       </view>
       <view class="planning-meta">
         <view class="time-tag">⏰ 规划时间：{{ todayPlanning.formattedTime }}</view>
-        <view class="tag planning">规划</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 今日待办 -->
-  <view class="card today-todos-section">
-    <view class="card-content">
-      <view class="section-header">
-        <view class="title">✅ 今日待办 ({{ todayTodosStats.total }})</view>
-        <view class="action-link" bindtap="goToTodosPage">
-          <text>管理全部</text>
-          <text class="icon">→</text>
-        </view>
-      </view>
-
-      <view wx:if="{{ todayTodos.length > 0 }}">
-        <view class="todo-item" wx:for="{{ todayTodos }}" wx:key="id" bindtap="toggleTodoStatus" data-id="{{ item.id }}">
-          <view class="todo-checkbox">
-            <text class="icon {{item.status === '已完成' ? 'checked' : ''}}">{{ item.status === '已完成' ? '✓' : '○' }}</text>
-          </view>
-          <view class="todo-content">
-            <view class="todo-title {{item.status === '已完成' ? 'completed' : ''}}">{{ item.title }}</view>
-            <view class="todo-meta">
-              <view class="todo-type-tag">{{ item.type }}</view>
-              <view class="todo-priority-tag priority-{{item.priorityLevel}}">{{ item.priorityText }}</view>
-              <view wx:if="{{ item.estimatedMinutes }}" class="todo-time-tag">⏱ {{ item.estimatedMinutes }}分钟</view>
-            </view>
-          </view>
-        </view>
-
-        <view class="todos-summary">
-          <view class="summary-item">
-            <text class="label">待办:</text>
-            <text class="value">{{ todayTodosStats.pending }}</text>
-          </view>
-          <view class="summary-item">
-            <text class="label">进行中:</text>
-            <text class="value">{{ todayTodosStats.inProgress }}</text>
-          </view>
-          <view class="summary-item">
-            <text class="label">已完成:</text>
-            <text class="value">{{ todayTodosStats.completed }}</text>
-          </view>
-        </view>
-      </view>
-
-      <view wx:else class="empty-state">
-        <view class="icon">📝</view>
-        <view class="text">今天还没有待办事项</view>
-        <view class="hint">可以在"明日规划"中添加，或在"目标·待办"页面管理</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 最近记录 -->
-  <view class="card">
-    <view class="card-content">
-      <view class="title">最近记录</view>
-      <view wx:if="{{ recentMemos.length > 0 }}">
-        <view class="list-item" wx:for="{{ recentMemos }}" wx:key="id">
-          <view class="content">
-            <view class="subtitle">{{ item.content }}</view>
-            <view class="memo-meta">
-              <view class="time-tag">{{ item.formattedTime }}</view>
-              <view class="tag period-{{ item.periodColor }}">{{ item.timePeriod }}</view>
-              <view class="tag category-{{ item.categoryColor }}">{{ item.category }}</view>
-              <view class="tag {{ item.isPlanning ? 'planning' : item.type }}">
-                {{ item.isPlanning ? '规划' : (item.type === 'voice' ? '语音' : '文字') }}
-              </view>
-            </view>
-            <!-- 用户自定义标签 -->
-            <view class="memo-tags" wx:if="{{ item.tags && item.tags.length > 0 }}">
-              <text class="tag user-tag" wx:for="{{ item.tags }}" wx:key="index" wx:for-item="tag">{{ tag }}</text>
-            </view>
-          </view>
-        </view>
-        <view class="text-center mt-20">
-          <button class="btn btn-secondary" bindtap="viewAllMemos">查看全部</button>
-        </view>
-      </view>
-      <view wx:else class="empty-state">
-        <view class="icon">📝</view>
-        <view class="text">暂无记录，开始记录美好生活吧！</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 提醒设置 -->
-  <view class="card">
-    <view class="card-content">
-      <view class="title">⏰ 准点提醒</view>
-      <view class="flex flex-between">
-        <text>每小时准点提醒</text>
-        <switch checked="{{ reminderEnabled }}" bindchange="toggleReminder" color="#6366f1"/>
-      </view>
-      <view wx:if="{{ reminderEnabled }}" class="reminder-info">
-        <view class="reminder-time-range">
-          <text class="time-badge">7:00</text>
-          <text class="time-separator">-</text>
-          <text class="time-badge">22:00</text>
-        </view>
-        <text class="reminder-desc">生活时间段内每小时整点提醒记录</text>
-        <text class="reminder-note">💡 过去1小时的活动回顾和记录</text>
+        <view class="tag planning">今日待办</view>
       </view>
     </view>
   </view>
