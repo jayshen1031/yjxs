@@ -131,6 +131,14 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
+      console.log('🔍 History - 用户Notion配置:', {
+        hasConfig: !!notionConfig,
+        hasApiKey: !!notionConfig?.apiKey,
+        activitiesDatabaseId: notionConfig?.activitiesDatabaseId,
+        activityDatabaseId: notionConfig?.activityDatabaseId,
+        email: currentUser.email
+      })
+
       if (!notionConfig || !notionConfig.apiKey || !notionConfig.activitiesDatabaseId) {
         console.log('Notion未配置，使用本地数据')
         this.loadMemosFromLocal()

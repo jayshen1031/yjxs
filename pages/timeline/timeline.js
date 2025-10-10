@@ -90,6 +90,14 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
+      console.log('🔍 Timeline - 用户Notion配置:', {
+        hasConfig: !!notionConfig,
+        hasApiKey: !!notionConfig?.apiKey,
+        mainRecordsDatabaseId: notionConfig?.mainRecordsDatabaseId,
+        mainDatabaseId: notionConfig?.mainDatabaseId,
+        email: currentUser.email
+      })
+
       if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainRecordsDatabaseId) {
         console.log('Notion未配置，使用本地数据')
         this.loadMemosFromLocal()
