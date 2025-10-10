@@ -127,6 +127,12 @@ Page({
 
       const mainRecords = result.records || []
 
+      console.log('📊 从Notion获取的主记录数据:', mainRecords)
+      console.log('📊 主记录数量:', mainRecords.length)
+      if (mainRecords.length > 0) {
+        console.log('📊 第一条主记录详情:', mainRecords[0])
+      }
+
       // 转换Main Records为memo格式
       const processedMemos = mainRecords
         .sort((a, b) => new Date(b.date) - new Date(a.date))

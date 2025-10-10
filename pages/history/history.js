@@ -168,6 +168,12 @@ Page({
 
       const activities = result.activities || []
 
+      console.log('📊 从Notion获取的活动数据:', activities)
+      console.log('📊 活动数量:', activities.length)
+      if (activities.length > 0) {
+        console.log('📊 第一条活动详情:', activities[0])
+      }
+
       // 转换Activities为memo格式
       const processedMemos = activities.map(activity => {
         const startTime = new Date(activity.startTime)
