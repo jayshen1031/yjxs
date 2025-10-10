@@ -1,6 +1,7 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const apiService = require('../../utils/apiService.js')
+const notionApiService = require('../../utils/notionApiService.js')
 
 Page({
   data: {
@@ -95,12 +96,19 @@ Page({
         return
       }
 
-      // 从云端加载Main Records
-      const result = await apiService.getMainRecords(
-        currentUser.id,
+      // 从云端加载Main Records（前端直接调用，绕过云函数）
+      const mainDatabaseId = notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
+      if (!mainDatabaseId) {
+        console.error('未配置主记录表数据库ID')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const result = await notionApiService.queryMainRecords(
         notionConfig.apiKey,
-        { limit: 30 }, // 只加载最近30条
-        currentUser.email // 传递邮箱用于用户匹配
+        mainDatabaseId,
+        currentUser.email,
+        { limit: 30 } // 只加载最近30条
       )
 
       if (!result.success) {

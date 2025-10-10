@@ -1939,6 +1939,151 @@ class NotionApiService {
       }
     }
   }
+
+  /**
+   * 查询主记录表（前端直接调用，绕过云函数）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} databaseId - 主记录表数据库ID
+   * @param {string} userEmail - 用户邮箱
+   * @param {object} options - 查询选项（limit, startDate, endDate等）
+   */
+  async queryMainRecords(apiKey, databaseId, userEmail, options = {}) {
+    try {
+      console.log('前端直接查询主记录表:', databaseId, '用户邮箱:', userEmail)
+
+      // 构建过滤条件
+      const filter = {
+        property: 'User ID',
+        rich_text: {
+          equals: userEmail
+        }
+      }
+
+      // 构建查询参数
+      const queryData = {
+        filter: filter,
+        sorts: [
+          {
+            property: 'Record Date',
+            direction: 'descending'
+          }
+        ]
+      }
+
+      // 添加分页限制
+      if (options.limit) {
+        queryData.page_size = options.limit
+      }
+
+      const result = await this.queryDatabase(apiKey, databaseId, queryData)
+
+      if (!result.success) {
+        throw new Error(result.error || '查询主记录表失败')
+      }
+
+      // 解析结果
+      const records = result.data.results.map(page => {
+        const props = page.properties
+        return {
+          id: page.id,
+          title: props['Name']?.title?.[0]?.text?.content || props['Title']?.title?.[0]?.text?.content || '',
+          content: props['Summary']?.rich_text?.[0]?.text?.content || props['Content']?.rich_text?.[0]?.text?.content || '',
+          date: props['Record Date']?.date?.start || props['Date']?.date?.start || '',
+          recordType: props['Record Type']?.select?.name || props['Type']?.select?.name || '日常记录',
+          timePeriod: props['Time Period']?.select?.name || '',
+          tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
+          userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
+        }
+      })
+
+      console.log(`查询到 ${records.length} 条主记录`)
+
+      return {
+        success: true,
+        records: records,
+        total: result.data.results.length
+      }
+    } catch (error) {
+      console.error('查询主记录表异常:', error)
+      return {
+        success: false,
+        error: '查询主记录表失败: ' + error.message
+      }
+    }
+  }
+
+  /**
+   * 查询活动明细表（前端直接调用，绕过云函数）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} databaseId - 活动明细表数据库ID
+   * @param {string} userEmail - 用户邮箱
+   * @param {object} options - 查询选项
+   */
+  async queryActivities(apiKey, databaseId, userEmail, options = {}) {
+    try {
+      console.log('前端直接查询活动明细表:', databaseId, '用户邮箱:', userEmail)
+
+      // 构建过滤条件
+      const filter = {
+        property: 'User ID',
+        rich_text: {
+          equals: userEmail
+        }
+      }
+
+      // 构建查询参数
+      const queryData = {
+        filter: filter,
+        sorts: [
+          {
+            property: 'Start Time',
+            direction: 'descending'
+          }
+        ]
+      }
+
+      // 添加分页限制
+      if (options.limit) {
+        queryData.page_size = options.limit
+      }
+
+      const result = await this.queryDatabase(apiKey, databaseId, queryData)
+
+      if (!result.success) {
+        throw new Error(result.error || '查询活动明细表失败')
+      }
+
+      // 解析结果
+      const activities = result.data.results.map(page => {
+        const props = page.properties
+        return {
+          id: page.id,
+          name: props['Name']?.title?.[0]?.text?.content || '',
+          description: props['Description']?.rich_text?.[0]?.text?.content || '',
+          startTime: props['Start Time']?.date?.start || '',
+          endTime: props['End Time']?.date?.start || '',
+          duration: props['Duration']?.number || 0,
+          activityType: props['Activity Type']?.select?.name || '',
+          tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
+          userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
+        }
+      })
+
+      console.log(`查询到 ${activities.length} 条活动明细`)
+
+      return {
+        success: true,
+        activities: activities,
+        total: result.data.results.length
+      }
+    } catch (error) {
+      console.error('查询活动明细表异常:', error)
+      return {
+        success: false,
+        error: '查询活动明细表失败: ' + error.message
+      }
+    }
+  }
 }
 
 // 创建全局实例

@@ -1,6 +1,7 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const apiService = require('../../utils/apiService.js')
+const notionApiService = require('../../utils/notionApiService.js')
 
 Page({
   data: {
@@ -136,12 +137,19 @@ Page({
         return
       }
 
-      // 从云端加载Activity Details
-      const result = await apiService.getActivities(
-        currentUser.id,
+      // 从云端加载Activity Details（前端直接调用，绕过云函数）
+      const activitiesDatabaseId = notionConfig.activitiesDatabaseId || notionConfig.activityDatabaseId
+      if (!activitiesDatabaseId) {
+        console.error('未配置活动明细表数据库ID')
+        this.loadMemosFromLocal()
+        return
+      }
+
+      const result = await notionApiService.queryActivities(
         notionConfig.apiKey,
-        {}, // 加载所有活动
-        currentUser.email // 传递邮箱用于用户匹配
+        activitiesDatabaseId,
+        currentUser.email,
+        {} // 加载所有活动
       )
 
       if (!result.success) {
