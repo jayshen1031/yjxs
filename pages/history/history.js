@@ -140,7 +140,8 @@ Page({
       const result = await apiService.getActivities(
         currentUser.id,
         notionConfig.apiKey,
-        {} // 加载所有活动
+        {}, // 加载所有活动
+        currentUser.email // 传递邮箱用于用户匹配
       )
 
       if (!result.success) {

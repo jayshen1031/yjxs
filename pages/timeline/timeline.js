@@ -99,7 +99,8 @@ Page({
       const result = await apiService.getMainRecords(
         currentUser.id,
         notionConfig.apiKey,
-        { limit: 30 } // 只加载最近30条
+        { limit: 30 }, // 只加载最近30条
+        currentUser.email // 传递邮箱用于用户匹配
       )
 
       if (!result.success) {
