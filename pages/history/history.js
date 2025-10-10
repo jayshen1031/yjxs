@@ -173,6 +173,10 @@ Page({
       if (activities.length > 0) {
         console.log('📊 第一条活动详情:', activities[0])
       }
+      console.log('📋 所有活动记录:')
+      activities.forEach((act, index) => {
+        console.log(`  ${index + 1}. ${act.name} - ${act.description} (${act.startTime})`)
+      })
 
       // 转换Activities为memo格式
       const processedMemos = activities.map(activity => {
@@ -210,13 +214,20 @@ Page({
       // 计算统计数据
       const stats = this.calculateStats(processedMemos)
 
+      console.log('📌 转换后的processedMemos数量:', processedMemos.length)
+      if (processedMemos.length > 0) {
+        console.log('📌 第一条转换后的memo:', processedMemos[0])
+      }
+
       this.setData({
         allMemos: processedMemos,
         allTags: Array.from(allTags),
         stats: stats
       })
 
+      console.log('📌 setData完成，准备applyFilters')
       this.applyFilters()
+      console.log('📌 applyFilters完成，当前groupedMemos数量:', this.data.groupedMemos?.length || 0)
 
     } catch (error) {
       console.error('加载Activities异常:', error)
@@ -437,6 +448,11 @@ Page({
 
   // 应用筛选
   applyFilters: function() {
+    console.log('🔧 applyFilters开始 - allMemos数量:', this.data.allMemos?.length || 0)
+    if (this.data.allMemos && this.data.allMemos.length > 0) {
+      console.log('🔧 第一条allMemo:', this.data.allMemos[0])
+    }
+
     let filteredMemos = [...this.data.allMemos]
 
     // 标签筛选
@@ -492,12 +508,20 @@ Page({
     // 按日期分组
     const groupedMemos = this.groupMemosByDate(filteredMemos)
 
+    console.log('🔧 过滤后的memos数量:', filteredMemos.length)
+    console.log('🔧 分组后的groups数量:', groupedMemos.length)
+    if (groupedMemos.length > 0) {
+      console.log('🔧 第一个group:', groupedMemos[0])
+    }
+
     this.setData({
       filteredMemos: filteredMemos,
       groupedMemos: groupedMemos,
       currentPage: 1,
       hasMore: filteredMemos.length > this.data.pageSize
     })
+
+    console.log('🔧 setData完成，页面应该已刷新')
   },
 
   // 按日期分组
