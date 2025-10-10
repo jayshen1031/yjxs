@@ -775,6 +775,7 @@ Page({
   // 时间投入统计相关方法
   onActivityInput: function(e) {
     const activity = e.detail.value
+    console.log('📝 活动名称输入:', activity)
     this.setData({
       currentActivity: activity
     })
@@ -783,6 +784,7 @@ Page({
 
   onMinutesInput: function(e) {
     const minutes = e.detail.value
+    console.log('⏱️ 分钟数输入:', minutes)
     this.setData({
       currentMinutes: minutes
     })
@@ -793,13 +795,24 @@ Page({
   updateCanAddTimeEntry: function() {
     const activity = this.data.currentActivity.trim()
     const minutes = parseInt(this.data.currentMinutes)
-    
+
+    console.log('🔍 检查是否可添加:', {
+      activity: activity,
+      minutes: minutes,
+      activityValid: activity.length > 0,
+      minutesValid: minutes > 0,
+      is5Multiple: minutes % 5 === 0,
+      withinLimit: minutes <= 300
+    })
+
     // 活动名称不为空，分钟数为正数且是5的倍数
-    const canAdd = activity.length > 0 && 
-                   minutes > 0 && 
+    const canAdd = activity.length > 0 &&
+                   minutes > 0 &&
                    minutes % 5 === 0 &&
                    minutes <= 300 // 最多5小时
-    
+
+    console.log('✅ canAddTimeEntry 更新为:', canAdd)
+
     this.setData({
       canAddTimeEntry: canAdd
     })
@@ -1128,12 +1141,18 @@ Page({
 
   // 添加时间投入记录（统一处理三种类型）
   addTimeEntry: function(e) {
+    console.log('🔘 addTimeEntry 被点击', e)
     const type = e.currentTarget.dataset.type || 'valuable'
+    console.log('📋 活动类型:', type)
 
     let activity, minutes, tags, entries, totalKey, activityKey, minutesKey, tagsKey, canAddKey
 
     if (type === 'neutral') {
-      if (!this.data.canAddNeutralTimeEntry) return
+      console.log('检查中性活动是否可添加:', this.data.canAddNeutralTimeEntry)
+      if (!this.data.canAddNeutralTimeEntry) {
+        console.warn('❌ 中性活动不可添加，已退出')
+        return
+      }
       activity = this.data.currentNeutralActivity.trim()
       minutes = parseInt(this.data.currentNeutralMinutes)
       tags = this.data.currentNeutralActivityTags
@@ -1144,7 +1163,11 @@ Page({
       tagsKey = 'currentNeutralActivityTags'
       canAddKey = 'canAddNeutralTimeEntry'
     } else if (type === 'wasteful') {
-      if (!this.data.canAddWastefulTimeEntry) return
+      console.log('检查低效活动是否可添加:', this.data.canAddWastefulTimeEntry)
+      if (!this.data.canAddWastefulTimeEntry) {
+        console.warn('❌ 低效活动不可添加，已退出')
+        return
+      }
       activity = this.data.currentWastefulActivity.trim()
       minutes = parseInt(this.data.currentWastefulMinutes)
       tags = this.data.currentWastefulActivityTags
@@ -1155,7 +1178,16 @@ Page({
       tagsKey = 'currentWastefulActivityTags'
       canAddKey = 'canAddWastefulTimeEntry'
     } else {
-      if (!this.data.canAddTimeEntry) return
+      console.log('检查有价值活动是否可添加:', this.data.canAddTimeEntry)
+      if (!this.data.canAddTimeEntry) {
+        console.warn('❌ 有价值活动不可添加，已退出')
+        wx.showToast({
+          title: '请填写活动名称和分钟数',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
       activity = this.data.currentActivity.trim()
       minutes = parseInt(this.data.currentMinutes)
       tags = this.data.currentActivityTags
