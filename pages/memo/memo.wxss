@@ -1424,6 +1424,39 @@
   line-height: 1.4;
 }
 
+/* 调试提示区域 */
+.debug-hint {
+  padding: 12rpx 16rpx;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 8rpx;
+  border-left: 4rpx solid #f59e0b;
+  margin-bottom: 12rpx;
+}
+
+.debug-text {
+  font-size: 22rpx;
+  color: #92400e;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.error-hint {
+  display: block;
+  margin-top: 6rpx;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* 禁用状态的按钮 */
+.btn-disabled {
+  background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%) !important;
+  opacity: 0.6;
+}
+
+.btn-disabled text {
+  color: #6b7280 !important;
+}
+
 /* 规划模式输入标题区域 */
 .planning-input-header {
   display: flex;

@@ -175,13 +175,23 @@
                   </view>
                 </view>
 
+                <!-- 调试提示：显示当前状态 -->
+                <view wx:if="{{ !canAddTimeEntry }}" class="debug-hint">
+                  <text class="debug-text">
+                    ⚠️ 活动名称：{{ currentActivity || '(未填写)' }} |
+                    分钟数：{{ currentMinutes || '(未填写)' }}
+                    <text wx:if="{{ currentMinutes && currentMinutes % 5 !== 0 }}" class="error-hint">
+                      ❌ 分钟数必须是5的倍数
+                    </text>
+                  </text>
+                </view>
+
                 <button
-                  class="add-entry-btn"
+                  class="add-entry-btn {{ canAddTimeEntry ? '' : 'btn-disabled' }}"
                   bindtap="addTimeEntry"
                   data-type="valuable"
-                  disabled="{{ !canAddTimeEntry }}"
                 >
-                  <text>✅ 添加活动</text>
+                  <text>{{ canAddTimeEntry ? '✅ 添加活动' : '⚠️ 请先填写信息' }}</text>
                 </button>
 
                 <view class="input-hint">
@@ -301,13 +311,23 @@
                   </view>
                 </view>
 
+                <!-- 调试提示：显示当前状态 -->
+                <view wx:if="{{ !canAddNeutralTimeEntry }}" class="debug-hint">
+                  <text class="debug-text">
+                    ⚠️ 活动名称：{{ currentNeutralActivity || '(未填写)' }} |
+                    分钟数：{{ currentNeutralMinutes || '(未填写)' }}
+                    <text wx:if="{{ currentNeutralMinutes && currentNeutralMinutes % 5 !== 0 }}" class="error-hint">
+                      ❌ 分钟数必须是5的倍数
+                    </text>
+                  </text>
+                </view>
+
                 <button
-                  class="add-entry-btn"
+                  class="add-entry-btn {{ canAddNeutralTimeEntry ? '' : 'btn-disabled' }}"
                   bindtap="addTimeEntry"
                   data-type="neutral"
-                  disabled="{{ !canAddNeutralTimeEntry }}"
                 >
-                  <text>✅ 添加活动</text>
+                  <text>{{ canAddNeutralTimeEntry ? '✅ 添加活动' : '⚠️ 请先填写信息' }}</text>
                 </button>
 
                 <view class="input-hint">
@@ -427,13 +447,23 @@
                   </view>
                 </view>
 
+                <!-- 调试提示：显示当前状态 -->
+                <view wx:if="{{ !canAddWastefulTimeEntry }}" class="debug-hint">
+                  <text class="debug-text">
+                    ⚠️ 活动名称：{{ currentWastefulActivity || '(未填写)' }} |
+                    分钟数：{{ currentWastefulMinutes || '(未填写)' }}
+                    <text wx:if="{{ currentWastefulMinutes && currentWastefulMinutes % 5 !== 0 }}" class="error-hint">
+                      ❌ 分钟数必须是5的倍数
+                    </text>
+                  </text>
+                </view>
+
                 <button
-                  class="add-entry-btn"
+                  class="add-entry-btn {{ canAddWastefulTimeEntry ? '' : 'btn-disabled' }}"
                   bindtap="addTimeEntry"
                   data-type="wasteful"
-                  disabled="{{ !canAddWastefulTimeEntry }}"
                 >
-                  <text>✅ 添加活动</text>
+                  <text>{{ canAddWastefulTimeEntry ? '✅ 添加活动' : '⚠️ 请先填写信息' }}</text>
                 </button>
 
                 <view class="input-hint">
