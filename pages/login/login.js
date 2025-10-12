@@ -1,37 +1,15 @@
 // pages/login/login.js
-console.log('[Login] 开始加载login.js文件...')
+console.log('==========================================')
+console.log('[Login] 文件开始执行')
+console.log('[Login] 当前时间:', new Date().toISOString())
+console.log('==========================================')
 
-let userManager = null
-let formatTime = null
+const userManager = require('../../utils/userManager.js')
+const { formatTime } = require('../../utils/util.js')
 
-try {
-  console.log('[Login] 加载userManager...')
-  userManager = require('../../utils/userManager.js')
-  console.log('[Login] userManager加载成功')
-} catch (e) {
-  console.error('[Login] userManager加载失败:', e)
-  wx.showModal({
-    title: '加载错误',
-    content: 'userManager加载失败: ' + e.message,
-    showCancel: false
-  })
-}
-
-try {
-  console.log('[Login] 加载util...')
-  const util = require('../../utils/util.js')
-  formatTime = util.formatTime
-  console.log('[Login] util加载成功')
-} catch (e) {
-  console.error('[Login] util加载失败:', e)
-  wx.showModal({
-    title: '加载错误',
-    content: 'util加载失败: ' + e.message,
-    showCancel: false
-  })
-}
-
-console.log('[Login] 定义Page对象...')
+console.log('[Login] 依赖加载完成')
+console.log('[Login] userManager type:', typeof userManager)
+console.log('[Login] formatTime type:', typeof formatTime)
 
 Page({
   data: {
