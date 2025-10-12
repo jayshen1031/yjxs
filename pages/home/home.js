@@ -1094,7 +1094,8 @@ Page({
   // 加载今日状态
   loadTodayStatus: async function() {
     const currentUser = userManager.getCurrentUser()
-    if (!currentUser || !currentUser.notionConfig?.databases?.dailyStatus) {
+    if (!currentUser || !currentUser.notionConfig?.databases?.dailyStatus || !currentUser.notionConfig?.apiKey) {
+      console.log('⏭️ 跳过加载今日状态：配置不完整')
       return
     }
 
@@ -1103,9 +1104,12 @@ Page({
       const today = new Date()
       const dateStr = this.formatDate(today)
 
+      console.log('🔍 首页查询今日状态:', dateStr)
+
       // 查询今日状态
+      const apiKey = currentUser.notionConfig.apiKey
       const databaseId = currentUser.notionConfig.databases.dailyStatus
-      const response = await notionApiService.queryDatabase(databaseId, {
+      const response = await notionApiService.queryDatabase(apiKey, databaseId, {
         filter: {
           property: 'Date',
           title: {
@@ -1115,15 +1119,25 @@ Page({
         page_size: 1
       })
 
-      if (response.results && response.results.length > 0) {
-        const page = response.results[0]
+      console.log('📊 查询结果:', response)
+
+      if (response.success && response.data?.results && response.data.results.length > 0) {
+        const page = response.data.results[0]
+        console.log('✅ 找到今日状态:', page)
         const status = this.parseDailyStatusPage(page)
+        console.log('📝 解析后的状态:', status)
         this.setData({
           todayStatus: status
         })
+      } else {
+        console.log('⚠️ 今日还没有状态记录')
+        // 清空旧数据
+        this.setData({
+          todayStatus: null
+        })
       }
     } catch (error) {
-      console.error('加载今日状态失败:', error)
+      console.error('❌ 加载今日状态失败:', error)
     }
   },
 
@@ -1131,9 +1145,11 @@ Page({
   parseDailyStatusPage: function(page) {
     const props = page.properties
     return {
-      mood: this.getSelectValue(props['Mood']),
+      mood: this.getMultiSelectValue(props['Mood']),  // 多选
       energyLevel: this.getSelectValue(props['Energy Level']),
       stressLevel: this.getSelectValue(props['Stress Level']),
+      wakeUpTime: this.getRichTextValue(props['Wake Up Time']),  // 起床时间
+      bedTime: this.getRichTextValue(props['Bed Time']),  // 睡觉时间
       sleepHours: this.getNumberValue(props['Sleep Hours']),
       sleepQuality: this.getSelectValue(props['Sleep Quality']),
       weight: this.getNumberValue(props['Weight']),
@@ -1142,6 +1158,14 @@ Page({
       highlights: this.getRichTextValue(props['Highlights']),
       notes: this.getRichTextValue(props['Notes'])
     }
+  },
+
+  // 获取多选属性值
+  getMultiSelectValue: function(prop) {
+    if (prop?.multi_select && prop.multi_select.length > 0) {
+      return prop.multi_select.map(item => item.name).join('、')
+    }
+    return ''
   },
 
   // 获取选择属性值

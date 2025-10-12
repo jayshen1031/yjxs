@@ -119,8 +119,13 @@ module.exports = {
           <view class="status-item">
             <view class="status-icon">😴</view>
             <view class="status-info">
-              <view class="status-label">睡眠</view>
-              <view class="status-value">{{ todayStatus.sleepHours ? todayStatus.sleepHours + 'h' : '未记录' }}</view>
+              <view class="status-label">昨晚睡眠</view>
+              <view class="status-value" wx:if="{{ todayStatus.bedTime && todayStatus.wakeUpTime }}">
+                {{ todayStatus.bedTime }} - {{ todayStatus.wakeUpTime }}
+                <text wx:if="{{ todayStatus.sleepHours }}" style="font-size: 24rpx; color: #9ca3af;"> ({{ todayStatus.sleepHours }}h)</text>
+              </view>
+              <view class="status-value" wx:elif="{{ todayStatus.sleepHours }}">{{ todayStatus.sleepHours }}h</view>
+              <view class="status-value" wx:else>未记录</view>
             </view>
           </view>
           <view class="status-item">

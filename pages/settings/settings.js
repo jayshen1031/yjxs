@@ -14,6 +14,8 @@ Page({
       activityDatabaseId: '',
       goalsDatabaseId: '',
       todosDatabaseId: '',
+      dailyStatusDatabaseId: '',
+      happyThingsDatabaseId: '',
       parentPageId: ''
     },
     configMode: 'auto', // 'auto' 自动创建 | 'manual' 手动配置
@@ -31,7 +33,6 @@ Page({
     pendingMemos: 0,
     showApiKey: false,
     testing: false,
-    syncing: false,
     creating: false, // 正在创建数据库
     diagnosing: false, // 正在诊断数据库
     fixing: false, // 正在修复数据库结构
@@ -386,9 +387,29 @@ Page({
     this.setData({ notionConfig })
   },
 
+  // 每日状态库ID输入
+  onDailyStatusDatabaseIdInput: function(e) {
+    const dailyStatusDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      dailyStatusDatabaseId
+    }
+    this.setData({ notionConfig })
+  },
+
+  // 开心库ID输入
+  onHappyThingsDatabaseIdInput: function(e) {
+    const happyThingsDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      happyThingsDatabaseId
+    }
+    this.setData({ notionConfig })
+  },
+
   // 保存手动配置
   saveManualConfig: async function() {
-    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId } = this.data.notionConfig
+    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId, dailyStatusDatabaseId, happyThingsDatabaseId } = this.data.notionConfig
 
     if (!apiKey) {
       toast.error('请输入API Key')
@@ -396,18 +417,34 @@ Page({
     }
 
     if (!goalsDatabaseId || !todosDatabaseId || !mainDatabaseId || !activityDatabaseId) {
-      toast.error('请输入所有四个数据库的ID')
+      toast.error('请至少输入前四个数据库的ID（目标库、待办库、主记录、活动明细）')
       return
     }
 
     try {
-      // 保存配置到本地
+      // 保存配置到本地（包含完整的databases结构）
       const notionConfig = {
         ...this.data.notionConfig,
         enabled: true,
+        // 标准databases结构
+        databases: {
+          goals: goalsDatabaseId,
+          todos: todosDatabaseId,
+          mainRecords: mainDatabaseId,
+          activityDetails: activityDatabaseId,
+          dailyStatus: dailyStatusDatabaseId || '',
+          happyThings: happyThingsDatabaseId || ''
+        },
+        // 兼容字段（向后兼容）
+        goalsDatabaseId: goalsDatabaseId,
+        todosDatabaseId: todosDatabaseId,
+        mainDatabaseId: mainDatabaseId,
         mainRecordsDatabaseId: mainDatabaseId,
+        activityDatabaseId: activityDatabaseId,
         activitiesDatabaseId: activityDatabaseId,
-        databaseId: mainDatabaseId
+        dailyStatusDatabaseId: dailyStatusDatabaseId || '',
+        happyThingsDatabaseId: happyThingsDatabaseId || '',
+        databaseId: mainDatabaseId // 兼容旧版
       }
 
       userManager.configureNotion(this.data.currentUser.id, notionConfig)
@@ -658,53 +695,6 @@ Page({
       toast.error('连接测试失败: ' + error.message)
     } finally {
       this.setData({ testing: false })
-    }
-  },
-
-  // 同步到Notion
-  syncToNotion: async function() {
-    if (!this.data.notionConfigured) {
-      toast.error('请先配置Notion集成')
-      return
-    }
-
-    this.setData({ syncing: true })
-    
-    try {
-      const apiService = require('../../utils/apiService.js')
-      
-      // 同步本地所有备忘录到Notion
-      const memos = userManager.getUserMemos()
-      const unsyncedMemos = memos.filter(memo => memo.syncStatus !== 'synced')
-      
-      if (unsyncedMemos.length === 0) {
-        toast.success('所有数据已同步')
-        this.setData({ syncing: false })
-        return
-      }
-
-      let successCount = 0
-      for (const memo of unsyncedMemos) {
-        const result = await apiService.syncUserMemoToNotion(this.data.currentUser.id, memo)
-        if (result.success) {
-          successCount++
-        }
-      }
-      
-      this.loadUserData()
-      toast.success(`同步完成，成功同步${successCount}条记录`)
-      
-      // 刷新其他页面数据
-      const pages = getCurrentPages()
-      pages.forEach(page => {
-        if (page.route !== 'pages/settings/settings' && page.loadPageData) {
-          page.loadPageData()
-        }
-      })
-    } catch (error) {
-      toast.error('同步失败: ' + error.message)
-    } finally {
-      this.setData({ syncing: false })
     }
   },
 

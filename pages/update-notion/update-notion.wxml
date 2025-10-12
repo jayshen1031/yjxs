@@ -1,0 +1,48 @@
+<view class="container">
+  <view class="header">
+    <text class="title">🔗 更新Notion配置</text>
+  </view>
+
+  <view wx:if="{{updated}}" class="success-box">
+    <view class="success-icon">✅</view>
+    <text class="success-text">配置更新成功！</text>
+    <view class="config-details">
+      <view class="config-item">
+        <text class="label">🎯 目标库:</text>
+        <text class="value">{{config.databases.goals}}</text>
+      </view>
+      <view class="config-item">
+        <text class="label">✅ 待办库:</text>
+        <text class="value">{{config.databases.todos}}</text>
+      </view>
+      <view class="config-item">
+        <text class="label">📝 主记录:</text>
+        <text class="value">{{config.databases.mainRecords}}</text>
+      </view>
+      <view class="config-item">
+        <text class="label">⏱️ 活动明细:</text>
+        <text class="value">{{config.databases.activityDetails}}</text>
+      </view>
+      <view class="config-item">
+        <text class="label">📊 每日状态库:</text>
+        <text class="value">{{config.databases.dailyStatus}}</text>
+      </view>
+      <view class="config-item">
+        <text class="label">😊 开心库:</text>
+        <text class="value">{{config.databases.happyThings}}</text>
+      </view>
+    </view>
+    <text class="redirect-hint">即将返回首页...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="error-box">
+    <view class="error-icon">❌</view>
+    <text class="error-text">{{error}}</text>
+    <button class="retry-btn" bindtap="updateNotionConfig">重试</button>
+  </view>
+
+  <view wx:else class="loading-box">
+    <view class="loading-icon">⏳</view>
+    <text class="loading-text">正在更新配置...</text>
+  </view>
+</view>

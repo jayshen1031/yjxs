@@ -84,11 +84,15 @@ Page({
   // 检查Notion配置
   checkNotionConfig: function() {
     const currentUser = app.globalData.currentUser
-    if (currentUser && currentUser.notionConfig && currentUser.notionConfig.happyThingsDatabaseId) {
-      this.setData({
-        hasNotionConfig: true,
-        notionDatabaseId: currentUser.notionConfig.happyThingsDatabaseId
-      })
+    if (currentUser && currentUser.notionConfig) {
+      // 优先使用databases.happyThings，向后兼容happyThingsDatabaseId
+      const databaseId = currentUser.notionConfig.databases?.happyThings || currentUser.notionConfig.happyThingsDatabaseId
+      if (databaseId) {
+        this.setData({
+          hasNotionConfig: true,
+          notionDatabaseId: databaseId
+        })
+      }
     }
   },
 
@@ -121,11 +125,12 @@ Page({
     try {
       const currentUser = app.globalData.currentUser
       const apiKey = currentUser.notionConfig.apiKey
-      const databaseId = currentUser.notionConfig.happyThingsDatabaseId
+      // 优先使用databases.happyThings，向后兼容happyThingsDatabaseId
+      const databaseId = currentUser.notionConfig.databases?.happyThings || currentUser.notionConfig.happyThingsDatabaseId
 
       wx.showLoading({ title: '加载中...' })
 
-      const result = await notionApiService.queryDatabase(databaseId, {}, apiKey)
+      const result = await notionApiService.queryDatabase(apiKey, databaseId, {})
 
       if (result.success && result.data.results) {
         const notionThings = result.data.results.map(page => ({
@@ -526,7 +531,8 @@ Page({
     try {
       const currentUser = app.globalData.currentUser
       const apiKey = currentUser.notionConfig.apiKey
-      const databaseId = currentUser.notionConfig.happyThingsDatabaseId
+      // 优先使用databases.happyThings，向后兼容happyThingsDatabaseId
+      const databaseId = currentUser.notionConfig.databases?.happyThings || currentUser.notionConfig.happyThingsDatabaseId
 
       wx.showLoading({ title: '保存中...' })
 

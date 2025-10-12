@@ -526,5 +526,126 @@ await cloudTest.diagnoseNetwork(apiKey)
 - [ ] 实现批量标签操作
 
 ---
+
+### 2025-10-12: 六数据库配置界面实现 ⭐
+
+**核心成果**: 实现Notion六数据库架构的手动配置功能
+
+#### 问题背景
+
+用户反馈：每日状态记录无法保存，提示"请先配置Notion每日状态库"
+
+**根本原因**：
+- 用户已手动创建了6个Notion数据库（Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things）
+- 但系统只保存了单个`databaseId`，没有保存各个数据库的独立ID
+- daily-status.js检查`currentUser.notionConfig?.databases?.dailyStatus`时找不到配置
+
+#### 解决方案
+
+**1. 扩展notionConfig数据结构** ✅
+```javascript
+notionConfig: {
+  apiKey: '',
+  databaseId: '',      // 兼容旧版单数据库
+  databases: {         // 新增六数据库架构
+    goals: '',
+    todos: '',
+    mainRecords: '',
+    activityDetails: '',
+    dailyStatus: '',
+    happyThings: ''    // 开心库
+  }
+}
+```
+
+**2. 更新配置页面** ✅
+- 文件：`pages/notion-config/notion-config.js`、`notion-config.wxml`、`notion-config.wxss`
+- 新增"六数据库配置"折叠区域
+- 为每个数据库提供独立的ID输入框
+- 添加切换显示/隐藏高级配置功能
+
+**3. UI设计** ✅
+- 🎯 目标库 (Goals)
+- ✅ 待办库 (Todos)
+- 📝 主记录表 (Main Records)
+- ⏱️ 活动明细表 (Activity Details)
+- 📊 每日状态库 (Daily Status)
+- 😊 开心库 (Happy Things)
+
+**4. 数据兼容** ✅
+- 向后兼容：保留原有的单数据库配置和happyThingsDatabaseId
+- 自动合并：加载配置时自动合并默认值和用户配置
+- 云端同步：所有配置自动同步到云数据库
+
+#### 修改文件
+
+1. **pages/notion-config/notion-config.js**
+   - 添加`showAdvanced`状态
+   - 添加`databases`对象到默认配置
+   - 实现`toggleAdvanced`方法
+   - 新增6个数据库ID输入处理方法
+   - 更新`loadUserConfig`方法支持databases合并
+
+2. **pages/notion-config/notion-config.wxml**
+   - 添加"六数据库配置"折叠区域
+   - 6个数据库ID输入框
+   - 每日状态库和开心库标记为必填
+
+3. **pages/notion-config/notion-config.wxss**
+   - 添加`.toggle-icon`样式
+   - 添加`.advanced-config`容器样式
+   - 添加`.database-input-group`和`.db-label`样式
+
+4. **utils/userManager.js**
+   - 更新`createUser`方法中的notionConfig初始化
+   - 添加`databases`对象到默认配置，包含happyThings
+
+5. **pages/happy-manager/happy-manager.js**
+   - 更新所有使用happyThingsDatabaseId的地方
+   - 优先使用`databases.happyThings`，向后兼容`happyThingsDatabaseId`
+
+#### 使用指南
+
+**用户操作步骤**：
+1. 进入"设置" → "Notion集成配置"
+2. 输入API Key
+3. 展开"🎯 六数据库配置（推荐）"
+4. 输入各个数据库的ID（从Notion数据库URL中复制）：
+   - 🎯 目标库 (Goals)
+   - ✅ 待办库 (Todos)
+   - 📝 主记录表 (Main Records)
+   - ⏱️ 活动明细表 (Activity Details)
+   - 📊 每日状态库 (Daily Status) - 使用每日状态功能必填
+   - 😊 开心库 (Happy Things) - 使用开心事管理功能必填
+5. 保存配置
+
+**获取数据库ID方法**：
+1. 在Notion中打开对应数据库
+2. 点击右上角"共享"按钮
+3. 添加创建的集成
+4. 复制数据库URL
+5. 从URL中提取32位ID
+
+例如URL: `https://www.notion.so/28774e5ad9378137bb2edc914308f718`
+数据库ID就是：`28774e5ad9378137bb2edc914308f718`
+
+#### 技术亮点
+
+1. **渐进式配置**：支持简单模式（单数据库）和完整模式（六数据库）
+2. **折叠式UI**：通过`showAdvanced`控制高级配置显示
+3. **数据向后兼容**：不影响已有用户的配置，支持旧字段名
+4. **自动合并配置**：加载时智能合并默认值和用户配置
+5. **清晰的必填提示**：标记必需数据库为必填项
+6. **统一数据访问**：happy-manager优先使用新字段，自动降级到旧字段
+
+#### 下一步计划
+
+- [x] 解决每日状态保存问题
+- [x] 添加开心库配置支持
+- [ ] 添加数据库连接测试功能
+- [ ] 实现自动创建六数据库功能（调用createQuadDatabases）
+- [ ] 添加数据库配置状态检查和提示
+
+---
 *开发完成日期：2025年1月*
-*最新更新：2025-10-09 (用户标签系统与Notion API调用优化)*
+*最新更新：2025-10-12 (六数据库配置界面实现)*

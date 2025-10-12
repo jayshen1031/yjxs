@@ -57,15 +57,90 @@
         <button class="help-btn" bindtap="showDatabaseIdHelp">❓</button>
       </view>
       <view class="input-group">
-        <input class="input-field {{databaseIdError ? 'error' : ''}}" 
+        <input class="input-field {{databaseIdError ? 'error' : ''}}"
                placeholder="1a2b3c4d5e6f7890abcdef1234567890"
                value="{{notionConfig.databaseId}}"
                bindinput="onDatabaseIdInput"
                type="text"/>
       </view>
       <text class="input-hint">
-        从Notion数据库URL中复制的ID，任何格式都可以
+        从Notion数据库URL中复制的ID，任何格式都可以（可选，如果使用五数据库架构可以忽略）
       </text>
+    </view>
+
+    <!-- 高级配置：六数据库架构 -->
+    <view class="form-section">
+      <view class="section-header" bindtap="toggleAdvanced">
+        <text class="section-title">🎯 六数据库配置（推荐）</text>
+        <text class="toggle-icon">{{showAdvanced ? '▼' : '▶'}}</text>
+      </view>
+      <text class="input-hint" style="margin-bottom: 12rpx;">
+        如果你已经手动创建了Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things六个数据库，请在这里配置它们的ID
+      </text>
+
+      <view wx:if="{{showAdvanced}}" class="advanced-config">
+        <!-- 目标库 -->
+        <view class="database-input-group">
+          <text class="db-label">🎯 目标库 (Goals)</text>
+          <input class="input-field"
+                 placeholder="目标库数据库ID"
+                 value="{{notionConfig.databases.goals}}"
+                 bindinput="onGoalsDbInput"
+                 type="text"/>
+        </view>
+
+        <!-- 待办库 -->
+        <view class="database-input-group">
+          <text class="db-label">✅ 待办库 (Todos)</text>
+          <input class="input-field"
+                 placeholder="待办库数据库ID"
+                 value="{{notionConfig.databases.todos}}"
+                 bindinput="onTodosDbInput"
+                 type="text"/>
+        </view>
+
+        <!-- 主记录表 -->
+        <view class="database-input-group">
+          <text class="db-label">📝 主记录表 (Main Records)</text>
+          <input class="input-field"
+                 placeholder="主记录表数据库ID"
+                 value="{{notionConfig.databases.mainRecords}}"
+                 bindinput="onMainRecordsDbInput"
+                 type="text"/>
+        </view>
+
+        <!-- 活动明细表 -->
+        <view class="database-input-group">
+          <text class="db-label">⏱️ 活动明细表 (Activity Details)</text>
+          <input class="input-field"
+                 placeholder="活动明细表数据库ID"
+                 value="{{notionConfig.databases.activityDetails}}"
+                 bindinput="onActivityDetailsDbInput"
+                 type="text"/>
+        </view>
+
+        <!-- 每日状态库 -->
+        <view class="database-input-group">
+          <text class="db-label">📊 每日状态库 (Daily Status)</text>
+          <input class="input-field"
+                 placeholder="每日状态库数据库ID"
+                 value="{{notionConfig.databases.dailyStatus}}"
+                 bindinput="onDailyStatusDbInput"
+                 type="text"/>
+          <text class="input-hint">如果要使用每日状态功能，此项必填</text>
+        </view>
+
+        <!-- 开心库 -->
+        <view class="database-input-group">
+          <text class="db-label">😊 开心库 (Happy Things)</text>
+          <input class="input-field"
+                 placeholder="开心库数据库ID"
+                 value="{{notionConfig.databases.happyThings}}"
+                 bindinput="onHappyThingsDbInput"
+                 type="text"/>
+          <text class="input-hint">如果要使用开心事管理功能，此项必填</text>
+        </view>
+      </view>
     </view>
 
     <!-- 同步设置 -->

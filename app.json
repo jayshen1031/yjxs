@@ -9,7 +9,8 @@
     "pages/quote-manager/quote-manager",
     "pages/happy-manager/happy-manager",
     "pages/goals-todos/goals-todos",
-    "pages/daily-status/daily-status"
+    "pages/daily-status/daily-status",
+    "pages/update-notion/update-notion"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -500,6 +500,77 @@ Page({
     })
   },
 
+  // 从云端刷新配置
+  refreshConfigFromCloud: async function() {
+    try {
+      wx.showLoading({ title: '刷新配置中...' })
+
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.hideLoading()
+        wx.showToast({
+          title: '未登录',
+          icon: 'error'
+        })
+        return
+      }
+
+      const apiService = require('../../utils/apiService.js')
+      const result = await apiService.getUserByEmail(currentUser.email)
+
+      wx.hideLoading()
+
+      if (result.success && result.user && result.user.notionConfig) {
+        console.log('✅ 从云端获取到配置:', result.user.notionConfig)
+
+        // 更新本地userManager
+        userManager.updateUser(currentUser.id, {
+          notionConfig: result.user.notionConfig
+        })
+
+        // 刷新currentUser
+        userManager.switchUser(currentUser.id)
+
+        // 检查是否有dailyStatus配置
+        if (result.user.notionConfig.databases?.dailyStatus) {
+          wx.showToast({
+            title: '配置已刷新！',
+            icon: 'success'
+          })
+          // 延迟1秒后重新尝试保存
+          setTimeout(() => {
+            this.saveStatus()
+          }, 1000)
+        } else {
+          wx.showModal({
+            title: '配置不完整',
+            content: '云端配置中没有每日状态库ID，请前往配置页面手动配置。',
+            confirmText: '去配置',
+            success: (res) => {
+              if (res.confirm) {
+                wx.navigateTo({
+                  url: '/pages/notion-config/notion-config'
+                })
+              }
+            }
+          })
+        }
+      } else {
+        wx.showToast({
+          title: '云端无配置',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('刷新配置失败:', error)
+      wx.hideLoading()
+      wx.showToast({
+        title: '刷新失败: ' + error.message,
+        icon: 'error'
+      })
+    }
+  },
+
   // 保存状态
   saveStatus: async function() {
     const currentUser = userManager.getCurrentUser()
@@ -511,13 +582,33 @@ Page({
       return
     }
 
+    // 详细的配置检查和诊断
+    console.log('=== 每日状态配置诊断 ===')
+    console.log('currentUser:', currentUser)
+    console.log('notionConfig:', currentUser.notionConfig)
+    console.log('databases:', currentUser.notionConfig?.databases)
+    console.log('dailyStatus:', currentUser.notionConfig?.databases?.dailyStatus)
+    console.log('========================')
+
     if (!currentUser.notionConfig?.databases?.dailyStatus) {
+      // 显示详细的错误信息
+      const debugInfo = `当前配置状态：
+notionConfig存在: ${!!currentUser.notionConfig}
+databases存在: ${!!currentUser.notionConfig?.databases}
+dailyStatus: ${currentUser.notionConfig?.databases?.dailyStatus || '未配置'}`
+
+      console.error('❌ 配置检查失败:', debugInfo)
+
       wx.showModal({
         title: '提示',
-        content: '请先配置Notion每日状态库',
-        confirmText: '去配置',
-        success: (res) => {
+        content: '请先配置Notion每日状态库。\n\n' + debugInfo,
+        confirmText: '刷新配置',
+        cancelText: '去配置页面',
+        success: async (res) => {
           if (res.confirm) {
+            // 尝试从云端刷新配置
+            await this.refreshConfigFromCloud()
+          } else if (res.cancel) {
             wx.navigateTo({
               url: '/pages/notion-config/notion-config'
             })
@@ -526,6 +617,8 @@ Page({
       })
       return
     }
+
+    console.log('✅ 配置检查通过，开始保存...')
 
     wx.showLoading({ title: this.data.existingPageId ? '更新中...' : '保存中...' })
 
@@ -575,6 +668,13 @@ Page({
           icon: 'success',
           duration: 1500
         })
+
+        // 保存成功后返回首页
+        setTimeout(() => {
+          wx.switchTab({
+            url: '/pages/home/home'
+          })
+        }, 1500)
       } else {
         throw new Error(result.error || '操作失败')
       }

@@ -133,7 +133,7 @@
           />
         </view>
 
-        <view class="section-title">📊 四数据库配置</view>
+        <view class="section-title">🎯 六数据库配置（推荐）</view>
 
         <view class="input-group">
           <view class="input-label">🎯 目标库ID (Goals)</view>
@@ -146,7 +146,7 @@
         </view>
 
         <view class="input-group">
-          <view class="input-label">📝 待办库ID (Todos)</view>
+          <view class="input-label">✅ 待办库ID (Todos)</view>
           <input
             class="notion-input"
             placeholder="请输入待办库数据库ID"
@@ -156,7 +156,7 @@
         </view>
 
         <view class="input-group">
-          <view class="input-label">📋 主记录表ID (Main Records)</view>
+          <view class="input-label">📝 主记录表ID (Main Records)</view>
           <input
             class="notion-input"
             placeholder="请输入主记录表数据库ID"
@@ -166,13 +166,35 @@
         </view>
 
         <view class="input-group">
-          <view class="input-label">📊 活动明细表ID (Activities)</view>
+          <view class="input-label">⏱️ 活动明细表ID (Activities)</view>
           <input
             class="notion-input"
             placeholder="请输入活动明细表数据库ID"
             value="{{ notionConfig.activityDatabaseId }}"
             bindinput="onActivityDatabaseIdInput"
           />
+        </view>
+
+        <view class="input-group">
+          <view class="input-label">📊 每日状态库ID (Daily Status) <text class="required-mark">*必填</text></view>
+          <input
+            class="notion-input"
+            placeholder="请输入每日状态库数据库ID"
+            value="{{ notionConfig.dailyStatusDatabaseId }}"
+            bindinput="onDailyStatusDatabaseIdInput"
+          />
+          <view class="input-hint">💡 如果要使用每日状态功能，此项必填</view>
+        </view>
+
+        <view class="input-group">
+          <view class="input-label">😊 开心库ID (Happy Things) <text class="required-mark">*必填</text></view>
+          <input
+            class="notion-input"
+            placeholder="请输入开心库数据库ID"
+            value="{{ notionConfig.happyThingsDatabaseId }}"
+            bindinput="onHappyThingsDatabaseIdInput"
+          />
+          <view class="input-hint">💡 如果要使用开心事管理功能，此项必填</view>
         </view>
 
         <button class="btn btn-primary" bindtap="saveManualConfig">
@@ -211,11 +233,6 @@
       <view class="notion-actions" wx:if="{{ notionConfigured }}">
         <button class="btn btn-primary" bindtap="configureNotion">
           <text>{{ notionConfigured ? '⚙️ 重新配置' : '🔗 配置Notion' }}</text>
-        </button>
-        <button class="btn btn-secondary" bindtap="syncToNotion"
-                wx:if="{{ notionConfig.enabled }}"
-                loading="{{ syncing }}">
-          <text>{{ syncing ? '同步中...' : '🔄 立即同步' }}</text>
         </button>
         <button class="btn btn-secondary" bindtap="diagnoseDatabases"
                 wx:if="{{ notionConfig.enabled }}"

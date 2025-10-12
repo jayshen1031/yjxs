@@ -1074,42 +1074,63 @@ async function createQuadDatabases(data) {
     })
     console.log('✅ 每日状态库创建成功:', dailyStatusDb.id)
 
-    // 6. 保存数据库ID到用户配置
-    const usersCollection = db.collection('memo_users')
-    await usersCollection.doc(userId).update({
-      data: {
-        notionConfig: {
-          enabled: true,
-          apiKey: apiKey,
-          parentPageId: parentPageId,
-          databases: {
-            goals: goalsDb.id,
-            todos: todosDb.id,
-            mainRecords: mainDb.id,
-            activityDetails: activityDb.id,
-            dailyStatus: dailyStatusDb.id
-          },
-          createdAt: db.serverDate()
-        }
-      }
+    // 6. 创建开心库（Happy Things）- 独立数据库
+    console.log('创建开心库...')
+    const happyThingsDb = await createNotionDatabase(apiKey, parentPageId, {
+      title: '😊 Happy Things - 开心库',
+      properties: getHappyThingsDatabaseSchema()
     })
+    console.log('✅ 开心库创建成功:', happyThingsDb.id)
 
-    console.log('✅ 五数据库架构创建完成！')
+    // 7. 保存数据库ID到用户配置
+    const usersCollection = db.collection('memo_users')
+    // 注意：这里需要先查询用户，因为userId可能不是_id
+    const userResult = await usersCollection.where({
+      userId: userId
+    }).get()
+
+    if (userResult.data && userResult.data.length > 0) {
+      const user = userResult.data[0]
+      await usersCollection.doc(user._id).update({
+        data: {
+          notionConfig: {
+            enabled: true,
+            apiKey: apiKey,
+            parentPageId: parentPageId,
+            databases: {
+              goals: goalsDb.id,
+              todos: todosDb.id,
+              mainRecords: mainDb.id,
+              activityDetails: activityDb.id,
+              dailyStatus: dailyStatusDb.id,
+              happyThings: happyThingsDb.id
+            },
+            createdAt: db.serverDate()
+          }
+        }
+      })
+      console.log('✅ 配置已保存到云数据库')
+    } else {
+      console.warn('⚠️ 未找到用户记录，无法保存配置')
+    }
+
+    console.log('✅ 六数据库架构创建完成！')
 
     return {
       success: true,
-      message: '五数据库架构创建成功（包含每日状态库）',
+      message: '六数据库架构创建成功（包含每日状态库和开心库）',
       databases: {
         goals: goalsDb.id,
         todos: todosDb.id,
         mainRecords: mainDb.id,
         activityDetails: activityDb.id,
-        dailyStatus: dailyStatusDb.id
+        dailyStatus: dailyStatusDb.id,
+        happyThings: happyThingsDb.id
       }
     }
   } catch (error) {
-    console.error('创建五数据库失败:', error)
-    throw new Error(`创建五数据库失败: ${error.message}`)
+    console.error('创建六数据库失败:', error)
+    throw new Error(`创建六数据库失败: ${error.message}`)
   }
 }
 
@@ -2855,6 +2876,66 @@ function getDailyStatusDatabaseSchema() {
     'Reading Duration': { number: { format: 'number' } },
     'Notes': { rich_text: {} },
     'Highlights': { rich_text: {} },
+    'User ID': { rich_text: {} }
+  }
+}
+
+/**
+ * 开心库（Happy Things）数据库结构
+ */
+function getHappyThingsDatabaseSchema() {
+  return {
+    'Title': { title: {} },
+    'Content': { rich_text: {} },
+    'Category': {
+      select: {
+        options: [
+          { name: '运动', color: 'blue' },
+          { name: '美食', color: 'orange' },
+          { name: '社交', color: 'pink' },
+          { name: '娱乐', color: 'purple' },
+          { name: '学习', color: 'green' },
+          { name: '创造', color: 'red' },
+          { name: '自然', color: 'default' },
+          { name: '放松', color: 'yellow' },
+          { name: '生活', color: 'brown' }
+        ]
+      }
+    },
+    'Emoji': { rich_text: {} },
+    'Energy Level': {
+      select: {
+        options: [
+          { name: '轻松', color: 'green' },
+          { name: '适中', color: 'blue' },
+          { name: '需精力', color: 'orange' }
+        ]
+      }
+    },
+    'Duration': { number: { format: 'number' } },
+    'Difficulty': {
+      select: {
+        options: [
+          { name: '简单', color: 'green' },
+          { name: '中等', color: 'yellow' },
+          { name: '复杂', color: 'red' }
+        ]
+      }
+    },
+    'Cost': {
+      select: {
+        options: [
+          { name: '免费', color: 'green' },
+          { name: '低成本', color: 'blue' },
+          { name: '中等', color: 'yellow' },
+          { name: '较高', color: 'orange' }
+        ]
+      }
+    },
+    'Usage Count': { number: { format: 'number' } },
+    'Last Used': { date: {} },
+    'Notes': { rich_text: {} },
+    'Is System Default': { checkbox: {} },
     'User ID': { rich_text: {} }
   }
 }

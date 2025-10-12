@@ -10,7 +10,15 @@ Page({
       apiKey: '',
       databaseId: '',
       enabled: false,
-      syncEnabled: true
+      syncEnabled: true,
+      databases: {
+        goals: '',
+        todos: '',
+        mainRecords: '',
+        activityDetails: '',
+        dailyStatus: '',
+        happyThings: ''
+      }
     },
     showApiKey: false,
     apiKeyError: false,
@@ -24,20 +32,24 @@ Page({
       step: 0
     },
     showHelp: false,
-    helpContent: {}
+    helpContent: {},
+    showAdvanced: true  // 是否显示高级配置（六数据库ID），默认展开
   },
 
   onLoad: function (options) {
     const userId = options.userId
     if (userId) {
       this.setData({ userId })
-      this.loadUserConfig(userId)
+      this.loadUserConfigFromCloud(userId)
     } else {
       // 如果没有传入userId，使用当前用户
       const currentUser = userManager.getCurrentUser()
       if (currentUser) {
-        this.setData({ userId: currentUser.id })
-        this.loadUserConfig(currentUser.id)
+        this.setData({
+          userId: currentUser.id,
+          userEmail: currentUser.email
+        })
+        this.loadUserConfigFromCloud(currentUser.id)
       } else {
         // 没有当前用户，返回登录页
         wx.redirectTo({
@@ -47,23 +59,93 @@ Page({
     }
   },
 
-  // 加载用户配置
+  // 从云端加载用户配置
+  loadUserConfigFromCloud: async function (userId) {
+    try {
+      wx.showLoading({ title: '加载配置中...' })
+
+      const apiService = require('../../utils/apiService.js')
+      const currentUser = userManager.getCurrentUser()
+
+      // 先尝试从云端获取最新配置
+      const result = await apiService.getUserByEmail(currentUser.email)
+
+      if (result.success && result.user && result.user.notionConfig) {
+        console.log('从云端加载到的notionConfig:', result.user.notionConfig)
+
+        // 更新本地userManager
+        userManager.updateUser(userId, {
+          notionConfig: result.user.notionConfig
+        })
+
+        // 🔧 关键修复：刷新currentUser，确保所有页面都能访问到最新配置
+        userManager.switchUser(userId)
+
+        // 显示配置
+        this.displayUserConfig(result.user.notionConfig)
+      } else {
+        // 云端没有配置，使用本地配置
+        console.log('云端没有配置，使用本地配置')
+        this.loadUserConfig(userId)
+      }
+
+      wx.hideLoading()
+    } catch (error) {
+      console.error('从云端加载配置失败:', error)
+      wx.hideLoading()
+      // 失败时使用本地配置
+      this.loadUserConfig(userId)
+    }
+  },
+
+  // 加载用户配置（本地）
   loadUserConfig: function (userId) {
     const user = userManager.getUsers().find(u => u.id === userId)
     if (user) {
-      this.setData({
-        userEmail: user.email,
-        notionConfig: user.notionConfig ? { ...user.notionConfig } : {
-          apiKey: '',
-          databaseId: '',
-          enabled: false,
-          syncEnabled: true
-        }
-      }, () => {
-        this.updateConfigStatus()
-        this.checkCanSave()
-      })
+      this.displayUserConfig(user.notionConfig)
     }
+  },
+
+  // 显示用户配置
+  displayUserConfig: function (notionConfig) {
+    const defaultConfig = {
+      apiKey: '',
+      databaseId: '',
+      enabled: false,
+      syncEnabled: true,
+      databases: {
+        goals: '',
+        todos: '',
+        mainRecords: '',
+        activityDetails: '',
+        dailyStatus: '',
+        happyThings: ''
+      }
+    }
+
+    // 合并用户配置和默认配置
+    const userConfig = notionConfig || {}
+    const mergedConfig = {
+      ...defaultConfig,
+      ...userConfig,
+      databases: {
+        ...defaultConfig.databases,
+        ...(userConfig.databases || {})
+      }
+    }
+
+    this.setData({
+      notionConfig: mergedConfig
+    }, () => {
+      this.updateConfigStatus()
+      this.checkCanSave()
+
+      // 如果databases中有配置，自动展开高级配置
+      const hasDatabases = Object.values(mergedConfig.databases || {}).some(id => id && id.trim())
+      if (hasDatabases) {
+        this.setData({ showAdvanced: true })
+      }
+    })
   },
 
   // 更新配置状态
@@ -107,13 +189,69 @@ Page({
   // 数据库ID输入
   onDatabaseIdInput: function (e) {
     const databaseId = e.detail.value.trim()
-    
+
     this.setData({
       'notionConfig.databaseId': databaseId
     }, () => {
       this.updateConfigStatus()
       this.checkCanSave()
       this.validateInputs()
+    })
+  },
+
+  // 切换高级配置显示
+  toggleAdvanced: function () {
+    this.setData({
+      showAdvanced: !this.data.showAdvanced
+    })
+  },
+
+  // 各个数据库ID输入
+  onGoalsDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.goals': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
+  onTodosDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.todos': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
+  onMainRecordsDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.mainRecords': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
+  onActivityDetailsDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.activityDetails': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
+  onDailyStatusDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.dailyStatus': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
+  onHappyThingsDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.happyThings': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
     })
   },
 
@@ -300,14 +438,22 @@ Page({
       helpContent: {
         title: '获取Notion数据库ID',
         steps: [
-          '打开你要同步的Notion数据库页面',
-          '点击右上角的"共享"按钮',
-          '在"邀请"区域添加你刚创建的集成',
-          '复制数据库页面的URL',
-          '从URL中提取32位十六进制ID',
-          '格式：32位十六进制字符（0-9，a-f）',
-          '示例：1a2b3c4d5e6f7890abcdef1234567890',
-          '或带连字符：1a2b3c4d-5e6f-7890-abcd-ef1234567890'
+          '📋 方式一：单数据库（简单模式）',
+          '- 只配置一个主数据库ID即可',
+          '- 适合简单使用场景',
+          '',
+          '📋 方式二：六数据库架构（推荐）',
+          '- 需要配置Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things六个数据库',
+          '- 功能更强大，支持目标管理、待办事项、每日状态、开心事管理等',
+          '',
+          '🔧 如何获取数据库ID：',
+          '1. 打开Notion数据库页面',
+          '2. 点击右上角"共享"按钮',
+          '3. 添加你创建的集成',
+          '4. 复制数据库URL',
+          '5. 从URL中提取32位ID',
+          '示例：https://notion.so/1a2b3c4d5e6f7890abcdef1234567890',
+          '数据库ID就是：1a2b3c4d5e6f7890abcdef1234567890'
         ]
       }
     })

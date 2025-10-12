@@ -132,7 +132,7 @@ class ApiService {
     try {
       const user = userManager.getUserByEmail(userEmail)
       const currentUser = userManager.getCurrentUser()
-      
+
       console.log('Notion同步调试信息:')
       console.log('- 传入的userEmail:', userEmail)
       console.log('- 当前用户邮箱:', currentUser?.email)
@@ -140,22 +140,21 @@ class ApiService {
       console.log('- 用户Notion配置:', user?.notionConfig)
       console.log('- 配置enabled状态:', user?.notionConfig?.enabled)
       console.log('- 配置apiKey存在:', !!user?.notionConfig?.apiKey)
-      console.log('- 配置databaseId存在:', !!user?.notionConfig?.databaseId)
-      
+
       if (!user) {
         return {
           success: false,
           error: `找不到用户邮箱: ${userEmail}`
         }
       }
-      
+
       if (!user.notionConfig) {
         return {
           success: false,
           error: '用户没有Notion配置'
         }
       }
-      
+
       if (!user.notionConfig.enabled) {
         return {
           success: false,
@@ -163,8 +162,23 @@ class ApiService {
         }
       }
 
-      const { apiKey, databaseId } = user.notionConfig
-      return await this.syncMemoToNotion(apiKey, databaseId, memo)
+      const { apiKey } = user.notionConfig
+
+      // 优先使用新的databases结构
+      const mainDatabaseId = user.notionConfig.databases?.mainRecords ||
+                            user.notionConfig.mainRecordsDatabaseId ||
+                            user.notionConfig.mainDatabaseId ||
+                            user.notionConfig.databaseId
+
+      if (!mainDatabaseId) {
+        return {
+          success: false,
+          error: '主记录表数据库ID未配置'
+        }
+      }
+
+      console.log('- 使用主记录表ID:', mainDatabaseId)
+      return await this.syncMemoToNotion(apiKey, mainDatabaseId, memo)
     } catch (error) {
       return {
         success: false,
