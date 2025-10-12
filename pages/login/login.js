@@ -31,6 +31,8 @@ Page({
   },
 
   onLoad: function (options) {
+    console.log('[Login Page] onLoad started')
+
     // 强制初始化输入字段，避免undefined
     this.setData({
       loginEmail: '',
@@ -39,10 +41,17 @@ Page({
       emailError: '',
       loginEmailError: ''
     })
-    
+
+    console.log('[Login Page] Initial data set')
+
     // 恢复记住的密码
     this.loadRememberedPassword()
-    this.loadUsers()
+
+    // 延迟加载用户列表，等待云开发初始化
+    setTimeout(() => {
+      console.log('[Login Page] Loading users after delay')
+      this.loadUsers()
+    }, 500)
   },
 
   // 加载记住的密码
@@ -72,12 +81,16 @@ Page({
 
   // 加载用户列表 - 从云端获取最近登录的用户
   async loadUsers() {
+    console.log('[Login Page] loadUsers started')
     try {
       const apiService = require('../../utils/apiService.js')
-      
+      console.log('[Login Page] apiService loaded successfully')
+
       // 从云端获取最近登录的用户列表
+      console.log('[Login Page] Calling getRecentUsers...')
       const result = await apiService.getRecentUsers()
-      
+      console.log('[Login Page] getRecentUsers result:', result)
+
       let users = []
       if (result.success && result.users) {
         console.log('云端返回的用户列表:', result.users)
@@ -92,14 +105,25 @@ Page({
         })
       }
 
+      console.log('[Login Page] Setting user data, count:', users.length)
       this.setData({
         users: users,
         hasUsers: users.length > 0,
         showCreateUser: users.length === 0,
         showExistingLogin: users.length === 0  // 有用户时默认折叠，无用户时默认展开
       })
+      console.log('[Login Page] User data set successfully')
     } catch (error) {
-      console.error('加载用户列表失败:', error)
+      console.error('[Login Page] 加载用户列表失败:', error)
+      console.error('[Login Page] Error stack:', error.stack)
+
+      // 显示错误提示
+      wx.showToast({
+        title: '加载用户列表失败',
+        icon: 'none',
+        duration: 2000
+      })
+
       // 降级到默认状态
       this.setData({
         users: [],
@@ -107,6 +131,7 @@ Page({
         showCreateUser: true,
         showExistingLogin: true  // 无用户时展开已有账号登录区域
       })
+      console.log('[Login Page] Fallback to default state')
     }
   },
 
