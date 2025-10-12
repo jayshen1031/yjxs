@@ -1,5 +1,13 @@
+console.log('========================================')
+console.log('[App.js] 开始执行')
+console.log('[App.js] 时间:', new Date().toISOString())
+console.log('========================================')
+
 const userManager = require('./utils/userManager.js')
+console.log('[App.js] userManager已加载')
+
 const { getCurrentEnv } = require('./envList.js')
+console.log('[App.js] envList已加载')
 
 App({
   globalData: {
@@ -22,7 +30,9 @@ App({
   },
 
   onLaunch: function() {
-    console.log('App Launch')
+    console.log('========================================')
+    console.log('[App] onLaunch 开始')
+    console.log('========================================')
 
     // 启用云开发功能
     this.initCloudDev()
