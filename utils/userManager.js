@@ -15,9 +15,22 @@ class UserManager {
 
   // 初始化用户管理器
   init() {
-    this.loadUsers()
-    this.loadCurrentUser()
-    this.loadNotionConfig()
+    try {
+      this.loadUsers()
+      this.loadCurrentUser()
+      this.loadNotionConfig()
+    } catch (error) {
+      console.warn('UserManager初始化警告（可能wx未就绪）:', error.message)
+      // 如果初始化失败，设置默认值
+      this.currentUser = null
+      this.users = []
+      this.notionConfig = {
+        enabled: false,
+        apiKey: '',
+        databaseId: '',
+        syncEnabled: true
+      }
+    }
   }
 
   // 加载用户列表

@@ -1,6 +1,37 @@
 // pages/login/login.js
-const userManager = require('../../utils/userManager.js')
-const { formatTime } = require('../../utils/util.js')
+console.log('[Login] 开始加载login.js文件...')
+
+let userManager = null
+let formatTime = null
+
+try {
+  console.log('[Login] 加载userManager...')
+  userManager = require('../../utils/userManager.js')
+  console.log('[Login] userManager加载成功')
+} catch (e) {
+  console.error('[Login] userManager加载失败:', e)
+  wx.showModal({
+    title: '加载错误',
+    content: 'userManager加载失败: ' + e.message,
+    showCancel: false
+  })
+}
+
+try {
+  console.log('[Login] 加载util...')
+  const util = require('../../utils/util.js')
+  formatTime = util.formatTime
+  console.log('[Login] util加载成功')
+} catch (e) {
+  console.error('[Login] util加载失败:', e)
+  wx.showModal({
+    title: '加载错误',
+    content: 'util加载失败: ' + e.message,
+    showCancel: false
+  })
+}
+
+console.log('[Login] 定义Page对象...')
 
 Page({
   data: {
@@ -31,7 +62,11 @@ Page({
   },
 
   onLoad: function (options) {
+    console.log('=================================================')
     console.log('[Login Page] onLoad started')
+    console.log('[Login Page] userManager available:', !!userManager)
+    console.log('[Login Page] formatTime available:', !!formatTime)
+    console.log('=================================================')
 
     // 强制初始化输入字段，避免undefined
     this.setData({

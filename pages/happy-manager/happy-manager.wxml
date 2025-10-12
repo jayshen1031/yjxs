@@ -69,7 +69,7 @@
         <view class="item-info">
           <view class="content">{{ item.content }}</view>
           <view class="meta">
-            <view class="category-tag category-{{ item.category }}">{{ item.category }}</view>
+            <view class="category-tag" data-category="{{ item.category }}">{{ item.category }}</view>
             <view class="energy-tag energy-{{ getEnergyClass(item.energy) }}">
               {{ getEnergyText(item.energy) }}
             </view>
