@@ -22,13 +22,18 @@
     <view class="section-title">😊 心情与状态</view>
 
     <view class="form-item">
-      <view class="form-label">今日心情</view>
-      <picker bindchange="onMoodChange" value="{{moodIndex}}" range="{{moodOptions}}" range-key="label">
-        <view class="picker-input">
-          <text>{{moodOptions[moodIndex].label}}</text>
-          <text class="arrow">▼</text>
+      <view class="form-label">今日心情（可多选）</view>
+      <view class="multi-select-container">
+        <view
+          class="multi-select-item {{item.selected ? 'selected' : ''}}"
+          wx:for="{{moodOptions}}"
+          wx:key="value"
+          bindtap="toggleMood"
+          data-index="{{index}}"
+        >
+          <text>{{item.label}}</text>
         </view>
-      </picker>
+      </view>
     </view>
 
     <view class="form-item">

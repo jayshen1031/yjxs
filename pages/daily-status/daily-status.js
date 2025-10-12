@@ -8,7 +8,7 @@ Page({
     statusData: {
       date: '',
       fullDate: '',
-      mood: '',
+      mood: [],  // 改为数组，支持多选
       energyLevel: '',
       stressLevel: '',
       wakeUpTime: '',
@@ -36,16 +36,16 @@ Page({
     stressIndex: 0,
     sleepQualityIndex: 0,
 
-    // 心情选项
+    // 心情选项（多选）
     moodOptions: [
-      { value: '😊 开心', label: '😊 开心' },
-      { value: '💪 充满动力', label: '💪 充满动力' },
-      { value: '😌 平静', label: '😌 平静' },
-      { value: '😕 迷茫', label: '😕 迷茫' },
-      { value: '😔 沮丧', label: '😔 沮丧' },
-      { value: '😰 焦虑', label: '😰 焦虑' },
-      { value: '😴 疲惫', label: '😴 疲惫' },
-      { value: '😤 压力大', label: '😤 压力大' }
+      { value: '😊 开心', label: '😊 开心', selected: false },
+      { value: '💪 充满动力', label: '💪 充满动力', selected: false },
+      { value: '😌 平静', label: '😌 平静', selected: false },
+      { value: '😕 迷茫', label: '😕 迷茫', selected: false },
+      { value: '😔 沮丧', label: '😔 沮丧', selected: false },
+      { value: '😰 焦虑', label: '😰 焦虑', selected: false },
+      { value: '😴 疲惫', label: '😴 疲惫', selected: false },
+      { value: '😤 压力大', label: '😤 压力大', selected: false }
     ],
 
     // 精力选项
@@ -180,7 +180,7 @@ Page({
     return {
       date: this.getTitleValue(props['Date']),
       fullDate: this.getDateValue(props['Full Date']),
-      mood: this.getSelectValue(props['Mood']),
+      mood: this.getMultiSelectValue(props['Mood']),  // 改为多选
       energyLevel: this.getSelectValue(props['Energy Level']),
       stressLevel: this.getSelectValue(props['Stress Level']),
       wakeUpTime: this.getRichTextValue(props['Wake Up Time']),
@@ -251,8 +251,13 @@ Page({
   loadExistingData: function(status, pageId, lastEditedTime) {
     console.log('加载已有数据:', status)
 
+    // 更新心情选择状态（多选）
+    const moodOptions = this.data.moodOptions.map(mood => ({
+      ...mood,
+      selected: status.mood.includes(mood.value)
+    }))
+
     // 找到对应的选项索引
-    const moodIndex = this.data.moodOptions.findIndex(opt => opt.value === status.mood)
     const energyIndex = this.data.energyOptions.findIndex(opt => opt.value === status.energyLevel)
     const stressIndex = this.data.stressOptions.findIndex(opt => opt.value === status.stressLevel)
     const sleepQualityIndex = this.data.sleepQualityOptions.findIndex(opt => opt.value === status.sleepQuality)
@@ -277,7 +282,7 @@ Page({
         ...this.data.statusData,
         ...status
       },
-      moodIndex: moodIndex >= 0 ? moodIndex : 0,
+      moodOptions: moodOptions,  // 更新心情选项状态
       energyIndex: energyIndex >= 0 ? energyIndex : 0,
       stressIndex: stressIndex >= 0 ? stressIndex : 0,
       sleepQualityIndex: sleepQualityIndex >= 0 ? sleepQualityIndex : 0,
@@ -332,12 +337,18 @@ Page({
     this.loadTodayStatus()
   },
 
-  // 心情变更
-  onMoodChange: function(e) {
-    const index = parseInt(e.detail.value)
+  // 心情切换（多选）
+  toggleMood: function(e) {
+    const index = e.currentTarget.dataset.index
+    const moodOptions = this.data.moodOptions
+    moodOptions[index].selected = !moodOptions[index].selected
+
+    // 更新选中的心情
+    const selectedMoods = moodOptions.filter(m => m.selected).map(m => m.value)
+
     this.setData({
-      moodIndex: index,
-      'statusData.mood': this.data.moodOptions[index].value
+      moodOptions: moodOptions,
+      'statusData.mood': selectedMoods
     })
   },
 
@@ -590,7 +601,7 @@ Page({
         date: data.fullDate ? { start: data.fullDate } : null
       },
       'Mood': {
-        select: data.mood ? { name: data.mood } : null
+        multi_select: data.mood ? data.mood.map(m => ({ name: m })) : []
       },
       'Energy Level': {
         select: data.energyLevel ? { name: data.energyLevel } : null
