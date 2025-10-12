@@ -11,6 +11,12 @@
   margin-bottom: 20rpx;
 }
 
+.action-links {
+  display: flex;
+  gap: 20rpx;
+  align-items: center;
+}
+
 .action-link {
   font-size: 26rpx;
   color: #6366f1;
@@ -371,6 +377,48 @@
   position: relative;
   overflow: hidden;
   box-shadow: 0 8rpx 30rpx rgba(99, 102, 241, 0.3);
+  transition: all 0.5s ease;
+}
+
+/* 箴言卡片颜色主题 */
+.quote-card.theme-purple {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 8rpx 30rpx rgba(99, 102, 241, 0.3);
+}
+
+.quote-card.theme-orange {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  box-shadow: 0 8rpx 30rpx rgba(249, 115, 22, 0.3);
+}
+
+.quote-card.theme-green {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  box-shadow: 0 8rpx 30rpx rgba(16, 185, 129, 0.3);
+}
+
+.quote-card.theme-pink {
+  background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+  box-shadow: 0 8rpx 30rpx rgba(236, 72, 153, 0.3);
+}
+
+.quote-card.theme-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  box-shadow: 0 8rpx 30rpx rgba(59, 130, 246, 0.3);
+}
+
+.quote-card.theme-red {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  box-shadow: 0 8rpx 30rpx rgba(239, 68, 68, 0.3);
+}
+
+.quote-card.theme-teal {
+  background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+  box-shadow: 0 8rpx 30rpx rgba(20, 184, 166, 0.3);
+}
+
+.quote-card.theme-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  box-shadow: 0 8rpx 30rpx rgba(245, 158, 11, 0.3);
 }
 
 .quote-card::before {
@@ -423,98 +471,6 @@
 .usage-count, .source-info {
   font-size: 22rpx;
   opacity: 0.8;
-}
-
-/* 心情选择器 */
-.mood-selector {
-  margin-bottom: 30rpx;
-}
-
-.mood-title {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 16rpx;
-}
-
-.mood-title .icon {
-  font-size: 32rpx;
-}
-
-.mood-options {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15rpx;
-  margin-top: 16rpx;
-}
-
-.mood-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16rpx 12rpx;
-  background: white;
-  border-radius: 20rpx;
-  border: 2rpx solid #e5e7eb;
-  transition: all 0.3s ease;
-  min-width: 80rpx;
-}
-
-.mood-chip.active {
-  background: linear-gradient(135deg, #ec4899, #f97316);
-  color: white;
-  border-color: #ec4899;
-  transform: translateY(-2rpx) scale(1.05);
-  box-shadow: 0 6rpx 20rpx rgba(236, 72, 153, 0.4);
-  position: relative;
-  z-index: 10;
-}
-
-.mood-chip.active::before {
-  content: '';
-  position: absolute;
-  top: -2rpx;
-  left: -2rpx;
-  right: -2rpx;
-  bottom: -2rpx;
-  background: linear-gradient(135deg, #ec4899, #f97316);
-  border-radius: 22rpx;
-  z-index: -1;
-  opacity: 0.3;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-}
-
-.mood-emoji {
-  font-size: 32rpx;
-  margin-bottom: 8rpx;
-}
-
-.mood-text {
-  font-size: 22rpx;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.mood-chip.active .mood-text {
-  color: white;
 }
 
 /* 快速分类切换 */
@@ -575,6 +531,205 @@
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
+}
+
+/* 开心推荐卡片样式 */
+.happy-things-card {
+  margin: 20rpx 0;
+}
+
+.happy-things-list {
+  margin-top: 20rpx;
+}
+
+.happy-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 20rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+  border-radius: 15rpx;
+  margin-bottom: 15rpx;
+  transition: all 0.3s ease;
+}
+
+.happy-item:last-child {
+  margin-bottom: 0;
+}
+
+.happy-item:active {
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(245, 158, 11, 0.3);
+}
+
+.happy-emoji {
+  font-size: 48rpx;
+  flex-shrink: 0;
+}
+
+.happy-info {
+  flex: 1;
+}
+
+.happy-content {
+  font-size: 28rpx;
+  color: #92400e;
+  font-weight: 500;
+  margin-bottom: 10rpx;
+  line-height: 1.5;
+}
+
+.happy-meta {
+  display: flex;
+  gap: 15rpx;
+  align-items: center;
+}
+
+.happy-category {
+  font-size: 22rpx;
+  color: #d97706;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.happy-energy {
+  font-size: 20rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+}
+
+.happy-energy.energy-low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.happy-energy.energy-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.happy-energy.energy-high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.happy-tip {
+  margin-top: 20rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #d97706;
+  padding: 12rpx;
+  background: rgba(251, 146, 60, 0.1);
+  border-radius: 12rpx;
+}
+
+/* 每日状态摘要卡片样式 */
+.daily-status-card {
+  margin: 20rpx 0;
+}
+
+.status-summary {
+  margin-top: 20rpx;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 15rpx;
+  margin-bottom: 20rpx;
+}
+
+.status-item {
+  flex: 1;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+  border-radius: 15rpx;
+  padding: 20rpx 15rpx;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.status-item:active {
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
+}
+
+.status-icon {
+  font-size: 36rpx;
+  margin-bottom: 12rpx;
+}
+
+.status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.status-label {
+  font-size: 22rpx;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.status-value {
+  font-size: 26rpx;
+  color: #1f2937;
+  font-weight: bold;
+}
+
+.status-highlights {
+  padding: 20rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 12rpx;
+  margin-top: 15rpx;
+}
+
+.highlights-label {
+  font-size: 24rpx;
+  color: #92400e;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+}
+
+.highlights-text {
+  font-size: 26rpx;
+  color: #78350f;
+  line-height: 1.6;
+}
+
+.empty-status {
+  text-align: center;
+  padding: 60rpx 20rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  opacity: 0.6;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-bottom: 30rpx;
+}
+
+.btn-primary-small {
+  display: inline-block;
+  padding: 20rpx 40rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-radius: 25rpx;
+  font-size: 26rpx;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 4rpx 15rpx rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-primary-small:active {
+  transform: scale(0.95);
+  box-shadow: 0 2rpx 10rpx rgba(99, 102, 241, 0.3);
 }
 
 .quick-action-grid {

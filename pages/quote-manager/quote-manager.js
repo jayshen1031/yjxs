@@ -94,11 +94,15 @@ Page({
 
   // 加载设置
   loadSettings: function() {
-    const settings = app.globalData.quoteSettings
+    const settings = app.globalData.quoteSettings || {
+      refreshInterval: 'daily',
+      autoRefresh: true
+    }
+
     const refreshIntervalIndex = this.data.refreshIntervalOptions.findIndex(
       option => option.key === settings.refreshInterval
     )
-    
+
     this.setData({
       settings: settings,
       refreshIntervalIndex: Math.max(0, refreshIntervalIndex)

@@ -175,6 +175,24 @@
                   </view>
                 </view>
 
+                <!-- 目标关联选择 -->
+                <view class="goal-selector">
+                  <text class="goal-label">🎯 关联目标（可选）：</text>
+                  <picker
+                    class="goal-picker"
+                    mode="selector"
+                    range="{{ availableGoals }}"
+                    range-key="title"
+                    value="{{ currentActivityGoalIndex }}"
+                    bindchange="onActivityGoalChange"
+                    data-type="valuable"
+                  >
+                    <view class="picker-display">
+                      <text>{{ currentActivityGoalIndex >= 0 ? availableGoals[currentActivityGoalIndex].title : '选择目标' }}</text>
+                    </view>
+                  </picker>
+                </view>
+
                 <!-- 调试提示：显示当前状态 -->
                 <view wx:if="{{ !canAddTimeEntry }}" class="debug-hint">
                   <text class="debug-text">
@@ -311,6 +329,24 @@
                   </view>
                 </view>
 
+                <!-- 目标关联选择 -->
+                <view class="goal-selector">
+                  <text class="goal-label">🎯 关联目标（可选）：</text>
+                  <picker
+                    class="goal-picker"
+                    mode="selector"
+                    range="{{ availableGoals }}"
+                    range-key="title"
+                    value="{{ currentNeutralActivityGoalIndex }}"
+                    bindchange="onActivityGoalChange"
+                    data-type="neutral"
+                  >
+                    <view class="picker-display">
+                      <text>{{ currentNeutralActivityGoalIndex >= 0 ? availableGoals[currentNeutralActivityGoalIndex].title : '选择目标' }}</text>
+                    </view>
+                  </picker>
+                </view>
+
                 <!-- 调试提示：显示当前状态 -->
                 <view wx:if="{{ !canAddNeutralTimeEntry }}" class="debug-hint">
                   <text class="debug-text">
@@ -445,6 +481,24 @@
                       />
                     </view>
                   </view>
+                </view>
+
+                <!-- 目标关联选择 -->
+                <view class="goal-selector">
+                  <text class="goal-label">🎯 关联目标（可选）：</text>
+                  <picker
+                    class="goal-picker"
+                    mode="selector"
+                    range="{{ availableGoals }}"
+                    range-key="title"
+                    value="{{ currentWastefulActivityGoalIndex }}"
+                    bindchange="onActivityGoalChange"
+                    data-type="wasteful"
+                  >
+                    <view class="picker-display">
+                      <text>{{ currentWastefulActivityGoalIndex >= 0 ? availableGoals[currentWastefulActivityGoalIndex].title : '选择目标' }}</text>
+                    </view>
+                  </picker>
                 </view>
 
                 <!-- 调试提示：显示当前状态 -->
@@ -725,6 +779,113 @@
             maxlength="100"
           />
           <view class="char-count">{{ goalInvestmentNote.length }}/100</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 待办事项关联 ⭐ 新增 -->
+  <view class="card" wx:if="{{ recordMode === 'normal' }}">
+    <view class="card-content">
+      <view class="subtitle">关联待办事项</view>
+      <view class="todo-association-tip">
+        <text class="tip-icon">✅</text>
+        <text class="tip-text">将时间投入关联到待办事项，自动更新进度</text>
+      </view>
+
+      <!-- 筛选范围 -->
+      <view class="todo-filter">
+        <radio-group bindchange="changeTodoFilterScope" class="filter-group">
+          <label class="filter-item">
+            <radio value="all" checked="{{ todoFilterScope === 'all' }}" color="#6366f1"/>
+            <text>全部</text>
+          </label>
+          <label class="filter-item">
+            <radio value="今日" checked="{{ todoFilterScope === '今日' }}" color="#6366f1"/>
+            <text>今日</text>
+          </label>
+          <label class="filter-item">
+            <radio value="近期" checked="{{ todoFilterScope === '近期' }}" color="#6366f1"/>
+            <text>近期</text>
+          </label>
+        </radio-group>
+      </view>
+
+      <!-- 待办列表 -->
+      <view wx:if="{{ availableTodos.length > 0 }}" class="todo-selector">
+        <view
+          class="todo-item {{ selectedTodoId === todo.id ? 'selected' : '' }}"
+          wx:for="{{ availableTodos }}"
+          wx:key="id"
+          wx:for-item="todo"
+          bindtap="selectTodo"
+          data-todo-id="{{ todo.id }}"
+        >
+          <view class="todo-header">
+            <view class="todo-title">
+              <text class="todo-status-icon">{{ todo.status === '待办' ? '⏳' : '▶️' }}</text>
+              <text class="todo-title-text">{{ todo.title }}</text>
+            </view>
+            <view class="todo-priority priority-{{ todo.priority }}">
+              {{ todo.priority === '紧急重要' ? '🔴' : todo.priority === '重要不紧急' ? '🟠' : todo.priority === '紧急不重要' ? '🟡' : '⚪' }}
+            </view>
+          </view>
+          <view class="todo-meta">
+            <text class="todo-type">{{ todo.todoType }}</text>
+            <text class="todo-scope">{{ todo.scope }}</text>
+            <text class="todo-time" wx:if="{{ todo.estimatedMinutes > 0 }}">
+              预计{{ todo.estimatedMinutes }}分 | 已投入{{ todo.actualMinutes || 0 }}分
+            </text>
+          </view>
+          <view wx:if="{{ todo.estimatedMinutes > 0 }}" class="todo-progress-bar">
+            <view class="progress-fill" style="width: {{ (todo.actualMinutes || 0) / todo.estimatedMinutes * 100 }}%"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view wx:if="{{ availableTodos.length === 0 }}" class="empty-state">
+        <text class="empty-icon">📋</text>
+        <text class="empty-text">暂无{{ todoFilterScope === 'all' ? '' : todoFilterScope }}待办事项</text>
+      </view>
+
+      <!-- 清除选择 -->
+      <view wx:if="{{ selectedTodoId }}" class="clear-selection">
+        <button class="btn btn-text" bindtap="clearTodoSelection">
+          <text>❌ 取消关联</text>
+        </button>
+      </view>
+
+      <!-- 已选待办信息展示 -->
+      <view wx:if="{{ selectedTodoId && selectedTodoInfo }}" class="selected-todo-info">
+        <view class="info-header">
+          <text class="icon">📌</text>
+          <text class="info-title">已选择待办</text>
+        </view>
+        <view class="info-content">
+          <view class="info-row">
+            <text class="info-label">标题：</text>
+            <text class="info-value">{{ selectedTodoInfo.title }}</text>
+          </view>
+          <view class="info-row" wx:if="{{ selectedTodoInfo.description }}">
+            <text class="info-label">描述：</text>
+            <text class="info-value">{{ selectedTodoInfo.description }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">状态：</text>
+            <text class="info-value">{{ selectedTodoInfo.status }}</text>
+          </view>
+          <view class="info-row" wx:if="{{ selectedTodoInfo.estimatedMinutes > 0 }}">
+            <text class="info-label">预计时长：</text>
+            <text class="info-value">{{ selectedTodoInfo.estimatedMinutes }}分钟</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">已投入：</text>
+            <text class="info-value">{{ selectedTodoInfo.actualMinutes || 0 }}分钟</text>
+          </view>
+        </view>
+        <view class="info-hint">
+          💡 记录时间投入后，此待办将自动更新状态和累计时长
         </view>
       </view>
     </view>

@@ -35,39 +35,21 @@ module.exports = {
         <view class="action-btn" bindtap="toggleQuoteFavorite">
           <text class="icon heart {{currentQuoteData.isFavorite ? 'favorite' : ''}}">❤️</text>
         </view>
+        <view class="action-btn" bindtap="changeQuoteTheme">
+          <text class="icon">🎨</text>
+        </view>
         <view class="action-btn" bindtap="goToQuoteManager">
           <text class="icon">⚙️</text>
         </view>
       </view>
     </view>
     
-    <view class="quote-card">
+    <view class="quote-card {{quoteTheme ? 'theme-' + quoteTheme : 'theme-purple'}}">
       <view class="quote-content">{{ currentQuoteData.content || currentQuote }}</view>
       <view class="quote-meta" wx:if="{{ currentQuoteData.category }}">
         <view class="category-tag category-{{ utils.getCategoryClass(currentQuoteData.category) }}">{{ currentQuoteData.category }}</view>
         <view class="usage-count">已激励 {{ currentQuoteData.usageCount || 0 }} 次</view>
         <view class="source-info">{{ currentQuoteData.source }}</view>
-      </view>
-    </view>
-    
-    <!-- 心情选择器 -->
-    <view class="mood-selector">
-      <view class="mood-title">
-        <text class="icon">💭</text>
-        <text>今日心情</text>
-      </view>
-      <view class="mood-options">
-        <view 
-          class="mood-chip {{selectedMood === moodItem.mood ? 'active' : ''}}" 
-          wx:for="{{ moodOptions }}" 
-          wx:key="mood"
-          wx:for-item="moodItem"
-          bindtap="selectMood"
-          data-mood="{{ moodItem.mood }}"
-        >
-          <text class="mood-emoji">{{ moodItem.emoji }}</text>
-          <text class="mood-text">{{ moodItem.mood }}</text>
-        </view>
       </view>
     </view>
 
@@ -77,6 +59,93 @@ module.exports = {
   <view class="stat-card-single">
     <view class="stat-number">{{ todayValueMinutes }}</view>
     <view class="stat-label">今日价值分钟</view>
+  </view>
+
+  <!-- 今日开心推荐 -->
+  <view class="card happy-things-card">
+    <view class="card-content">
+      <view class="title-row">
+        <view class="title">😊 今日开心推荐</view>
+        <view class="action-links">
+          <view class="action-link" bindtap="refreshHappyThings">🔄 换一批</view>
+          <view class="action-link" bindtap="goToHappyManager">⚙️ 管理</view>
+        </view>
+      </view>
+
+      <view class="happy-things-list">
+        <view
+          class="happy-item"
+          wx:for="{{ todayHappyThings }}"
+          wx:key="id"
+        >
+          <view class="happy-emoji">{{ item.emoji }}</view>
+          <view class="happy-info">
+            <view class="happy-content">{{ item.content }}</view>
+            <view class="happy-meta">
+              <view class="happy-category">{{ item.category }}</view>
+              <view class="happy-energy energy-{{ item.energy }}">
+                {{ item.energy === 'low' ? '轻松' : item.energy === 'medium' ? '适中' : '需精力' }}
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="happy-tip">
+        💡 选一件开心的事，让今天更美好
+      </view>
+    </view>
+  </view>
+
+  <!-- 每日状态摘要 -->
+  <view class="card daily-status-card">
+    <view class="card-content">
+      <view class="title-row">
+        <view class="title">📊 每日状态</view>
+        <view class="action-link" bindtap="goToDailyStatus">
+          {{ todayStatus ? '查看详情' : '记录状态' }}
+        </view>
+      </view>
+
+      <view wx:if="{{ todayStatus }}" class="status-summary">
+        <view class="status-row">
+          <view class="status-item">
+            <view class="status-icon">😊</view>
+            <view class="status-info">
+              <view class="status-label">心情</view>
+              <view class="status-value">{{ todayStatus.mood || '未记录' }}</view>
+            </view>
+          </view>
+          <view class="status-item">
+            <view class="status-icon">😴</view>
+            <view class="status-info">
+              <view class="status-label">睡眠</view>
+              <view class="status-value">{{ todayStatus.sleepHours ? todayStatus.sleepHours + 'h' : '未记录' }}</view>
+            </view>
+          </view>
+          <view class="status-item">
+            <view class="status-icon">⚖️</view>
+            <view class="status-info">
+              <view class="status-label">体重</view>
+              <view class="status-value">{{ todayStatus.weight ? todayStatus.weight + 'kg' : '未记录' }}</view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{ todayStatus.highlights }}" class="status-highlights">
+          <view class="highlights-label">✨ 今日亮点</view>
+          <view class="highlights-text">{{ todayStatus.highlights }}</view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-status">
+        <view class="empty-icon">📊</view>
+        <view class="empty-text">还未记录今日状态</view>
+        <button class="btn btn-primary-small" bindtap="goToDailyStatus">
+          <text>📝 开始记录</text>
+        </button>
+      </view>
+    </view>
   </view>
 
   <!-- 目标进展 -->

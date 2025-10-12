@@ -79,6 +79,14 @@ Page({
     // 目标关联相关
     availableGoals: [],
     selectedGoalId: '',
+    currentActivityGoalIndex: -1, // 有价值活动选中的目标索引
+    currentNeutralActivityGoalIndex: -1, // 中性活动选中的目标索引
+    currentWastefulActivityGoalIndex: -1, // 浪费性活动选中的目标索引
+    // 待办事项关联相关 ⭐ 新增
+    availableTodos: [], // 待办事项列表
+    selectedTodoId: '', // 选中的待办事项ID
+    selectedTodoInfo: null, // 选中的待办详细信息
+    todoFilterScope: 'all', // 待办筛选范围：'all' | '今日' | '近期'
     // 编辑模式相关
     isEditMode: false,
     editingMemoId: '',
@@ -191,6 +199,9 @@ Page({
 
     // 重新加载目标数据，以防其他页面有更新
     this.loadAvailableGoals()
+
+    // 重新加载待办事项列表 ⭐ 新增
+    this.loadAvailableTodos()
 
     // 更新保存按钮状态
     this.updateCanSave()
@@ -1145,7 +1156,7 @@ Page({
     const type = e.currentTarget.dataset.type || 'valuable'
     console.log('📋 活动类型:', type)
 
-    let activity, minutes, tags, entries, totalKey, activityKey, minutesKey, tagsKey, canAddKey
+    let activity, minutes, tags, goalId, entries, totalKey, activityKey, minutesKey, tagsKey, canAddKey, goalIndexKey
 
     if (type === 'neutral') {
       console.log('检查中性活动是否可添加:', this.data.canAddNeutralTimeEntry)
@@ -1156,11 +1167,13 @@ Page({
       activity = this.data.currentNeutralActivity.trim()
       minutes = parseInt(this.data.currentNeutralMinutes)
       tags = this.data.currentNeutralActivityTags
+      goalId = this.data.currentNeutralActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentNeutralActivityGoalIndex].id : ''
       entries = this.data.neutralTimeEntries
       totalKey = 'totalNeutralMinutes'
       activityKey = 'currentNeutralActivity'
       minutesKey = 'currentNeutralMinutes'
       tagsKey = 'currentNeutralActivityTags'
+      goalIndexKey = 'currentNeutralActivityGoalIndex'
       canAddKey = 'canAddNeutralTimeEntry'
     } else if (type === 'wasteful') {
       console.log('检查低效活动是否可添加:', this.data.canAddWastefulTimeEntry)
@@ -1171,11 +1184,13 @@ Page({
       activity = this.data.currentWastefulActivity.trim()
       minutes = parseInt(this.data.currentWastefulMinutes)
       tags = this.data.currentWastefulActivityTags
+      goalId = this.data.currentWastefulActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentWastefulActivityGoalIndex].id : ''
       entries = this.data.wastefulTimeEntries
       totalKey = 'totalWastefulMinutes'
       activityKey = 'currentWastefulActivity'
       minutesKey = 'currentWastefulMinutes'
       tagsKey = 'currentWastefulActivityTags'
+      goalIndexKey = 'currentWastefulActivityGoalIndex'
       canAddKey = 'canAddWastefulTimeEntry'
     } else {
       console.log('检查有价值活动是否可添加:', this.data.canAddTimeEntry)
@@ -1191,13 +1206,17 @@ Page({
       activity = this.data.currentActivity.trim()
       minutes = parseInt(this.data.currentMinutes)
       tags = this.data.currentActivityTags
+      goalId = this.data.currentActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentActivityGoalIndex].id : ''
       entries = this.data.valuableTimeEntries
       totalKey = 'totalValuableMinutes'
       activityKey = 'currentActivity'
       minutesKey = 'currentMinutes'
       tagsKey = 'currentActivityTags'
+      goalIndexKey = 'currentActivityGoalIndex'
       canAddKey = 'canAddTimeEntry'
     }
+
+    console.log('关联的目标ID:', goalId)
 
     // 检查是否已存在相同活动
     const existingIndex = entries.findIndex(entry => entry.activity === activity)
@@ -1221,7 +1240,8 @@ Page({
       newEntries.push({
         activity: activity,
         minutes: minutes,
-        tags: tags || []
+        tags: tags || [],
+        goalId: goalId || '' // 关联的目标ID
       })
       wx.showToast({
         title: '活动已添加',
@@ -1241,6 +1261,7 @@ Page({
       updateData[activityKey] = ''
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
+      updateData[goalIndexKey] = -1
       updateData[canAddKey] = false
     } else if (type === 'wasteful') {
       updateData.wastefulTimeEntries = newEntries
@@ -1248,6 +1269,7 @@ Page({
       updateData[activityKey] = ''
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
+      updateData[goalIndexKey] = -1
       updateData[canAddKey] = false
     } else {
       updateData.valuableTimeEntries = newEntries
@@ -1255,6 +1277,7 @@ Page({
       updateData[activityKey] = ''
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
+      updateData[goalIndexKey] = -1
       updateData[canAddKey] = false
     }
 
@@ -2333,6 +2356,32 @@ Page({
         app.saveMemo(memo)
       }
 
+      // ⭐ 更新所有关联目标的时间投入和进度
+      const relatedGoalIds = new Set()
+      // 收集所有时间条目中的goalId
+      ;[
+        ...(this.data.valuableTimeEntries || []),
+        ...(this.data.neutralTimeEntries || []),
+        ...(this.data.wastefulTimeEntries || [])
+      ].forEach(entry => {
+        if (entry.goalId) {
+          relatedGoalIds.add(entry.goalId)
+        }
+      })
+      // 也包括全局selectedGoalId
+      if (this.data.selectedGoalId) {
+        relatedGoalIds.add(this.data.selectedGoalId)
+      }
+      // 更新每个关联目标的进度
+      relatedGoalIds.forEach(goalId => {
+        try {
+          app.updateGoalTimeAndProgress(goalId)
+          console.log('✅ 已更新目标进度:', goalId)
+        } catch (error) {
+          console.error('❌ 更新目标进度失败:', goalId, error)
+        }
+      })
+
       // 如果是规划模式，创建待办
       if (this.data.recordMode === 'planning') {
         const todoItems = this.splitPlanningContent(memo.content)
@@ -2454,10 +2503,18 @@ Page({
           }
         }
 
-        // 添加关联的目标
-        if (this.data.selectedGoalId) {
+        // 添加关联的目标（优先使用条目级别的goalId，其次使用全局selectedGoalId）
+        const goalIdToUse = entry.goalId || this.data.selectedGoalId
+        if (goalIdToUse) {
           properties['Related Goal'] = {
-            relation: [{ id: this.data.selectedGoalId }]
+            relation: [{ id: goalIdToUse }]
+          }
+        }
+
+        // ⭐ 添加关联的待办事项
+        if (this.data.selectedTodoId) {
+          properties['Related Todo'] = {
+            relation: [{ id: this.data.selectedTodoId }]
           }
         }
 
@@ -2476,6 +2533,76 @@ Page({
 
       } catch (error) {
         console.error('创建Activity Detail失败:', error)
+      }
+    }
+
+    // ⭐ 所有活动创建完成后，更新待办事项状态
+    if (this.data.selectedTodoId && this.data.selectedTodoInfo) {
+      try {
+        console.log('更新待办事项状态:', this.data.selectedTodoId)
+
+        const todo = this.data.selectedTodoInfo
+        const currentStatus = todo.status
+        const estimatedMinutes = todo.estimatedMinutes
+        const actualMinutes = todo.actualMinutes || 0
+
+        // 计算新的实际时长（当前累计 + 本次新增）
+        const totalMinutes = allEntries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+        const newActualMinutes = actualMinutes + totalMinutes
+
+        // 智能更新状态
+        const updateResult = await notionApiService.smartUpdateTodoStatus(
+          notionConfig.apiKey,
+          this.data.selectedTodoId,
+          newActualMinutes,
+          estimatedMinutes,
+          currentStatus
+        )
+
+        if (updateResult.success) {
+          console.log('待办事项状态更新成功')
+
+          // 如果状态从"待办"变为"进行中"，给用户提示
+          if (currentStatus === '待办') {
+            wx.showToast({
+              title: '待办已开始',
+              icon: 'success',
+              duration: 1500
+            })
+          }
+
+          // 如果已达到预计时长，提示用户
+          if (newActualMinutes >= estimatedMinutes && estimatedMinutes > 0) {
+            wx.showModal({
+              title: '待办进度提醒',
+              content: `"${todo.title}"已达到预计时长（${estimatedMinutes}分钟），是否已完成？`,
+              confirmText: '已完成',
+              cancelText: '继续',
+              success: async (res) => {
+                if (res.confirm) {
+                  // 用户确认完成，更新为已完成状态
+                  await notionApiService.updateTodoPage(
+                    notionConfig.apiKey,
+                    this.data.selectedTodoId,
+                    { status: '已完成' }
+                  )
+                  wx.showToast({
+                    title: '待办已完成',
+                    icon: 'success'
+                  })
+                  // 清除待办选择
+                  this.clearTodoSelection()
+                  // 重新加载待办列表
+                  this.loadAvailableTodos()
+                }
+              }
+            })
+          }
+        } else {
+          console.error('待办事项状态更新失败:', updateResult.error)
+        }
+      } catch (error) {
+        console.error('更新待办事项状态异常:', error)
       }
     }
   },
@@ -2507,6 +2634,32 @@ Page({
       } else {
         app.saveMemo(memo)
       }
+
+      // ⭐ 更新所有关联目标的时间投入和进度
+      const relatedGoalIds = new Set()
+      // 收集所有时间条目中的goalId
+      ;[
+        ...(this.data.valuableTimeEntries || []),
+        ...(this.data.neutralTimeEntries || []),
+        ...(this.data.wastefulTimeEntries || [])
+      ].forEach(entry => {
+        if (entry.goalId) {
+          relatedGoalIds.add(entry.goalId)
+        }
+      })
+      // 也包括全局selectedGoalId
+      if (this.data.selectedGoalId) {
+        relatedGoalIds.add(this.data.selectedGoalId)
+      }
+      // 更新每个关联目标的进度
+      relatedGoalIds.forEach(goalId => {
+        try {
+          app.updateGoalTimeAndProgress(goalId)
+          console.log('✅ 已更新目标进度:', goalId)
+        } catch (error) {
+          console.error('❌ 更新目标进度失败:', goalId, error)
+        }
+      })
 
       // 如果是规划模式，创建待办
       if (this.data.recordMode === 'planning') {
@@ -2602,7 +2755,8 @@ Page({
   loadAvailableGoals: function() {
     try {
       // 只获取进行中的目标
-      const goals = app.getGoals().filter(goal => goal.status === 'active')
+      const goals = app.getGoals().filter(goal => goal.status === '进行中')
+      console.log('📋 加载可关联目标:', goals.length, '个')
       this.setData({
         availableGoals: goals
       })
@@ -2618,7 +2772,7 @@ Page({
   selectGoal: function(e) {
     const goalId = e.currentTarget.dataset.goalId
     const currentSelected = this.data.selectedGoalId
-    
+
     // 如果已经选中，则取消选择
     if (currentSelected === goalId) {
       this.setData({
@@ -2629,6 +2783,131 @@ Page({
         selectedGoalId: goalId
       })
     }
+  },
+
+  // 活动目标选择变化
+  onActivityGoalChange: function(e) {
+    const type = e.currentTarget.dataset.type
+    const index = parseInt(e.detail.value)
+
+    console.log('活动目标选择变化:', { type, index, goal: this.data.availableGoals[index] })
+
+    if (type === 'valuable') {
+      this.setData({
+        currentActivityGoalIndex: index
+      })
+    } else if (type === 'neutral') {
+      this.setData({
+        currentNeutralActivityGoalIndex: index
+      })
+    } else if (type === 'wasteful') {
+      this.setData({
+        currentWastefulActivityGoalIndex: index
+      })
+    }
+  },
+
+  // 加载待办事项列表 ⭐ 新增
+  loadAvailableTodos: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('未配置Notion，无法加载待办事项')
+        this.setData({
+          availableTodos: []
+        })
+        return
+      }
+
+      const { apiKey, todosDatabaseId } = currentUser.notionConfig
+
+      if (!todosDatabaseId) {
+        console.log('未配置待办库ID')
+        this.setData({
+          availableTodos: []
+        })
+        return
+      }
+
+      console.log('从Notion加载待办事项...')
+
+      // 查询待办事项（只查询今日和近期的未完成待办）
+      const options = {}
+      if (this.data.todoFilterScope !== 'all') {
+        options.scope = this.data.todoFilterScope
+      }
+
+      const result = await notionApiService.queryTodos(apiKey, todosDatabaseId, options)
+
+      if (result.success) {
+        console.log(`加载到 ${result.todos.length} 个待办事项`)
+        this.setData({
+          availableTodos: result.todos
+        })
+      } else {
+        console.error('加载待办事项失败:', result.error)
+        wx.showToast({
+          title: '加载待办失败',
+          icon: 'none'
+        })
+        this.setData({
+          availableTodos: []
+        })
+      }
+    } catch (error) {
+      console.error('加载待办事项异常:', error)
+      this.setData({
+        availableTodos: []
+      })
+    }
+  },
+
+  // 选择待办事项 ⭐ 新增
+  selectTodo: function(e) {
+    const todoId = e.currentTarget.dataset.todoId
+    const currentSelected = this.data.selectedTodoId
+
+    // 如果已经选中，则取消选择
+    if (currentSelected === todoId) {
+      this.setData({
+        selectedTodoId: '',
+        selectedTodoInfo: null
+      })
+      wx.showToast({
+        title: '已取消选择',
+        icon: 'none'
+      })
+    } else {
+      // 找到选中的待办详细信息
+      const todo = this.data.availableTodos.find(t => t.id === todoId)
+      this.setData({
+        selectedTodoId: todoId,
+        selectedTodoInfo: todo
+      })
+      wx.showToast({
+        title: `已选择：${todo.title}`,
+        icon: 'none',
+        duration: 1500
+      })
+    }
+  },
+
+  // 清除待办选择 ⭐ 新增
+  clearTodoSelection: function() {
+    this.setData({
+      selectedTodoId: '',
+      selectedTodoInfo: null
+    })
+  },
+
+  // 切换待办筛选范围 ⭐ 新增
+  changeTodoFilterScope: function(e) {
+    const scope = e.detail.value
+    this.setData({
+      todoFilterScope: scope
+    })
+    // 重新加载待办列表
+    this.loadAvailableTodos()
   },
 
   // 清除目标选择
@@ -2695,6 +2974,8 @@ Page({
       selectedTags: [],
       customTag: '',
       selectedGoalId: '',
+      selectedTodoId: '', // ⭐ 重置待办选择
+      selectedTodoInfo: null, // ⭐ 重置待办信息
       goalTimeInvestment: 60,
       goalValueAssessment: 'medium',
       goalInvestmentNote: '',

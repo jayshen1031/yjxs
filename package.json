@@ -1,0 +1,16 @@
+{
+  "name": "yjxs",
+  "version": "1.0.0",
+  "description": "语寄心声微信小程序",
+  "scripts": {
+    "create-databases": "node scripts/createNotionDatabases_interactive.js",
+    "create-daily-status": "node scripts/createDailyStatusDatabase_interactive.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {},
+  "keywords": ["wechat", "miniprogram", "notion"],
+  "author": "",
+  "license": "ISC"
+}

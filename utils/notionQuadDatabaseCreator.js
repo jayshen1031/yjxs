@@ -1,6 +1,6 @@
 /**
- * Notion 四数据库创建器
- * 完整实现四数据库架构的创建
+ * Notion 五数据库创建器
+ * 完整实现五数据库架构的创建（包含每日状态库）
  */
 
 const notionApiService = require('./notionApiService.js')
@@ -13,31 +13,31 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
-   * 创建完整的四数据库架构
+   * 创建完整的五数据库架构
    */
   async createAll() {
     try {
       console.log('========================================')
-      console.log('开始创建Notion四数据库架构')
+      console.log('开始创建Notion五数据库架构')
       console.log('========================================')
 
       // Step 1: 创建目标库（Goals）
-      console.log('\n[1/4] 创建目标库...')
+      console.log('\n[1/5] 创建目标库...')
       const goalsDb = await this.createGoalsDatabase()
       console.log('✅ 目标库创建成功:', goalsDb.id)
 
       // Step 2: 创建待办库（Todos），关联目标库
-      console.log('\n[2/4] 创建待办库...')
+      console.log('\n[2/5] 创建待办库...')
       const todosDb = await this.createTodosDatabase(goalsDb.id)
       console.log('✅ 待办库创建成功:', todosDb.id)
 
       // Step 3: 创建主记录表（Main Records），关联待办库
-      console.log('\n[3/4] 创建主记录表...')
+      console.log('\n[3/5] 创建主记录表...')
       const mainDb = await this.createMainRecordsDatabase(todosDb.id)
       console.log('✅ 主记录表创建成功:', mainDb.id)
 
       // Step 4: 创建活动明细表（Activity Details），关联所有表
-      console.log('\n[4/4] 创建活动明细表...')
+      console.log('\n[4/5] 创建活动明细表...')
       const activityDb = await this.createActivityDetailsDatabase(
         goalsDb.id,
         todosDb.id,
@@ -45,23 +45,29 @@ class NotionQuadDatabaseCreator {
       )
       console.log('✅ 活动明细表创建成功:', activityDb.id)
 
-      // Step 5: 更新目标库的自关联（Parent/Sub Goals）
-      console.log('\n[5/5] 更新目标库自关联关系...')
+      // Step 5: 创建每日状态库（Daily Status）- 独立数据库
+      console.log('\n[5/5] 创建每日状态库...')
+      const dailyStatusDb = await this.createDailyStatusDatabase()
+      console.log('✅ 每日状态库创建成功:', dailyStatusDb.id)
+
+      // Step 6: 更新目标库的自关联（Parent/Sub Goals）
+      console.log('\n[6/7] 更新目标库自关联关系...')
       await this.updateGoalsSelfRelation(goalsDb.id)
       console.log('✅ 自关联更新成功')
 
-      // Step 6: 更新待办库的自关联（Blocking/Blocked By）
-      console.log('\n[6/6] 更新待办库自关联关系...')
+      // Step 7: 更新待办库的自关联（Blocking/Blocked By）
+      console.log('\n[7/7] 更新待办库自关联关系...')
       await this.updateTodosSelfRelation(todosDb.id)
       console.log('✅ 自关联更新成功')
 
       console.log('\n========================================')
-      console.log('✅ 四数据库架构创建完成！')
+      console.log('✅ 五数据库架构创建完成！')
       console.log('========================================')
       console.log('目标库ID:', goalsDb.id)
       console.log('待办库ID:', todosDb.id)
       console.log('主记录表ID:', mainDb.id)
       console.log('活动明细表ID:', activityDb.id)
+      console.log('每日状态库ID:', dailyStatusDb.id)
 
       return {
         success: true,
@@ -69,7 +75,8 @@ class NotionQuadDatabaseCreator {
           goals: goalsDb.id,
           todos: todosDb.id,
           mainRecords: mainDb.id,
-          activityDetails: activityDb.id
+          activityDetails: activityDb.id,
+          dailyStatus: dailyStatusDb.id
         }
       }
     } catch (error) {
@@ -456,6 +463,115 @@ class NotionQuadDatabaseCreator {
     console.log('   2. 添加Relation属性 "Blocking Todos"，关联到自身数据库')
     console.log('   3. 添加Relation属性 "Blocked By"，关联到自身数据库')
     return true
+  }
+
+  /**
+   * 5. 创建每日状态库（Daily Status Database）
+   */
+  async createDailyStatusDatabase() {
+    const schema = {
+      parent: { page_id: this.parentPageId },
+      title: [{ text: { content: '📊 语寄心声 - 每日状态库 (Daily Status)' } }],
+      properties: {
+        'Date': { title: {} },
+        'Full Date': { date: {} },
+        'Mood': {
+          select: {
+            options: [
+              { name: '😊 开心', color: 'green' },
+              { name: '💪 充满动力', color: 'blue' },
+              { name: '😌 平静', color: 'default' },
+              { name: '😕 迷茫', color: 'gray' },
+              { name: '😔 沮丧', color: 'brown' },
+              { name: '😰 焦虑', color: 'orange' },
+              { name: '😴 疲惫', color: 'yellow' },
+              { name: '😤 压力大', color: 'red' }
+            ]
+          }
+        },
+        'Energy Level': {
+          select: {
+            options: [
+              { name: '🔋 充沛', color: 'green' },
+              { name: '⚡ 良好', color: 'blue' },
+              { name: '🔌 一般', color: 'yellow' },
+              { name: '🪫 疲惫', color: 'orange' },
+              { name: '💤 耗尽', color: 'red' }
+            ]
+          }
+        },
+        'Stress Level': {
+          select: {
+            options: [
+              { name: '😌 无压力', color: 'green' },
+              { name: '🙂 轻微', color: 'blue' },
+              { name: '😐 中等', color: 'yellow' },
+              { name: '😰 较高', color: 'orange' },
+              { name: '😫 非常高', color: 'red' }
+            ]
+          }
+        },
+        'Wake Up Time': { rich_text: {} },
+        'Bed Time': { rich_text: {} },
+        'Sleep Hours': { number: { format: 'number' } },
+        'Sleep Quality': {
+          select: {
+            options: [
+              { name: '😴 很好', color: 'green' },
+              { name: '🙂 良好', color: 'blue' },
+              { name: '😐 一般', color: 'yellow' },
+              { name: '😕 较差', color: 'orange' },
+              { name: '😣 很差', color: 'red' }
+            ]
+          }
+        },
+        'Weight': { number: { format: 'number' } },
+        'Water Intake': { number: { format: 'number' } },
+        'Exercise Duration': { number: { format: 'number' } },
+        'Exercise Type': {
+          multi_select: {
+            options: [
+              { name: '🏃 跑步', color: 'blue' },
+              { name: '🚴 骑行', color: 'green' },
+              { name: '🏊 游泳', color: 'purple' },
+              { name: '🏋️ 力量训练', color: 'red' },
+              { name: '🧘 瑜伽', color: 'pink' },
+              { name: '🚶 散步', color: 'default' }
+            ]
+          }
+        },
+        'Meals': {
+          multi_select: {
+            options: [
+              { name: '🌅 早餐', color: 'yellow' },
+              { name: '☀️ 午餐', color: 'orange' },
+              { name: '🌙 晚餐', color: 'purple' },
+              { name: '🍎 加餐', color: 'green' }
+            ]
+          }
+        },
+        'Diet Notes': { rich_text: {} },
+        'Meditation': { checkbox: {} },
+        'Meditation Duration': { number: { format: 'number' } },
+        'Reading': { checkbox: {} },
+        'Reading Duration': { number: { format: 'number' } },
+        'Notes': { rich_text: {} },
+        'Highlights': { rich_text: {} },
+        'User ID': { rich_text: {} }
+      }
+    }
+
+    const result = await this.service.callApi('/databases', {
+      apiKey: this.apiKey,
+      method: 'POST',
+      data: schema
+    })
+
+    if (!result.success) {
+      throw new Error('创建每日状态库失败: ' + result.error)
+    }
+
+    return result.data
   }
 }
 

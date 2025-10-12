@@ -418,8 +418,21 @@ class NotionApiService {
               { name: '社交', color: 'yellow' }
             ]
           }
+        },
+        'Estimated Hours': {
+          number: {
+            format: 'number'
+          }
+        },
+        'Total Time Investment': {
+          number: {
+            format: 'number'
+          }
+        },
+        'User ID': {
+          rich_text: {}
         }
-        // Note: Related Todos, Related Activities, Total Time 等反向关联和Rollup字段会在后续添加
+        // Note: Related Todos, Related Activities 等反向关联和Rollup字段会在后续添加
       }
     }
 
@@ -848,18 +861,45 @@ class NotionApiService {
   // 创建Notion页面（通用方法）
   async createPageGeneric(pageData, apiKey) {
     const endpoint = '/pages'
-    
+
     const result = await this.callApi(endpoint, {
       apiKey: apiKey,
       method: 'POST',
       data: pageData
     })
-    
+
     if (result.success) {
       return {
         success: true,
         pageId: result.data.id,
         message: '页面创建成功',
+        data: result.data
+      }
+    } else {
+      return {
+        success: false,
+        error: result.error
+      }
+    }
+  }
+
+  // 更新Notion页面（通用方法）
+  async updatePageGeneric(pageId, properties, apiKey) {
+    const endpoint = `/pages/${pageId}`
+
+    const result = await this.callApi(endpoint, {
+      apiKey: apiKey,
+      method: 'PATCH',
+      data: {
+        properties: properties
+      }
+    })
+
+    if (result.success) {
+      return {
+        success: true,
+        pageId: result.data.id,
+        message: '页面更新成功',
         data: result.data
       }
     } else {
@@ -1892,6 +1932,91 @@ class NotionApiService {
   }
 
   /**
+   * 修复目标数据库结构 - 添加缺失的字段
+   * @param {string} apiKey - Notion API密钥
+   * @param {string} goalsDatabaseId - 目标库数据库ID
+   * @param {string} activityDatabaseId - 活动明细表数据库ID（用于配置Rollup）
+   * @returns {Promise} 修复结果
+   */
+  async fixGoalsDatabaseStructure(apiKey, goalsDatabaseId, activityDatabaseId = null) {
+    try {
+      console.log('开始修复目标数据库结构...')
+
+      // 定义需要添加的字段
+      const requiredFields = {
+        'Estimated Hours': {
+          number: {
+            format: 'number'
+          }
+        },
+        'Start Date': {
+          date: {}
+        },
+        'User ID': {
+          rich_text: {}
+        }
+      }
+
+      // 添加缺失的字段
+      const updateResult = await this.callApi(`/databases/${goalsDatabaseId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: {
+          properties: requiredFields
+        }
+      })
+
+      if (!updateResult.success) {
+        return {
+          success: false,
+          error: '添加字段失败: ' + updateResult.error
+        }
+      }
+
+      console.log('基础字段添加成功')
+
+      // 如果提供了活动明细表ID，配置Rollup字段
+      if (activityDatabaseId) {
+        console.log('配置Total Time Investment Rollup字段...')
+        const rollupResult = await this.callApi(`/databases/${goalsDatabaseId}`, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Total Time Investment': {
+                rollup: {
+                  relation_property_name: 'Related Activities',
+                  rollup_property_name: 'Minutes',
+                  function: 'sum'
+                }
+              }
+            }
+          }
+        })
+
+        if (!rollupResult.success) {
+          console.warn('Rollup字段配置失败:', rollupResult.error)
+          // 不阻止整体成功，继续执行
+        } else {
+          console.log('Rollup字段配置成功')
+        }
+      }
+
+      return {
+        success: true,
+        message: '目标数据库结构修复成功',
+        addedFields: Object.keys(requiredFields)
+      }
+    } catch (error) {
+      console.error('修复目标数据库结构异常:', error)
+      return {
+        success: false,
+        error: '修复失败: ' + error.message
+      }
+    }
+  }
+
+  /**
    * 诊断数据库结构 - 获取数据库的所有字段信息
    * @param {string} apiKey - Notion API密钥
    * @param {string} databaseId - 数据库ID
@@ -2125,6 +2250,195 @@ class NotionApiService {
       return {
         success: false,
         error: '查询活动明细表失败: ' + error.message
+      }
+    }
+  }
+
+  /**
+   * 查询待办事项列表（仅查询未完成的）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} todosDatabaseId - 待办库数据库ID
+   * @param {object} options - 查询选项 {scope: '今日'|'近期'|null, status: '待办'|'进行中'|null}
+   */
+  async queryTodos(apiKey, todosDatabaseId, options = {}) {
+    try {
+      console.log('查询待办事项列表:', todosDatabaseId)
+
+      // 构建过滤条件：排除已完成和已取消的待办
+      const filters = []
+
+      // 添加状态过滤
+      if (options.status) {
+        filters.push({
+          property: 'Status',
+          select: {
+            equals: options.status
+          }
+        })
+      } else {
+        // 默认只查询待办和进行中的
+        filters.push({
+          or: [
+            { property: 'Status', select: { equals: '待办' } },
+            { property: 'Status', select: { equals: '进行中' } }
+          ]
+        })
+      }
+
+      // 添加范围过滤
+      if (options.scope) {
+        filters.push({
+          property: 'Scope',
+          select: {
+            equals: options.scope
+          }
+        })
+      }
+
+      // 构建查询参数
+      const queryData = {
+        filter: filters.length > 1 ? { and: filters } : filters[0],
+        sorts: [
+          {
+            property: 'Priority',
+            direction: 'ascending'
+          },
+          {
+            property: 'Due Date',
+            direction: 'ascending'
+          }
+        ],
+        page_size: options.limit || 100
+      }
+
+      const result = await this.queryDatabase(apiKey, todosDatabaseId, queryData)
+
+      if (!result.success) {
+        throw new Error(result.error || '查询待办事项失败')
+      }
+
+      // 解析结果
+      const todos = result.data.results.map(page => {
+        const props = page.properties
+        return {
+          id: page.id,
+          title: props['Todo Name']?.title?.[0]?.text?.content || '未命名待办',
+          description: props['Description']?.rich_text?.[0]?.text?.content || '',
+          todoType: props['Todo Type']?.select?.name || '临时待办',
+          status: props['Status']?.select?.name || '待办',
+          priority: props['Priority']?.select?.name || '重要不紧急',
+          scope: props['Scope']?.select?.name || '近期',
+          dueDate: props['Due Date']?.date?.start || '',
+          estimatedMinutes: props['Estimated Minutes']?.number || 0,
+          actualMinutes: props['Actual Time']?.rollup?.number || 0, // Rollup字段
+          tags: props['Tags']?.multi_select?.map(tag => tag.name) || []
+        }
+      })
+
+      console.log(`查询到 ${todos.length} 个待办事项`)
+
+      return {
+        success: true,
+        todos: todos,
+        total: result.data.results.length
+      }
+    } catch (error) {
+      console.error('查询待办事项异常:', error)
+      return {
+        success: false,
+        error: '查询待办事项失败: ' + error.message
+      }
+    }
+  }
+
+  /**
+   * 更新待办事项（状态和实际时长）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} todoPageId - 待办页面ID
+   * @param {object} updates - 更新内容 {status, addMinutes}
+   */
+  async updateTodoPage(apiKey, todoPageId, updates = {}) {
+    try {
+      console.log('更新待办事项:', todoPageId, updates)
+
+      const properties = {}
+
+      // 更新状态
+      if (updates.status) {
+        properties['Status'] = {
+          select: { name: updates.status }
+        }
+      }
+
+      // 注意：Actual Time是Rollup字段，会自动累加关联的Activities的Minutes
+      // 所以这里不需要手动更新Actual Time
+
+      const result = await this.callApi(`/pages/${todoPageId}`, {
+        apiKey: apiKey,
+        method: 'PATCH',
+        data: { properties }
+      })
+
+      if (result.success) {
+        console.log('待办事项更新成功')
+        return {
+          success: true,
+          message: '待办事项已更新'
+        }
+      } else {
+        return {
+          success: false,
+          error: result.error
+        }
+      }
+    } catch (error) {
+      console.error('更新待办事项异常:', error)
+      return {
+        success: false,
+        error: '更新待办事项失败: ' + error.message
+      }
+    }
+  }
+
+  /**
+   * 智能更新待办状态（根据活动记录自动判断）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} todoPageId - 待办页面ID
+   * @param {number} currentActualMinutes - 当前实际累计时长（从Rollup字段获取）
+   * @param {number} estimatedMinutes - 预计时长
+   * @param {string} currentStatus - 当前状态
+   */
+  async smartUpdateTodoStatus(apiKey, todoPageId, currentActualMinutes, estimatedMinutes, currentStatus) {
+    try {
+      let newStatus = currentStatus
+
+      // 状态转换逻辑
+      if (currentStatus === '待办') {
+        // 第一次记录时间 → 进行中
+        newStatus = '进行中'
+      } else if (currentStatus === '进行中') {
+        // 如果实际时长 >= 预计时长 → 可以提示用户是否完成（但这里我们只自动改为进行中，不自动完成）
+        // 保持进行中状态，让用户手动标记完成
+        if (currentActualMinutes >= estimatedMinutes && estimatedMinutes > 0) {
+          console.log(`💡 待办"${todoPageId}"已达到预计时长，建议用户确认是否完成`)
+          // 这里可以返回一个提示，但不自动改为已完成
+        }
+      }
+
+      // 只在状态需要改变时更新
+      if (newStatus !== currentStatus) {
+        return await this.updateTodoPage(apiKey, todoPageId, { status: newStatus })
+      } else {
+        return {
+          success: true,
+          message: '待办状态无需更新'
+        }
+      }
+    } catch (error) {
+      console.error('智能更新待办状态异常:', error)
+      return {
+        success: false,
+        error: error.message
       }
     }
   }

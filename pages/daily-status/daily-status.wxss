@@ -1,0 +1,204 @@
+/* pages/daily-status/daily-status.wxss */
+
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fafc 0%, #e0e7ff 100%);
+  padding-bottom: 100rpx;
+}
+
+/* 页面标题 */
+.page-header {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  padding: 40rpx 30rpx 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(99, 102, 241, 0.3);
+}
+
+.header-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 10rpx;
+}
+
+.header-date {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.header-update-time {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+  padding: 6rpx 12rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12rpx;
+  display: inline-block;
+}
+
+/* 表单区域 */
+.section {
+  background: white;
+  border-radius: 20rpx;
+  margin: 0 30rpx 30rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 30rpx;
+  padding-bottom: 15rpx;
+  border-bottom: 2rpx solid #e5e7eb;
+}
+
+/* 表单项 */
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #4b5563;
+  margin-bottom: 15rpx;
+  font-weight: 500;
+}
+
+/* Picker输入框 */
+.picker-input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 25rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border: 2rpx solid #e5e7eb;
+  font-size: 28rpx;
+  color: #1f2937;
+  transition: all 0.3s;
+}
+
+.picker-input:active {
+  background: #f3f4f6;
+  border-color: #6366f1;
+}
+
+.arrow {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+/* 普通输入框 */
+.form-input {
+  padding: 20rpx 25rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border: 2rpx solid #e5e7eb;
+  font-size: 28rpx;
+  color: #1f2937;
+}
+
+.form-input:focus {
+  border-color: #6366f1;
+  background: white;
+}
+
+/* 文本域 */
+.form-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx 25rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border: 2rpx solid #e5e7eb;
+  font-size: 28rpx;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.form-textarea:focus {
+  border-color: #6366f1;
+  background: white;
+}
+
+/* 复选框项 */
+.checkbox-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 多选容器 */
+.multi-select-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15rpx;
+  margin-top: 15rpx;
+}
+
+.multi-select-item {
+  padding: 15rpx 25rpx;
+  background: #f3f4f6;
+  border-radius: 30rpx;
+  font-size: 26rpx;
+  color: #6b7280;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+}
+
+.multi-select-item.selected {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-color: #6366f1;
+  transform: scale(1.05);
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+}
+
+/* 底部操作区 */
+.bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 20rpx 30rpx;
+  box-shadow: 0 -2rpx 20rpx rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.update-tip {
+  font-size: 24rpx;
+  color: #6366f1;
+  text-align: center;
+  margin-bottom: 12rpx;
+  padding: 8rpx 15rpx;
+  background: #f0f1ff;
+  border-radius: 20rpx;
+}
+
+.btn {
+  width: 100%;
+  padding: 25rpx;
+  border-radius: 15rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  transition: all 0.3s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4rpx 15rpx rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 10rpx rgba(99, 102, 241, 0.3);
+}

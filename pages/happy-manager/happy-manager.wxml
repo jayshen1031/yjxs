@@ -1,0 +1,221 @@
+<view class="container">
+  <!-- 统计卡片 -->
+  <view class="stats-card">
+    <view class="stats-row">
+      <view class="stat-item">
+        <view class="stat-value">{{ totalCount }}</view>
+        <view class="stat-label">总数</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value">{{ systemDefaultCount }}</view>
+        <view class="stat-label">🌟 系统</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value">{{ userCustomCount }}</view>
+        <view class="stat-label">✨ 自定义</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-value">{{ notionCount }}</view>
+        <view class="stat-label">☁️ Notion</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分类筛选 -->
+  <view class="category-filter">
+    <scroll-view scroll-x class="category-scroll">
+      <view class="category-list">
+        <view
+          class="category-chip {{ selectedCategory === item || (item === '全部' && !selectedCategory) ? 'active' : '' }}"
+          wx:for="{{ categories }}"
+          wx:key="*this"
+          bindtap="filterByCategory"
+          data-category="{{ item === '全部' ? '' : item }}"
+        >
+          {{ item }}
+          <text wx:if="{{ categoryStats[item] }}" class="count">({{ categoryStats[item] }})</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 搜索和排序 -->
+  <view class="filter-bar">
+    <view class="search-box">
+      <input
+        class="search-input"
+        placeholder="搜索开心事项..."
+        value="{{ searchKeyword }}"
+        bindinput="onSearchInput"
+      />
+    </view>
+    <picker class="sort-picker" bindchange="onSortChange" value="{{ sortIndex }}" range="{{ sortOptions }}" range-key="label">
+      <view class="sort-btn">
+        <text>{{ sortOptions[sortIndex].label }}</text>
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 开心事项列表 -->
+  <view class="happy-things-list">
+    <view
+      class="happy-thing-item"
+      wx:for="{{ filteredHappyThings }}"
+      wx:key="id"
+    >
+      <view class="item-header">
+        <view class="emoji">{{ item.emoji }}</view>
+        <view class="item-info">
+          <view class="content">{{ item.content }}</view>
+          <view class="meta">
+            <view class="category-tag category-{{ item.category }}">{{ item.category }}</view>
+            <view class="energy-tag energy-{{ getEnergyClass(item.energy) }}">
+              {{ getEnergyText(item.energy) }}
+            </view>
+            <view class="duration-tag">⏱️ {{ item.duration }}分钟</view>
+            <view wx:if="{{ item.isSystemDefault }}" class="system-tag">🌟 系统默认</view>
+            <view wx:else class="source-tag source-{{ item.source }}">
+              {{ item.source === 'local' ? '本地' : 'Notion' }}
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="item-actions">
+        <view wx:if="{{ !item.isSystemDefault }}" class="action-btn edit" bindtap="editHappyThing" data-id="{{ item.id }}">
+          <text>✏️ 编辑</text>
+        </view>
+        <view class="action-btn delete {{ item.isSystemDefault ? 'disabled' : '' }}" bindtap="deleteHappyThing" data-id="{{ item.id }}">
+          <text>{{ item.isSystemDefault ? '🔒 不可删除' : '🗑️ 删除' }}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{ item.notes }}" class="item-notes">
+        📝 {{ item.notes }}
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{ filteredHappyThings.length === 0 }}" class="empty-state">
+      <text class="empty-icon">😊</text>
+      <text class="empty-text">还没有开心事项</text>
+      <text class="empty-hint">点击下方按钮添加</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-actions">
+    <button class="btn btn-secondary" bindtap="syncToNotion" wx:if="{{ hasNotionConfig && localCount > 0 }}" disabled="{{ isSyncing }}">
+      <text>📤 同步到Notion ({{ localCount }})</text>
+    </button>
+    <button class="btn btn-primary" bindtap="addHappyThing">
+      <text>➕ 添加开心事项</text>
+    </button>
+  </view>
+
+  <!-- 添加/编辑弹窗 -->
+  <view class="modal {{ showAddModal ? 'show' : '' }}" wx:if="{{ showAddModal }}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">{{ editingItem ? '编辑' : '添加' }}开心事项</text>
+        <text class="close-btn" bindtap="closeAddModal">✕</text>
+      </view>
+
+      <view class="form-group">
+        <label class="form-label">内容 *</label>
+        <input
+          class="form-input"
+          placeholder="如：出门散步20分钟、做一道拿手菜..."
+          value="{{ formData.content }}"
+          bindinput="onContentInput"
+          maxlength="100"
+        />
+      </view>
+
+      <view class="form-group">
+        <label class="form-label">表情</label>
+        <input
+          class="form-input"
+          placeholder="如：🚶、🍳、📖..."
+          value="{{ formData.emoji }}"
+          bindinput="onEmojiInput"
+          maxlength="2"
+        />
+      </view>
+
+      <view class="form-row">
+        <view class="form-group half">
+          <label class="form-label">分类</label>
+          <picker bindchange="onCategoryChange" value="{{ categoryIndex }}" range="{{ categoryOptions }}">
+            <view class="picker-input">
+              <text>{{ categoryOptions[categoryIndex] }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-group half">
+          <label class="form-label">能量等级</label>
+          <picker bindchange="onEnergyChange" value="{{ energyIndex }}" range="{{ energyOptions }}" range-key="label">
+            <view class="picker-input">
+              <text>{{ energyOptions[energyIndex].label }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="form-row">
+        <view class="form-group half">
+          <label class="form-label">难度</label>
+          <picker bindchange="onDifficultyChange" value="{{ difficultyIndex }}" range="{{ difficultyOptions }}" range-key="label">
+            <view class="picker-input">
+              <text>{{ difficultyOptions[difficultyIndex].label }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-group half">
+          <label class="form-label">成本</label>
+          <picker bindchange="onCostChange" value="{{ costIndex }}" range="{{ costOptions }}" range-key="label">
+            <view class="picker-input">
+              <text>{{ costOptions[costIndex].label }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="form-group">
+        <label class="form-label">建议时长（分钟）</label>
+        <input
+          class="form-input"
+          type="number"
+          placeholder="30"
+          value="{{ formData.duration }}"
+          bindinput="onDurationInput"
+        />
+      </view>
+
+      <view class="form-group">
+        <label class="form-label">备注</label>
+        <textarea
+          class="form-textarea"
+          placeholder="可选，如特殊说明、注意事项等..."
+          value="{{ formData.notes }}"
+          bindinput="onNotesInput"
+          maxlength="200"
+        />
+      </view>
+
+      <view class="form-actions">
+        <button class="btn-cancel" bindtap="closeAddModal">取消</button>
+        <button class="btn-confirm" bindtap="confirmAddHappyThing" disabled="{{ !formData.content }}">
+          {{ editingItem ? '更新' : '创建' }}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

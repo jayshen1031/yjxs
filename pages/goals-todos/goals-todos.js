@@ -75,7 +75,9 @@ Page({
       description: '',
       category: '月度目标 (Monthly Goal)',
       priority: '中',
+      startDate: '',
       targetDate: '',
+      estimatedHours: 0,
       tags: []
     },
     goalCategoryOptions: ['人生目标 (Life Goal)', '年度目标 (Yearly Goal)', '季度目标 (Quarterly Goal)', '月度目标 (Monthly Goal)', '周目标 (Weekly Goal)'],
@@ -86,7 +88,9 @@ Page({
       { value: '低', label: '低优先级' }
     ],
     goalPriorityIndex: 1,
+    goalStartDate: '',
     goalTargetDate: '',
+    goalEstimatedHours: '',
     goalTagsInput: '',
     editingGoal: null,
 
@@ -359,18 +363,25 @@ Page({
   },
 
   addGoal() {
+    // 默认起始时间为今天
+    const today = new Date().toISOString().split('T')[0]
+
     this.setData({
       goalFormData: {
         title: '',
         description: '',
         category: '月度目标',
         priority: '中',
+        startDate: today,
         targetDate: '',
+        estimatedHours: 0,
         tags: []
       },
       goalCategoryIndex: 3,
       goalPriorityIndex: 1,
+      goalStartDate: today,
       goalTargetDate: '',
+      goalEstimatedHours: '',
       goalTagsInput: '',
       editingGoal: null,
       showGoalModal: true
@@ -391,12 +402,16 @@ Page({
           description: goal.description || '',
           category: goal.category,
           priority: goal.priority || '中',
+          startDate: goal.startDate || '',
           targetDate: goal.targetDate || '',
+          estimatedHours: goal.estimatedHours || 0,
           tags: goal.tags || []
         },
         goalCategoryIndex: categoryIndex >= 0 ? categoryIndex : 3,
         goalPriorityIndex: priorityIndex >= 0 ? priorityIndex : 1,
+        goalStartDate: goal.startDate || '',
         goalTargetDate: goal.targetDate || '',
+        goalEstimatedHours: (goal.estimatedHours || '').toString(),
         goalTagsInput: (goal.tags || []).join(' '),
         editingGoal: goal,
         showGoalModal: true
@@ -428,10 +443,25 @@ Page({
     })
   },
 
+  onGoalStartDateChange(e) {
+    this.setData({
+      goalStartDate: e.detail.value,
+      'goalFormData.startDate': e.detail.value
+    })
+  },
+
   onGoalTargetDateChange(e) {
     this.setData({
       goalTargetDate: e.detail.value,
       'goalFormData.targetDate': e.detail.value
+    })
+  },
+
+  onGoalEstimatedHoursInput(e) {
+    const value = parseFloat(e.detail.value) || 0
+    this.setData({
+      goalEstimatedHours: e.detail.value,
+      'goalFormData.estimatedHours': value
     })
   },
 
@@ -449,6 +479,14 @@ Page({
       wx.showToast({ title: '请输入目标名称', icon: 'none' })
       return
     }
+    if (!this.data.goalFormData.startDate) {
+      wx.showToast({ title: '请选择起始时间', icon: 'none' })
+      return
+    }
+    if (!this.data.goalFormData.estimatedHours || this.data.goalFormData.estimatedHours <= 0) {
+      wx.showToast({ title: '请输入预计投入时间', icon: 'none' })
+      return
+    }
 
     try {
       const currentUser = userManager.getCurrentUser()
@@ -462,17 +500,52 @@ Page({
 
       if (useCloud) {
         if (this.data.editingGoal) {
-          // 更新目标
-          const result = await apiService.updateGoal(
-            currentUser.email,
-            notionConfig.apiKey,
-            this.data.editingGoal.id,
-            this.data.goalFormData
-          )
+          // 前端直接更新目标到Notion
+          const goalData = this.data.goalFormData
+          const properties = {
+            'Goal Name': {
+              title: [{ text: { content: goalData.title } }]
+            },
+            'Description': {
+              rich_text: [{ text: { content: goalData.description || '' } }]
+            },
+            'Category': {
+              select: { name: goalData.category }
+            },
+            'Priority': {
+              select: { name: goalData.priority }
+            },
+            'Start Date': {
+              date: { start: goalData.startDate }
+            },
+            'Estimated Hours': {
+              number: goalData.estimatedHours || 0
+            }
+          }
+
+          // 添加可选字段
+          if (goalData.targetDate) {
+            properties['Target Date'] = {
+              date: { start: goalData.targetDate }
+            }
+          }
+
+          if (goalData.tags && goalData.tags.length > 0) {
+            properties['Tags'] = {
+              multi_select: goalData.tags.map(tag => ({ name: tag }))
+            }
+          }
+
+          // 使用Notion页面ID更新
+          const notionPageId = this.data.editingGoal.notionPageId || this.data.editingGoal.id
+          const result = await notionApiService.updatePageGeneric(notionPageId, properties, notionConfig.apiKey)
 
           if (!result.success) {
             throw new Error(result.error || '更新失败')
           }
+
+          // 同步更新本地存储
+          app.updateGoal(this.data.editingGoal.id, this.data.goalFormData)
 
           wx.showToast({ title: '目标更新成功', icon: 'success' })
         } else {
@@ -498,6 +571,18 @@ Page({
               },
               'Progress': {
                 number: 0
+              },
+              'Start Date': {
+                date: { start: goalData.startDate }
+              },
+              'Estimated Hours': {
+                number: goalData.estimatedHours || 0
+              },
+              'Total Time Investment': {
+                number: 0
+              },
+              'User ID': {
+                rich_text: [{ text: { content: currentUser.email } }]
               }
             }
           }
@@ -520,6 +605,13 @@ Page({
           if (!result.success) {
             throw new Error(result.error || '创建失败')
           }
+
+          // 保存到本地存储（带上 notionPageId）
+          const localGoal = {
+            ...this.data.goalFormData,
+            notionPageId: result.pageId
+          }
+          app.createGoal(localGoal)
 
           wx.showToast({ title: '目标创建成功', icon: 'success' })
         }

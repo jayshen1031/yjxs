@@ -1,11 +1,12 @@
 /**
- * Notion 四数据库架构初始化服务
+ * Notion 五数据库架构初始化服务
  *
- * 四数据库架构：
+ * 五数据库架构：
  * 1. Goals（目标库）- 人生目标、阶段目标管理
  * 2. Todos（待办事项库）- 目标导向和临时待办管理
  * 3. Main Records（主记录表）- 每日记录汇总
  * 4. Activity Details（活动明细表）- 每个活动的时间投入
+ * 5. Daily Status（每日状态库）- 健康和生活习惯追踪
  */
 
 /**
@@ -576,9 +577,281 @@ const ActivityDetailsDatabaseSchema = {
   }
 }
 
+/**
+ * 每日状态库（Daily Status Database）数据库结构
+ * 独立追踪健康和生活习惯，不与其他数据库关联
+ */
+const DailyStatusDatabaseSchema = {
+  title: '📊 语寄心声 - 每日状态库 (Daily Status)',
+  description: '追踪每日健康状态、生活习惯和身体数据',
+  properties: {
+    // === 基础信息 ===
+    'Date': {
+      title: {},  // 日期作为标题，格式：2025-01-08
+    },
+    'Full Date': {
+      date: {},  // 完整日期字段
+    },
+
+    // === 心情和能量 ===
+    'Mood': {
+      select: {
+        options: [
+          { name: '😊 开心', color: 'green' },
+          { name: '💪 充满动力', color: 'blue' },
+          { name: '😌 平静', color: 'default' },
+          { name: '😕 迷茫', color: 'gray' },
+          { name: '😔 沮丧', color: 'brown' },
+          { name: '😰 焦虑', color: 'orange' },
+          { name: '😴 疲惫', color: 'yellow' },
+          { name: '😤 压力大', color: 'red' },
+          { name: '😞 失落', color: 'purple' },
+          { name: '🤔 困惑', color: 'pink' },
+          { name: '😐 无聊', color: 'gray' },
+          { name: '🥰 感恩', color: 'green' }
+        ]
+      }
+    },
+    'Energy Level': {
+      select: {
+        options: [
+          { name: '🔋 充沛', color: 'green' },
+          { name: '⚡ 良好', color: 'blue' },
+          { name: '🔌 一般', color: 'yellow' },
+          { name: '🪫 疲惫', color: 'orange' },
+          { name: '💤 耗尽', color: 'red' }
+        ]
+      }
+    },
+    'Stress Level': {
+      select: {
+        options: [
+          { name: '😌 无压力', color: 'green' },
+          { name: '🙂 轻微', color: 'blue' },
+          { name: '😐 中等', color: 'yellow' },
+          { name: '😰 较高', color: 'orange' },
+          { name: '😫 非常高', color: 'red' }
+        ]
+      }
+    },
+
+    // === 睡眠数据 ===
+    'Wake Up Time': {
+      rich_text: {},  // 格式：07:00
+    },
+    'Bed Time': {
+      rich_text: {},  // 格式：23:00
+    },
+    'Sleep Hours': {
+      number: {
+        format: 'number'
+      }
+    },
+    'Sleep Quality': {
+      select: {
+        options: [
+          { name: '😴 很好', color: 'green' },
+          { name: '🙂 良好', color: 'blue' },
+          { name: '😐 一般', color: 'yellow' },
+          { name: '😕 较差', color: 'orange' },
+          { name: '😣 很差', color: 'red' }
+        ]
+      }
+    },
+
+    // === 身体数据 ===
+    'Weight': {
+      number: {
+        format: 'number'
+      }
+    },
+    'Water Intake': {
+      number: {
+        format: 'number'  // 单位：毫升
+      }
+    },
+
+    // === 运动数据 ===
+    'Exercise Duration': {
+      number: {
+        format: 'number'  // 单位：分钟
+      }
+    },
+    'Exercise Type': {
+      multi_select: {
+        options: [
+          { name: '🏃 跑步', color: 'blue' },
+          { name: '🚴 骑行', color: 'green' },
+          { name: '🏊 游泳', color: 'purple' },
+          { name: '🏋️ 力量训练', color: 'red' },
+          { name: '🧘 瑜伽', color: 'pink' },
+          { name: '🚶 散步', color: 'default' },
+          { name: '⚽ 球类运动', color: 'orange' },
+          { name: '🕺 舞蹈', color: 'yellow' },
+          { name: '🧗 攀岩', color: 'brown' },
+          { name: '🤸 其他', color: 'gray' }
+        ]
+      }
+    },
+
+    // === 饮食数据 ===
+    'Meals': {
+      multi_select: {
+        options: [
+          { name: '🌅 早餐', color: 'yellow' },
+          { name: '☀️ 午餐', color: 'orange' },
+          { name: '🌙 晚餐', color: 'purple' },
+          { name: '🍎 加餐', color: 'green' }
+        ]
+      }
+    },
+    'Diet Notes': {
+      rich_text: {},  // 饮食备注
+    },
+
+    // === 其他习惯 ===
+    'Meditation': {
+      checkbox: {},  // 是否冥想
+    },
+    'Meditation Duration': {
+      number: {
+        format: 'number'  // 冥想时长（分钟）
+      }
+    },
+    'Reading': {
+      checkbox: {},  // 是否阅读
+    },
+    'Reading Duration': {
+      number: {
+        format: 'number'  // 阅读时长（分钟）
+      }
+    },
+
+    // === 备注 ===
+    'Notes': {
+      rich_text: {},
+    },
+    'Highlights': {
+      rich_text: {},  // 今日亮点
+    },
+
+    // === 元数据 ===
+    'User ID': {
+      rich_text: {},
+    },
+    'Created Time': {
+      created_time: {},
+    },
+    'Last Edited Time': {
+      last_edited_time: {},
+    }
+  }
+}
+
+/**
+ * 开心库（Happy Things Database）数据库结构
+ * 管理和推荐开心的事情
+ */
+const HappyThingsDatabaseSchema = {
+  title: '😊 语寄心声 - 开心库 (Happy Things)',
+  description: '管理和推荐开心的事情，让每一天更美好',
+  properties: {
+    // === 基础信息 ===
+    'Title': {
+      title: {},
+    },
+    'Content': {
+      rich_text: {},
+    },
+
+    // === 分类和属性 ===
+    'Category': {
+      select: {
+        options: [
+          { name: '运动', color: 'red' },
+          { name: '美食', color: 'orange' },
+          { name: '社交', color: 'yellow' },
+          { name: '娱乐', color: 'green' },
+          { name: '学习', color: 'blue' },
+          { name: '创造', color: 'purple' },
+          { name: '自然', color: 'pink' },
+          { name: '放松', color: 'brown' },
+          { name: '生活', color: 'gray' }
+        ]
+      }
+    },
+    'Emoji': {
+      rich_text: {},
+    },
+    'Energy Level': {
+      select: {
+        options: [
+          { name: '轻松', color: 'green' },
+          { name: '适中', color: 'yellow' },
+          { name: '需精力', color: 'red' }
+        ]
+      }
+    },
+
+    // === 时间和难度 ===
+    'Duration': {
+      number: {
+        format: 'number'
+      }
+    },
+    'Difficulty': {
+      select: {
+        options: [
+          { name: '简单', color: 'green' },
+          { name: '中等', color: 'yellow' },
+          { name: '困难', color: 'red' }
+        ]
+      }
+    },
+    'Cost': {
+      select: {
+        options: [
+          { name: '免费', color: 'green' },
+          { name: '低成本', color: 'blue' },
+          { name: '中成本', color: 'yellow' },
+          { name: '高成本', color: 'red' }
+        ]
+      }
+    },
+
+    // === 状态和统计 ===
+    'Is Active': {
+      checkbox: {},
+    },
+    'Usage Count': {
+      number: {
+        format: 'number'
+      }
+    },
+    'Last Used': {
+      date: {},
+    },
+
+    // === 用户和标签 ===
+    'User ID': {
+      rich_text: {},
+    },
+    'Tags': {
+      multi_select: {
+        options: []
+      }
+    },
+    'Notes': {
+      rich_text: {},
+    }
+  }
+}
+
 module.exports = {
   GoalsDatabaseSchema,
   TodosDatabaseSchema,
   MainRecordsDatabaseSchema,
-  ActivityDetailsDatabaseSchema
+  ActivityDetailsDatabaseSchema,
+  DailyStatusDatabaseSchema,
+  HappyThingsDatabaseSchema
 }

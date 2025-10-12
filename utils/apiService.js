@@ -6,13 +6,14 @@
 // 预先声明所有依赖模块
 const notionApiService = require('./notionApiService.js')
 const userManager = require('./userManager.js')
+const { getCurrentEnv } = require('../envList.js')
 
 class ApiService {
   constructor() {
     // 使用云函数进行真正的数据库操作
     this.useDirectApi = false
     this.mockMode = false // 禁用模拟模式，使用真正的云函数
-    this.envId = 'yjxs-3gbxme0rd1c50635' // 云环境ID（语寄心声独立云环境）
+    this.envId = getCurrentEnv() // 使用统一的云环境ID配置
     this.isInitialized = false
   }
 
@@ -38,19 +39,19 @@ class ApiService {
     }
   }
 
-  // 通用云函数调用方法
-  async callCloudFunction(action, data = {}) {
+  // 通用云函数调用方法（带重试机制）
+  async callCloudFunction(action, data = {}, retryCount = 0) {
     // 确保云开发已初始化
     this.ensureCloudInit()
-    
+
     return new Promise((resolve, reject) => {
-      console.log(`ApiService: 准备调用云函数 memo-notion-sync, action: ${action}`)
+      console.log(`ApiService: 准备调用云函数 memo-notion-sync, action: ${action}, 重试次数: ${retryCount}`)
       console.log(`ApiService: 传递的数据:`, data)
-      
+
       wx.cloud.callFunction({
         name: 'memo-notion-sync',
         config: {
-          env: 'yjxs-3gbxme0rd1c50635'  // 强制指定云环境（语寄心声独立云环境）
+          env: this.envId  // 使用统一的云环境ID配置
         },
         data: {
           action,
@@ -58,7 +59,7 @@ class ApiService {
         },
         success: (res) => {
           console.log(`云函数调用 ${action} 成功:`, res)
-          
+
           if (res.result) {
             resolve(res.result)
           } else {
@@ -69,9 +70,31 @@ class ApiService {
           console.error(`云函数调用失败 ${action}:`, err)
           console.error('当前云环境ID:', this.envId)
           console.error('App云环境状态:', getApp()?.globalData)
-          
-          // 直接返回错误，不使用模拟模式
-          reject(new Error(`云函数调用失败: ${err.errMsg || err.message}`))
+
+          // 如果是 access_token 错误且未超过最大重试次数，重新初始化并重试
+          const isTokenError = err.errMsg && (
+            err.errMsg.includes('access_token') ||
+            err.errMsg.includes('token') ||
+            err.errMsg.includes('invalid credential')
+          )
+
+          if (isTokenError && retryCount < 2) {
+            console.log(`检测到 access_token 错误，重新初始化云环境并重试...`)
+
+            // 强制重新初始化
+            this.isInitialized = false
+            this.ensureCloudInit()
+
+            // 延迟后重试
+            setTimeout(() => {
+              this.callCloudFunction(action, data, retryCount + 1)
+                .then(resolve)
+                .catch(reject)
+            }, 500)
+          } else {
+            // 其他错误或达到最大重试次数，直接返回错误
+            reject(new Error(`云函数调用失败: ${err.errMsg || err.message}`))
+          }
         }
       })
     })

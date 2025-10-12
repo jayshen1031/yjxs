@@ -1,0 +1,227 @@
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="header-title">📊 每日状态</view>
+    <view class="header-date">{{ formattedDate }}</view>
+    <view wx:if="{{ lastUpdateTime }}" class="header-update-time">{{ lastUpdateTime }}</view>
+  </view>
+
+  <!-- 日期选择 -->
+  <view class="section">
+    <view class="section-title">📅 日期</view>
+    <picker mode="date" value="{{statusData.date}}" bindchange="onDateChange">
+      <view class="picker-input">
+        <text>{{statusData.date || '选择日期'}}</text>
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 心情和状态 -->
+  <view class="section">
+    <view class="section-title">😊 心情与状态</view>
+
+    <view class="form-item">
+      <view class="form-label">今日心情</view>
+      <picker bindchange="onMoodChange" value="{{moodIndex}}" range="{{moodOptions}}" range-key="label">
+        <view class="picker-input">
+          <text>{{moodOptions[moodIndex].label}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">精力水平</view>
+      <picker bindchange="onEnergyChange" value="{{energyIndex}}" range="{{energyOptions}}" range-key="label">
+        <view class="picker-input">
+          <text>{{energyOptions[energyIndex].label}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">压力水平</view>
+      <picker bindchange="onStressChange" value="{{stressIndex}}" range="{{stressOptions}}" range-key="label">
+        <view class="picker-input">
+          <text>{{stressOptions[stressIndex].label}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 睡眠数据 -->
+  <view class="section">
+    <view class="section-title">😴 睡眠数据</view>
+
+    <view class="form-item">
+      <view class="form-label">起床时间</view>
+      <picker mode="time" value="{{statusData.wakeUpTime}}" bindchange="onWakeUpTimeChange">
+        <view class="picker-input">
+          <text>{{statusData.wakeUpTime || '选择时间'}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">睡觉时间</view>
+      <picker mode="time" value="{{statusData.bedTime}}" bindchange="onBedTimeChange">
+        <view class="picker-input">
+          <text>{{statusData.bedTime || '选择时间'}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">睡眠时长 (小时)</view>
+      <input class="form-input" type="digit" placeholder="如: 7.5" value="{{statusData.sleepHours}}" bindinput="onSleepHoursInput" />
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">睡眠质量</view>
+      <picker bindchange="onSleepQualityChange" value="{{sleepQualityIndex}}" range="{{sleepQualityOptions}}" range-key="label">
+        <view class="picker-input">
+          <text>{{sleepQualityOptions[sleepQualityIndex].label}}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 身体数据 -->
+  <view class="section">
+    <view class="section-title">⚖️ 身体数据</view>
+
+    <view class="form-item">
+      <view class="form-label">体重 (kg)</view>
+      <input class="form-input" type="digit" placeholder="如: 70" value="{{statusData.weight}}" bindinput="onWeightInput" />
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">饮水量 (ml)</view>
+      <input class="form-input" type="number" placeholder="如: 2000" value="{{statusData.waterIntake}}" bindinput="onWaterIntakeInput" />
+    </view>
+  </view>
+
+  <!-- 运动数据 -->
+  <view class="section">
+    <view class="section-title">🏃 运动数据</view>
+
+    <view class="form-item">
+      <view class="form-label">运动时长 (分钟)</view>
+      <input class="form-input" type="number" placeholder="如: 30" value="{{statusData.exerciseDuration}}" bindinput="onExerciseDurationInput" />
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">运动类型</view>
+      <view class="multi-select-container">
+        <view
+          class="multi-select-item {{item.selected ? 'selected' : ''}}"
+          wx:for="{{exerciseTypes}}"
+          wx:key="value"
+          bindtap="toggleExerciseType"
+          data-index="{{index}}"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 饮食数据 -->
+  <view class="section">
+    <view class="section-title">🍽️ 饮食数据</view>
+
+    <view class="form-item">
+      <view class="form-label">用餐情况</view>
+      <view class="multi-select-container">
+        <view
+          class="multi-select-item {{item.selected ? 'selected' : ''}}"
+          wx:for="{{mealOptions}}"
+          wx:key="value"
+          bindtap="toggleMeal"
+          data-index="{{index}}"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">饮食备注</view>
+      <textarea
+        class="form-textarea"
+        placeholder="记录今日饮食内容..."
+        value="{{statusData.dietNotes}}"
+        bindinput="onDietNotesInput"
+        maxlength="500"
+      />
+    </view>
+  </view>
+
+  <!-- 习惯追踪 -->
+  <view class="section">
+    <view class="section-title">🧘 习惯追踪</view>
+
+    <view class="form-item checkbox-item">
+      <view class="form-label">冥想</view>
+      <switch checked="{{statusData.meditation}}" bindchange="onMeditationChange" color="#6366f1" />
+    </view>
+
+    <view class="form-item" wx:if="{{statusData.meditation}}">
+      <view class="form-label">冥想时长 (分钟)</view>
+      <input class="form-input" type="number" placeholder="如: 10" value="{{statusData.meditationDuration}}" bindinput="onMeditationDurationInput" />
+    </view>
+
+    <view class="form-item checkbox-item">
+      <view class="form-label">阅读</view>
+      <switch checked="{{statusData.reading}}" bindchange="onReadingChange" color="#6366f1" />
+    </view>
+
+    <view class="form-item" wx:if="{{statusData.reading}}">
+      <view class="form-label">阅读时长 (分钟)</view>
+      <input class="form-input" type="number" placeholder="如: 30" value="{{statusData.readingDuration}}" bindinput="onReadingDurationInput" />
+    </view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="section">
+    <view class="section-title">📝 备注</view>
+
+    <view class="form-item">
+      <view class="form-label">今日亮点</view>
+      <textarea
+        class="form-textarea"
+        placeholder="记录今天值得开心的事..."
+        value="{{statusData.highlights}}"
+        bindinput="onHighlightsInput"
+        maxlength="500"
+      />
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">其他备注</view>
+      <textarea
+        class="form-textarea"
+        placeholder="其他想记录的内容..."
+        value="{{statusData.notes}}"
+        bindinput="onNotesInput"
+        maxlength="500"
+      />
+    </view>
+  </view>
+
+  <!-- 保存按钮 -->
+  <view class="bottom-actions">
+    <view wx:if="{{ existingPageId }}" class="update-tip">
+      💡 今日记录已存在，可随时更新任意字段
+    </view>
+    <button class="btn btn-primary" bindtap="saveStatus">
+      {{ existingPageId ? '更新状态' : '保存状态' }}
+    </button>
+  </view>
+</view>

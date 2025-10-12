@@ -249,10 +249,22 @@
         </view>
 
         <view class="form-group">
+          <text class="form-label">起始时间 *</text>
+          <picker class="form-picker" mode="date" value="{{ goalStartDate }}" bindchange="onGoalStartDateChange">
+            <view class="picker-value">{{ goalStartDate || '选择开始日期' }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
           <text class="form-label">目标日期</text>
           <picker class="form-picker" mode="date" value="{{ goalTargetDate }}" bindchange="onGoalTargetDateChange">
-            <view class="picker-value">{{ goalTargetDate || '选择日期' }}</view>
+            <view class="picker-value">{{ goalTargetDate || '选择截止日期' }}</view>
           </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">预计投入时间（小时）*</text>
+          <input class="form-input" type="digit" placeholder="例如：100" value="{{ goalEstimatedHours }}" bindinput="onGoalEstimatedHoursInput" />
         </view>
 
         <view class="form-group">

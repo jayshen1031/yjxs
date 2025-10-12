@@ -34,6 +34,7 @@ Page({
     syncing: false,
     creating: false, // 正在创建数据库
     diagnosing: false, // 正在诊断数据库
+    fixing: false, // 正在修复数据库结构
     // 箴言相关数据
     quoteStats: {
       total: 0,
@@ -813,6 +814,69 @@ Page({
     } finally {
       this.setData({ diagnosing: false })
     }
+  },
+
+  // 修复数据库结构
+  fixDatabaseStructure: async function() {
+    if (!this.data.notionConfigured) {
+      toast.error('请先配置Notion集成')
+      return
+    }
+
+    wx.showModal({
+      title: '修复数据库结构',
+      content: '将为目标数据库添加以下字段：\n• Estimated Hours (预计投入时间)\n• Start Date (起始时间)\n• User ID (用户标识)\n• Total Time Investment (时间汇总-Rollup)\n\n是否继续？',
+      success: async (res) => {
+        if (!res.confirm) return
+
+        this.setData({ fixing: true })
+
+        try {
+          const notionApiService = require('../../utils/notionApiService.js')
+          const notionConfig = this.data.currentUser.notionConfig
+
+          if (!notionConfig.goalsDatabaseId) {
+            toast.error('未配置目标数据库ID')
+            return
+          }
+
+          console.log('开始修复目标数据库结构...')
+          console.log('目标数据库ID:', notionConfig.goalsDatabaseId)
+          console.log('活动明细表ID:', notionConfig.activityDatabaseId)
+
+          const result = await notionApiService.fixGoalsDatabaseStructure(
+            notionConfig.apiKey,
+            notionConfig.goalsDatabaseId,
+            notionConfig.activityDatabaseId
+          )
+
+          if (result.success) {
+            console.log('✅ 修复成功')
+            wx.showModal({
+              title: '修复成功',
+              content: `已成功添加以下字段：\n${result.addedFields.join('\n')}\n\n现在可以正常创建和编辑目标了！`,
+              showCancel: false,
+              confirmText: '知道了'
+            })
+            toast.success('数据库结构修复成功')
+          } else {
+            console.error('❌ 修复失败:', result.error)
+            wx.showModal({
+              title: '修复失败',
+              content: result.error,
+              showCancel: false,
+              confirmText: '知道了'
+            })
+            toast.error('修复失败: ' + result.error)
+          }
+        } catch (error) {
+          console.error('修复异常:', error)
+          toast.error('修复异常: ' + error.message)
+        } finally {
+          this.setData({ fixing: false })
+        }
+      }
+    })
   },
 
   // 切换自动同步

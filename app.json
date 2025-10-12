@@ -7,8 +7,9 @@
     "pages/history/history",
     "pages/notion-config/notion-config",
     "pages/quote-manager/quote-manager",
-    "pages/goal-manager/goal-manager",
-    "pages/goals-todos/goals-todos"
+    "pages/happy-manager/happy-manager",
+    "pages/goals-todos/goals-todos",
+    "pages/daily-status/daily-status"
   ],
   "window": {
     "backgroundTextStyle": "light",

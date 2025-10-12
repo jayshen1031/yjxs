@@ -7,9 +7,15 @@ App({
     memoList: [],
     wisdomQuotes: [],
     currentQuote: null,
+    happyThings: [], // 开心库
+    todayHappyThings: [], // 今日推荐的开心事项
     reminderSettings: {
       enabled: true,
       interval: 60 // 默认1小时提醒一次
+    },
+    quoteSettings: {
+      refreshInterval: 'daily', // 默认每日刷新
+      autoRefresh: true
     },
     cloudReady: false,
     cloudEnvId: null
@@ -17,27 +23,36 @@ App({
 
   onLaunch: function() {
     console.log('App Launch')
-    
+
     // 启用云开发功能
     this.initCloudDev()
-    
+
     // 初始化用户管理器
     this.initUserManager()
-    
+
     // 检查登录状态 - 延迟执行，等待云开发初始化
     setTimeout(() => {
       this.checkLoginStatus()
     }, 1000)
-    
+
     // 初始化本地存储
     this.initLocalStorage()
-    
+
+    // 加载箴言设置
+    this.loadQuoteSettings()
+
     // 加载箴言库
     this.loadWisdomQuotes()
-    
+
     // 设置每日箴言
     this.setDailyQuote()
-    
+
+    // 加载开心库
+    this.loadHappyThings()
+
+    // 设置今日开心推荐
+    this.setTodayHappyThings()
+
     // 检查权限
     this.checkPermissions()
   },
@@ -158,12 +173,12 @@ App({
   setDailyQuote: function() {
     const today = new Date().toDateString()
     const lastQuoteDate = wx.getStorageSync('lastQuoteDate')
-    
+
     if (lastQuoteDate !== today) {
       // 新的一天，随机选择一句箴言
       const randomIndex = Math.floor(Math.random() * this.globalData.wisdomQuotes.length)
       this.globalData.currentQuote = this.globalData.wisdomQuotes[randomIndex]
-      
+
       // 保存今日箴言和日期
       wx.setStorageSync('currentQuote', this.globalData.currentQuote)
       wx.setStorageSync('lastQuoteDate', today)
@@ -171,6 +186,148 @@ App({
       // 使用已存储的今日箴言
       this.globalData.currentQuote = wx.getStorageSync('currentQuote')
     }
+  },
+
+  // 加载开心库
+  loadHappyThings: function() {
+    // 尝试从本地存储加载
+    try {
+      const savedHappyThings = wx.getStorageSync('happyThings')
+      if (savedHappyThings && savedHappyThings.length > 0) {
+        this.globalData.happyThings = savedHappyThings
+        return
+      }
+    } catch (e) {
+      console.error('加载开心库失败:', e)
+    }
+
+    // 如果没有保存的数据，使用默认开心库
+    this.globalData.happyThings = [
+      // 运动类
+      { id: 'h1', content: '出门散步20分钟', category: '运动', emoji: '🚶', energy: 'low', isSystemDefault: true },
+      { id: 'h2', content: '做10分钟拉伸运动', category: '运动', emoji: '🧘', energy: 'low', isSystemDefault: true },
+      { id: 'h3', content: '跳一支喜欢的舞', category: '运动', emoji: '💃', energy: 'medium', isSystemDefault: true },
+      { id: 'h4', content: '骑自行车兜风', category: '运动', emoji: '🚴', energy: 'medium', isSystemDefault: true },
+
+      // 美食类
+      { id: 'h5', content: '做一道拿手菜', category: '美食', emoji: '🍳', energy: 'medium', isSystemDefault: true },
+      { id: 'h6', content: '品尝一家新餐厅', category: '美食', emoji: '🍽️', energy: 'low', isSystemDefault: true },
+      { id: 'h7', content: '烘焙小点心', category: '美食', emoji: '🧁', energy: 'medium', isSystemDefault: true },
+      { id: 'h8', content: '给自己泡杯好茶', category: '美食', emoji: '🍵', energy: 'low', isSystemDefault: true },
+
+      // 社交类
+      { id: 'h9', content: '给朋友打个电话', category: '社交', emoji: '📞', energy: 'low', isSystemDefault: true },
+      { id: 'h10', content: '约朋友喝杯咖啡', category: '社交', emoji: '☕', energy: 'medium', isSystemDefault: true },
+      { id: 'h11', content: '给家人发个小视频', category: '社交', emoji: '📹', energy: 'low', isSystemDefault: true },
+      { id: 'h12', content: '加入一个兴趣小组', category: '社交', emoji: '👥', energy: 'medium', isSystemDefault: true },
+
+      // 娱乐类
+      { id: 'h13', content: '看一部喜剧电影', category: '娱乐', emoji: '🎬', energy: 'low', isSystemDefault: true },
+      { id: 'h14', content: '听喜欢的音乐专辑', category: '娱乐', emoji: '🎵', energy: 'low', isSystemDefault: true },
+      { id: 'h15', content: '玩一个轻松的游戏', category: '娱乐', emoji: '🎮', energy: 'low', isSystemDefault: true },
+      { id: 'h16', content: '追一集有趣的剧', category: '娱乐', emoji: '📺', energy: 'low', isSystemDefault: true },
+
+      // 学习类
+      { id: 'h17', content: '读几页喜欢的书', category: '学习', emoji: '📖', energy: 'low', isSystemDefault: true },
+      { id: 'h18', content: '学习一个新技能', category: '学习', emoji: '💡', energy: 'high', isSystemDefault: true },
+      { id: 'h19', content: '看一个TED演讲', category: '学习', emoji: '🎓', energy: 'medium', isSystemDefault: true },
+      { id: 'h20', content: '练习一门外语', category: '学习', emoji: '🌍', energy: 'medium', isSystemDefault: true },
+
+      // 创造类
+      { id: 'h21', content: '写写日记或随笔', category: '创造', emoji: '✍️', energy: 'low', isSystemDefault: true },
+      { id: 'h22', content: '画一幅简单的画', category: '创造', emoji: '🎨', energy: 'medium', isSystemDefault: true },
+      { id: 'h23', content: '做一个小手工', category: '创造', emoji: '✂️', energy: 'medium', isSystemDefault: true },
+      { id: 'h24', content: '拍几张创意照片', category: '创造', emoji: '📷', energy: 'medium', isSystemDefault: true },
+
+      // 自然类
+      { id: 'h25', content: '晒晒太阳发呆', category: '自然', emoji: '☀️', energy: 'low', isSystemDefault: true },
+      { id: 'h26', content: '去公园看看花', category: '自然', emoji: '🌸', energy: 'low', isSystemDefault: true },
+      { id: 'h27', content: '观察窗外的云', category: '自然', emoji: '☁️', energy: 'low', isSystemDefault: true },
+      { id: 'h28', content: '晚上看看星星', category: '自然', emoji: '⭐', energy: 'low', isSystemDefault: true },
+
+      // 放松类
+      { id: 'h29', content: '泡个热水澡', category: '放松', emoji: '🛁', energy: 'low', isSystemDefault: true },
+      { id: 'h30', content: '做10分钟冥想', category: '放松', emoji: '🧘', energy: 'low', isSystemDefault: true },
+      { id: 'h31', content: '午睡20分钟', category: '放松', emoji: '😴', energy: 'low', isSystemDefault: true },
+      { id: 'h32', content: '听一段放松音乐', category: '放松', emoji: '🎼', energy: 'low', isSystemDefault: true },
+
+      // 生活类
+      { id: 'h33', content: '整理一下房间', category: '生活', emoji: '🧹', energy: 'medium', isSystemDefault: true },
+      { id: 'h34', content: '给植物浇浇水', category: '生活', emoji: '🌱', energy: 'low', isSystemDefault: true },
+      { id: 'h35', content: '换个新发型', category: '生活', emoji: '💇', energy: 'medium', isSystemDefault: true },
+      { id: 'h36', content: '买束鲜花回家', category: '生活', emoji: '💐', energy: 'low', isSystemDefault: true }
+    ]
+
+    // 保存默认开心库
+    this.saveHappyThings()
+  },
+
+  // 设置今日开心推荐
+  setTodayHappyThings: function() {
+    const today = new Date().toDateString()
+    const lastHappyDate = wx.getStorageSync('lastHappyDate')
+
+    if (lastHappyDate !== today) {
+      // 新的一天，随机选择3个开心事项
+      const shuffled = [...this.globalData.happyThings].sort(() => 0.5 - Math.random())
+      this.globalData.todayHappyThings = shuffled.slice(0, 3)
+
+      // 保存今日推荐和日期
+      wx.setStorageSync('todayHappyThings', this.globalData.todayHappyThings)
+      wx.setStorageSync('lastHappyDate', today)
+    } else {
+      // 使用已存储的今日推荐
+      const saved = wx.getStorageSync('todayHappyThings')
+      this.globalData.todayHappyThings = saved || []
+    }
+  },
+
+  // 保存开心库
+  saveHappyThings: function() {
+    try {
+      wx.setStorageSync('happyThings', this.globalData.happyThings)
+    } catch (e) {
+      console.error('保存开心库失败:', e)
+    }
+  },
+
+  // 添加开心事项
+  addHappyThing: function(happyThing) {
+    const newThing = {
+      id: 'h' + Date.now(),
+      ...happyThing
+    }
+    this.globalData.happyThings.push(newThing)
+    this.saveHappyThings()
+    return newThing
+  },
+
+  // 删除开心事项
+  deleteHappyThing: function(id) {
+    this.globalData.happyThings = this.globalData.happyThings.filter(item => item.id !== id)
+    this.saveHappyThings()
+  },
+
+  // 更新开心事项
+  updateHappyThing: function(id, updates) {
+    const index = this.globalData.happyThings.findIndex(item => item.id === id)
+    if (index !== -1) {
+      this.globalData.happyThings[index] = {
+        ...this.globalData.happyThings[index],
+        ...updates
+      }
+      this.saveHappyThings()
+      return this.globalData.happyThings[index]
+    }
+    return null
+  },
+
+  // 刷新今日开心推荐
+  refreshTodayHappyThings: function() {
+    const shuffled = [...this.globalData.happyThings].sort(() => 0.5 - Math.random())
+    this.globalData.todayHappyThings = shuffled.slice(0, 3)
+    wx.setStorageSync('todayHappyThings', this.globalData.todayHappyThings)
+    return this.globalData.todayHappyThings
   },
 
   // 检查权限
@@ -271,6 +428,23 @@ App({
   updateReminderSettings: function(settings) {
     this.globalData.reminderSettings = { ...this.globalData.reminderSettings, ...settings }
     wx.setStorageSync('reminderSettings', this.globalData.reminderSettings)
+  },
+
+  // 保存箴言设置
+  saveQuoteSettings: function() {
+    wx.setStorageSync('quoteSettings', this.globalData.quoteSettings)
+  },
+
+  // 加载箴言设置
+  loadQuoteSettings: function() {
+    try {
+      const savedSettings = wx.getStorageSync('quoteSettings')
+      if (savedSettings) {
+        this.globalData.quoteSettings = savedSettings
+      }
+    } catch (e) {
+      console.error('加载箴言设置失败:', e)
+    }
   },
 
   // 格式化时间
@@ -466,10 +640,12 @@ App({
       priority: goalData.priority || 'medium',
       status: '进行中',
       progress: 0,
+      startDate: goalData.startDate || '', // 起始时间
       targetDate: goalData.targetDate || '',
       tags: goalData.tags || [],
       milestones: [],
-      totalTimeInvestment: 0,
+      totalTimeInvestment: 0, // 实际投入时间（分钟数）
+      estimatedHours: goalData.estimatedHours || 0, // 预计完成小时数
       createdTime: new Date().toISOString(),
       updatedTime: new Date().toISOString()
     }
@@ -598,6 +774,84 @@ App({
 
     wx.setStorageSync(`goals_${currentUser.id}`, goals)
     return milestones[milestoneIndex]
+  },
+
+  // 计算目标的实际时间投入（从历史记录中汇总）
+  calculateGoalTimeInvestment: function(goalId) {
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser) return 0
+
+    try {
+      // 获取所有记录
+      const memos = wx.getStorageSync(`memos_${currentUser.id}`) || []
+
+      // 累加所有时间投入
+      let totalMinutes = 0
+
+      memos.forEach(memo => {
+        // 检查有价值的时间投入中关联此目标的条目
+        if (memo.valuableTimeEntries && Array.isArray(memo.valuableTimeEntries)) {
+          memo.valuableTimeEntries.forEach(entry => {
+            if (entry.goalId === goalId) {
+              totalMinutes += (entry.minutes || 0)
+            }
+          })
+        }
+
+        // 检查中性的时间投入中关联此目标的条目
+        if (memo.neutralTimeEntries && Array.isArray(memo.neutralTimeEntries)) {
+          memo.neutralTimeEntries.forEach(entry => {
+            if (entry.goalId === goalId) {
+              totalMinutes += (entry.minutes || 0)
+            }
+          })
+        }
+
+        // 检查无价值的时间投入中关联此目标的条目（也统计）
+        if (memo.wastefulTimeEntries && Array.isArray(memo.wastefulTimeEntries)) {
+          memo.wastefulTimeEntries.forEach(entry => {
+            if (entry.goalId === goalId) {
+              totalMinutes += (entry.minutes || 0)
+            }
+          })
+        }
+      })
+
+      return totalMinutes
+    } catch (e) {
+      console.error('计算目标时间投入失败:', e)
+      return 0
+    }
+  },
+
+  // 更新目标的时间投入和进度
+  updateGoalTimeAndProgress: function(goalId) {
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser) return
+
+    try {
+      const goals = this.getGoals()
+      const goalIndex = goals.findIndex(g => g.id === goalId)
+
+      if (goalIndex === -1) return
+
+      // 计算实际时间投入
+      const totalMinutes = this.calculateGoalTimeInvestment(goalId)
+      goals[goalIndex].totalTimeInvestment = totalMinutes
+
+      // 根据时间投入自动计算进度
+      const estimatedHours = goals[goalIndex].estimatedHours || 0
+      if (estimatedHours > 0) {
+        const estimatedMinutes = estimatedHours * 60
+        const progress = Math.min(100, Math.round((totalMinutes / estimatedMinutes) * 100))
+        goals[goalIndex].progress = progress
+      }
+
+      goals[goalIndex].updatedTime = new Date().toISOString()
+      wx.setStorageSync(`goals_${currentUser.id}`, goals)
+    } catch (e) {
+      console.error('更新目标时间和进度失败:', e)
+    }
   },
 
   // ========== 待办系统相关方法 ==========

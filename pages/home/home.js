@@ -1,5 +1,6 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
+const notionApiService = require('../../utils/notionApiService.js')
 
 Page({
   data: {
@@ -13,27 +14,24 @@ Page({
     todayPlanning: null,
     planningDate: '',
     todayValueMinutes: 0, // 今日价值分钟总数
+    todayStatus: null, // 今日状态
+    todayHappyThings: [], // 今日开心推荐
     // 箴言相关
     quoteCategories: [],
     selectedQuoteCategory: '',
     quotesCount: 0,
-    // 心情相关
-    moodOptions: [
-      { mood: '沮丧', emoji: '😔' },
-      { mood: '焦虑', emoji: '😰' },
-      { mood: '迷茫', emoji: '😕' },
-      { mood: '疲惫', emoji: '😴' },
-      { mood: '孤独', emoji: '😌' },
-      { mood: '压力大', emoji: '😤' },
-      { mood: '失落', emoji: '😞' },
-      { mood: '困惑', emoji: '🤔' },
-      { mood: '无聊', emoji: '😐' },
-      { mood: '开心', emoji: '😊' },
-      { mood: '平静', emoji: '😌' },
-      { mood: '充满动力', emoji: '💪' }
+    // 箴言主题
+    quoteTheme: 'purple',
+    quoteThemes: [
+      { value: 'purple', name: '经典紫', emoji: '💜' },
+      { value: 'orange', name: '活力橙', emoji: '🧡' },
+      { value: 'green', name: '清新绿', emoji: '💚' },
+      { value: 'pink', name: '浪漫粉', emoji: '💗' },
+      { value: 'blue', name: '天空蓝', emoji: '💙' },
+      { value: 'red', name: '热情红', emoji: '❤️' },
+      { value: 'teal', name: '青瓷蓝', emoji: '💎' },
+      { value: 'amber', name: '琥珀金', emoji: '💛' }
     ],
-    selectedMood: '',
-    recommendedCategories: [],
     // 目标相关
     goalStats: {
       total: 0,
@@ -93,6 +91,9 @@ Page({
 
   // 加载页面数据
   loadPageData: function() {
+    // 加载箴言主题
+    this.loadQuoteTheme()
+
     // 获取今日箴言
     this.loadCurrentQuote()
 
@@ -119,6 +120,12 @@ Page({
 
     // 获取今日待办
     this.loadTodayTodos()
+
+    // 获取今日状态
+    this.loadTodayStatus()
+
+    // 加载今日开心推荐
+    this.loadTodayHappyThings()
   },
 
   // 加载当前箴言
@@ -787,35 +794,11 @@ Page({
     })
   },
 
-  // 心情选择
-  selectMood: function(e) {
-    const mood = e.currentTarget.dataset.mood
-    const app = getApp()
-    
-    // 获取心情推荐的箴言
-    const result = app.getQuoteByMood(mood)
-    
-    if (result) {
-      this.setData({
-        selectedMood: mood,
-        currentQuote: result.quote.content,
-        currentQuoteData: result.quote,
-        selectedQuoteCategory: result.category,
-        recommendedCategories: app.getMoodBasedCategories(mood)
-      })
-      
-      wx.showToast({
-        title: `为您推荐${result.category}箴言`,
-        icon: 'success',
-        duration: 2000
-      })
-    } else {
-      wx.showToast({
-        title: '暂无相关箴言',
-        icon: 'none',
-        duration: 1500
-      })
-    }
+  // 跳转到开心库管理页面
+  goToHappyManager: function() {
+    wx.navigateTo({
+      url: '/pages/happy-manager/happy-manager'
+    })
   },
 
   // 快速按分类筛选箴言
@@ -1064,6 +1047,157 @@ Page({
   goToTodosPage: function() {
     wx.switchTab({
       url: '/pages/goals-todos/goals-todos'
+    })
+  },
+
+  // 加载箴言主题
+  loadQuoteTheme: function() {
+    try {
+      const savedTheme = wx.getStorageSync('quote_theme')
+      if (savedTheme) {
+        this.setData({
+          quoteTheme: savedTheme
+        })
+      }
+    } catch (e) {
+      console.error('加载箴言主题失败:', e)
+    }
+  },
+
+  // 切换箴言主题
+  changeQuoteTheme: function() {
+    const currentIndex = this.data.quoteThemes.findIndex(t => t.value === this.data.quoteTheme)
+    const nextIndex = (currentIndex + 1) % this.data.quoteThemes.length
+    const nextTheme = this.data.quoteThemes[nextIndex]
+
+    this.setData({
+      quoteTheme: nextTheme.value
+    })
+
+    // 保存主题到本地存储
+    try {
+      wx.setStorageSync('quote_theme', nextTheme.value)
+
+      // 显示主题名称提示
+      wx.showToast({
+        title: `${nextTheme.emoji} ${nextTheme.name}`,
+        icon: 'none',
+        duration: 1500
+      })
+    } catch (e) {
+      console.error('保存箴言主题失败:', e)
+    }
+  },
+
+  // ========== 每日状态相关方法 ==========
+
+  // 加载今日状态
+  loadTodayStatus: async function() {
+    const currentUser = userManager.getCurrentUser()
+    if (!currentUser || !currentUser.notionConfig?.databases?.dailyStatus) {
+      return
+    }
+
+    try {
+      // 获取今天日期字符串 (YYYY-MM-DD)
+      const today = new Date()
+      const dateStr = this.formatDate(today)
+
+      // 查询今日状态
+      const databaseId = currentUser.notionConfig.databases.dailyStatus
+      const response = await notionApiService.queryDatabase(databaseId, {
+        filter: {
+          property: 'Date',
+          title: {
+            equals: dateStr
+          }
+        },
+        page_size: 1
+      })
+
+      if (response.results && response.results.length > 0) {
+        const page = response.results[0]
+        const status = this.parseDailyStatusPage(page)
+        this.setData({
+          todayStatus: status
+        })
+      }
+    } catch (error) {
+      console.error('加载今日状态失败:', error)
+    }
+  },
+
+  // 解析Notion页面数据
+  parseDailyStatusPage: function(page) {
+    const props = page.properties
+    return {
+      mood: this.getSelectValue(props['Mood']),
+      energyLevel: this.getSelectValue(props['Energy Level']),
+      stressLevel: this.getSelectValue(props['Stress Level']),
+      sleepHours: this.getNumberValue(props['Sleep Hours']),
+      sleepQuality: this.getSelectValue(props['Sleep Quality']),
+      weight: this.getNumberValue(props['Weight']),
+      waterIntake: this.getNumberValue(props['Water Intake']),
+      exerciseDuration: this.getNumberValue(props['Exercise Duration']),
+      highlights: this.getRichTextValue(props['Highlights']),
+      notes: this.getRichTextValue(props['Notes'])
+    }
+  },
+
+  // 获取选择属性值
+  getSelectValue: function(prop) {
+    return prop?.select?.name || ''
+  },
+
+  // 获取数字属性值
+  getNumberValue: function(prop) {
+    return prop?.number || null
+  },
+
+  // 获取富文本属性值
+  getRichTextValue: function(prop) {
+    if (prop?.rich_text && prop.rich_text.length > 0) {
+      return prop.rich_text.map(t => t.plain_text).join('')
+    }
+    return ''
+  },
+
+  // 跳转到每日状态页面
+  goToDailyStatus: function() {
+    wx.navigateTo({
+      url: '/pages/daily-status/daily-status'
+    })
+  },
+
+  // 格式化日期 (YYYY-MM-DD)
+  formatDate: function(date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  },
+
+  // ========== 开心推荐相关方法 ==========
+
+  // 加载今日开心推荐
+  loadTodayHappyThings: function() {
+    const happyThings = app.globalData.todayHappyThings || []
+    this.setData({
+      todayHappyThings: happyThings
+    })
+  },
+
+  // 刷新开心推荐
+  refreshHappyThings: function() {
+    const newThings = app.refreshTodayHappyThings()
+    this.setData({
+      todayHappyThings: newThings
+    })
+
+    wx.showToast({
+      title: '已换一批',
+      icon: 'success',
+      duration: 1500
     })
   },
 

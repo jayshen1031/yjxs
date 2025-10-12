@@ -138,6 +138,18 @@ exports.main = async (event, context) => {
       case 'syncUserTags':
         return await syncUserTags(data)
 
+      // 每日状态库功能
+      case 'createDailyStatus':
+        return await createDailyStatus(data)
+      case 'updateDailyStatus':
+        return await updateDailyStatus(data)
+      case 'getDailyStatus':
+        return await getDailyStatus(data)
+      case 'getDailyStatuses':
+        return await getDailyStatuses(data)
+      case 'deleteDailyStatus':
+        return await deleteDailyStatus(data)
+
       default:
         throw new Error(`未知操作: ${action}`)
     }
@@ -1020,7 +1032,7 @@ async function createQuadDatabases(data) {
   }
 
   try {
-    console.log(`为用户${userId}创建Notion四数据库架构...`)
+    console.log(`为用户${userId}创建Notion五数据库架构...`)
 
     // 1. 创建目标库（Goals）
     console.log('创建目标库...')
@@ -1054,7 +1066,15 @@ async function createQuadDatabases(data) {
     })
     console.log('✅ 活动明细表创建成功:', activityDb.id)
 
-    // 5. 保存数据库ID到用户配置
+    // 5. 创建每日状态库（Daily Status）- 独立数据库
+    console.log('创建每日状态库...')
+    const dailyStatusDb = await createNotionDatabase(apiKey, parentPageId, {
+      title: '📊 Daily Status - 每日状态库',
+      properties: getDailyStatusDatabaseSchema()
+    })
+    console.log('✅ 每日状态库创建成功:', dailyStatusDb.id)
+
+    // 6. 保存数据库ID到用户配置
     const usersCollection = db.collection('memo_users')
     await usersCollection.doc(userId).update({
       data: {
@@ -1066,28 +1086,30 @@ async function createQuadDatabases(data) {
             goals: goalsDb.id,
             todos: todosDb.id,
             mainRecords: mainDb.id,
-            activityDetails: activityDb.id
+            activityDetails: activityDb.id,
+            dailyStatus: dailyStatusDb.id
           },
           createdAt: db.serverDate()
         }
       }
     })
 
-    console.log('✅ 四数据库架构创建完成！')
+    console.log('✅ 五数据库架构创建完成！')
 
     return {
       success: true,
-      message: '四数据库架构创建成功',
+      message: '五数据库架构创建成功（包含每日状态库）',
       databases: {
         goals: goalsDb.id,
         todos: todosDb.id,
         mainRecords: mainDb.id,
-        activityDetails: activityDb.id
+        activityDetails: activityDb.id,
+        dailyStatus: dailyStatusDb.id
       }
     }
   } catch (error) {
-    console.error('创建四数据库失败:', error)
-    throw new Error(`创建四数据库失败: ${error.message}`)
+    console.error('创建五数据库失败:', error)
+    throw new Error(`创建五数据库失败: ${error.message}`)
   }
 }
 
@@ -2739,5 +2761,587 @@ async function syncUserTags(data) {
   } catch (error) {
     console.error('同步用户标签失败:', error)
     throw new Error(`同步用户标签失败: ${error.message}`)
+  }
+}
+
+// ========== 每日状态库（Daily Status）相关功能 ==========
+
+/**
+ * 获取每日状态库数据库Schema
+ */
+function getDailyStatusDatabaseSchema() {
+  return {
+    'Date': { title: {} },
+    'Full Date': { date: {} },
+    'Mood': {
+      select: {
+        options: [
+          { name: '😊 开心', color: 'green' },
+          { name: '💪 充满动力', color: 'blue' },
+          { name: '😌 平静', color: 'default' },
+          { name: '😕 迷茫', color: 'gray' },
+          { name: '😔 沮丧', color: 'brown' },
+          { name: '😰 焦虑', color: 'orange' },
+          { name: '😴 疲惫', color: 'yellow' },
+          { name: '😤 压力大', color: 'red' }
+        ]
+      }
+    },
+    'Energy Level': {
+      select: {
+        options: [
+          { name: '🔋 充沛', color: 'green' },
+          { name: '⚡ 良好', color: 'blue' },
+          { name: '🔌 一般', color: 'yellow' },
+          { name: '🪫 疲惫', color: 'orange' },
+          { name: '💤 耗尽', color: 'red' }
+        ]
+      }
+    },
+    'Stress Level': {
+      select: {
+        options: [
+          { name: '😌 无压力', color: 'green' },
+          { name: '🙂 轻微', color: 'blue' },
+          { name: '😐 中等', color: 'yellow' },
+          { name: '😰 较高', color: 'orange' },
+          { name: '😫 非常高', color: 'red' }
+        ]
+      }
+    },
+    'Wake Up Time': { rich_text: {} },
+    'Bed Time': { rich_text: {} },
+    'Sleep Hours': { number: { format: 'number' } },
+    'Sleep Quality': {
+      select: {
+        options: [
+          { name: '😴 很好', color: 'green' },
+          { name: '🙂 良好', color: 'blue' },
+          { name: '😐 一般', color: 'yellow' },
+          { name: '😕 较差', color: 'orange' },
+          { name: '😣 很差', color: 'red' }
+        ]
+      }
+    },
+    'Weight': { number: { format: 'number' } },
+    'Water Intake': { number: { format: 'number' } },
+    'Exercise Duration': { number: { format: 'number' } },
+    'Exercise Type': {
+      multi_select: {
+        options: [
+          { name: '🏃 跑步', color: 'blue' },
+          { name: '🚴 骑行', color: 'green' },
+          { name: '🏊 游泳', color: 'purple' },
+          { name: '🏋️ 力量训练', color: 'red' },
+          { name: '🧘 瑜伽', color: 'pink' },
+          { name: '🚶 散步', color: 'default' }
+        ]
+      }
+    },
+    'Meals': {
+      multi_select: {
+        options: [
+          { name: '🌅 早餐', color: 'yellow' },
+          { name: '☀️ 午餐', color: 'orange' },
+          { name: '🌙 晚餐', color: 'purple' },
+          { name: '🍎 加餐', color: 'green' }
+        ]
+      }
+    },
+    'Diet Notes': { rich_text: {} },
+    'Meditation': { checkbox: {} },
+    'Meditation Duration': { number: { format: 'number' } },
+    'Reading': { checkbox: {} },
+    'Reading Duration': { number: { format: 'number' } },
+    'Notes': { rich_text: {} },
+    'Highlights': { rich_text: {} },
+    'User ID': { rich_text: {} }
+  }
+}
+
+/**
+ * 创建每日状态记录
+ */
+async function createDailyStatus(data) {
+  const { userEmail, statusData } = data
+
+  if (!userEmail || !statusData) {
+    throw new Error('userEmail和statusData都是必需的')
+  }
+
+  try {
+    // 获取用户配置
+    const user = await getUserByEmail({ email: userEmail })
+    if (!user.success || !user.user.notionConfig?.databases?.dailyStatus) {
+      throw new Error('未找到每日状态库配置')
+    }
+
+    const { apiKey, databases } = user.user.notionConfig
+    const databaseId = databases.dailyStatus
+
+    // 构建Notion属性
+    const properties = buildDailyStatusProperties(statusData)
+
+    // 调用Notion API创建记录
+    const response = await notionApi.post('/pages', {
+      parent: { database_id: databaseId },
+      properties: properties
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    console.log('✅ 每日状态记录创建成功:', response.data.id)
+
+    return {
+      success: true,
+      message: '每日状态记录创建成功',
+      pageId: response.data.id,
+      data: response.data
+    }
+  } catch (error) {
+    console.error('创建每日状态记录失败:', error)
+    throw new Error(`创建每日状态记录失败: ${error.message}`)
+  }
+}
+
+/**
+ * 更新每日状态记录
+ */
+async function updateDailyStatus(data) {
+  const { userEmail, pageId, statusData } = data
+
+  if (!userEmail || !pageId || !statusData) {
+    throw new Error('userEmail, pageId和statusData都是必需的')
+  }
+
+  try {
+    // 获取用户配置
+    const user = await getUserByEmail({ email: userEmail })
+    if (!user.success) {
+      throw new Error('未找到用户配置')
+    }
+
+    const { apiKey } = user.user.notionConfig
+
+    // 构建Notion属性
+    const properties = buildDailyStatusProperties(statusData)
+
+    // 调用Notion API更新记录
+    const response = await notionApi.patch(`/pages/${pageId}`, {
+      properties: properties
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    console.log('✅ 每日状态记录更新成功:', pageId)
+
+    return {
+      success: true,
+      message: '每日状态记录更新成功',
+      data: response.data
+    }
+  } catch (error) {
+    console.error('更新每日状态记录失败:', error)
+    throw new Error(`更新每日状态记录失败: ${error.message}`)
+  }
+}
+
+/**
+ * 获取单条每日状态记录（根据日期）
+ */
+async function getDailyStatus(data) {
+  const { userEmail, date } = data
+
+  if (!userEmail || !date) {
+    throw new Error('userEmail和date都是必需的')
+  }
+
+  try {
+    // 获取用户配置
+    const user = await getUserByEmail({ email: userEmail })
+    if (!user.success || !user.user.notionConfig?.databases?.dailyStatus) {
+      throw new Error('未找到每日状态库配置')
+    }
+
+    const { apiKey, databases } = user.user.notionConfig
+    const databaseId = databases.dailyStatus
+
+    // 查询指定日期的记录
+    const response = await notionApi.post(`/databases/${databaseId}/query`, {
+      filter: {
+        and: [
+          {
+            property: 'Date',
+            title: {
+              equals: date
+            }
+          },
+          {
+            property: 'User ID',
+            rich_text: {
+              equals: userEmail
+            }
+          }
+        ]
+      },
+      sorts: [
+        {
+          property: 'Full Date',
+          direction: 'descending'
+        }
+      ],
+      page_size: 1
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    console.log(`✅ 查询每日状态记录成功 [${date}]`)
+
+    return {
+      success: true,
+      status: response.data.results.length > 0 ? parseDailyStatusPage(response.data.results[0]) : null,
+      exists: response.data.results.length > 0,
+      pageId: response.data.results.length > 0 ? response.data.results[0].id : null
+    }
+  } catch (error) {
+    console.error('获取每日状态记录失败:', error)
+    throw new Error(`获取每日状态记录失败: ${error.message}`)
+  }
+}
+
+/**
+ * 获取多条每日状态记录（支持日期范围）
+ */
+async function getDailyStatuses(data) {
+  const { userEmail, startDate, endDate, limit = 30 } = data
+
+  if (!userEmail) {
+    throw new Error('userEmail是必需的')
+  }
+
+  try {
+    // 获取用户配置
+    const user = await getUserByEmail({ email: userEmail })
+    if (!user.success || !user.user.notionConfig?.databases?.dailyStatus) {
+      throw new Error('未找到每日状态库配置')
+    }
+
+    const { apiKey, databases } = user.user.notionConfig
+    const databaseId = databases.dailyStatus
+
+    // 构建筛选条件
+    let filter = {
+      property: 'User ID',
+      rich_text: {
+        equals: userEmail
+      }
+    }
+
+    // 如果有日期范围，添加日期筛选
+    if (startDate || endDate) {
+      const dateFilters = []
+
+      if (startDate) {
+        dateFilters.push({
+          property: 'Full Date',
+          date: {
+            on_or_after: startDate
+          }
+        })
+      }
+
+      if (endDate) {
+        dateFilters.push({
+          property: 'Full Date',
+          date: {
+            on_or_before: endDate
+          }
+        })
+      }
+
+      filter = {
+        and: [
+          {
+            property: 'User ID',
+            rich_text: {
+              equals: userEmail
+            }
+          },
+          ...dateFilters
+        ]
+      }
+    }
+
+    // 查询记录
+    const response = await notionApi.post(`/databases/${databaseId}/query`, {
+      filter: filter,
+      sorts: [
+        {
+          property: 'Full Date',
+          direction: 'descending'
+        }
+      ],
+      page_size: Math.min(limit, 100)
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    const statuses = response.data.results.map(page => parseDailyStatusPage(page))
+
+    console.log(`✅ 查询每日状态记录成功，共 ${statuses.length} 条`)
+
+    return {
+      success: true,
+      statuses: statuses,
+      count: statuses.length,
+      hasMore: response.data.has_more
+    }
+  } catch (error) {
+    console.error('获取每日状态记录列表失败:', error)
+    throw new Error(`获取每日状态记录列表失败: ${error.message}`)
+  }
+}
+
+/**
+ * 删除每日状态记录
+ */
+async function deleteDailyStatus(data) {
+  const { userEmail, pageId } = data
+
+  if (!userEmail || !pageId) {
+    throw new Error('userEmail和pageId都是必需的')
+  }
+
+  try {
+    // 获取用户配置
+    const user = await getUserByEmail({ email: userEmail })
+    if (!user.success) {
+      throw new Error('未找到用户配置')
+    }
+
+    const { apiKey } = user.user.notionConfig
+
+    // 归档页面（Notion的软删除）
+    await notionApi.patch(`/pages/${pageId}`, {
+      archived: true
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    console.log('✅ 每日状态记录删除成功:', pageId)
+
+    return {
+      success: true,
+      message: '每日状态记录删除成功'
+    }
+  } catch (error) {
+    console.error('删除每日状态记录失败:', error)
+    throw new Error(`删除每日状态记录失败: ${error.message}`)
+  }
+}
+
+/**
+ * 构建每日状态Notion属性
+ */
+function buildDailyStatusProperties(statusData) {
+  const properties = {}
+
+  // 标题字段（日期）
+  if (statusData.date) {
+    properties['Date'] = {
+      title: [{ text: { content: statusData.date } }]
+    }
+  }
+
+  // 完整日期
+  if (statusData.fullDate) {
+    properties['Full Date'] = {
+      date: { start: statusData.fullDate }
+    }
+  }
+
+  // 心情
+  if (statusData.mood) {
+    properties['Mood'] = {
+      select: { name: statusData.mood }
+    }
+  }
+
+  // 精力水平
+  if (statusData.energyLevel) {
+    properties['Energy Level'] = {
+      select: { name: statusData.energyLevel }
+    }
+  }
+
+  // 压力水平
+  if (statusData.stressLevel) {
+    properties['Stress Level'] = {
+      select: { name: statusData.stressLevel }
+    }
+  }
+
+  // 起床时间
+  if (statusData.wakeUpTime) {
+    properties['Wake Up Time'] = {
+      rich_text: [{ text: { content: statusData.wakeUpTime } }]
+    }
+  }
+
+  // 睡觉时间
+  if (statusData.bedTime) {
+    properties['Bed Time'] = {
+      rich_text: [{ text: { content: statusData.bedTime } }]
+    }
+  }
+
+  // 睡眠时长
+  if (statusData.sleepHours !== undefined) {
+    properties['Sleep Hours'] = {
+      number: parseFloat(statusData.sleepHours)
+    }
+  }
+
+  // 睡眠质量
+  if (statusData.sleepQuality) {
+    properties['Sleep Quality'] = {
+      select: { name: statusData.sleepQuality }
+    }
+  }
+
+  // 体重
+  if (statusData.weight !== undefined) {
+    properties['Weight'] = {
+      number: parseFloat(statusData.weight)
+    }
+  }
+
+  // 饮水量
+  if (statusData.waterIntake !== undefined) {
+    properties['Water Intake'] = {
+      number: parseInt(statusData.waterIntake)
+    }
+  }
+
+  // 运动时长
+  if (statusData.exerciseDuration !== undefined) {
+    properties['Exercise Duration'] = {
+      number: parseInt(statusData.exerciseDuration)
+    }
+  }
+
+  // 运动类型
+  if (statusData.exerciseType && statusData.exerciseType.length > 0) {
+    properties['Exercise Type'] = {
+      multi_select: statusData.exerciseType.map(type => ({ name: type }))
+    }
+  }
+
+  // 用餐情况
+  if (statusData.meals && statusData.meals.length > 0) {
+    properties['Meals'] = {
+      multi_select: statusData.meals.map(meal => ({ name: meal }))
+    }
+  }
+
+  // 饮食备注
+  if (statusData.dietNotes) {
+    properties['Diet Notes'] = {
+      rich_text: [{ text: { content: statusData.dietNotes } }]
+    }
+  }
+
+  // 冥想
+  if (statusData.meditation !== undefined) {
+    properties['Meditation'] = {
+      checkbox: statusData.meditation
+    }
+  }
+
+  // 冥想时长
+  if (statusData.meditationDuration !== undefined) {
+    properties['Meditation Duration'] = {
+      number: parseInt(statusData.meditationDuration)
+    }
+  }
+
+  // 阅读
+  if (statusData.reading !== undefined) {
+    properties['Reading'] = {
+      checkbox: statusData.reading
+    }
+  }
+
+  // 阅读时长
+  if (statusData.readingDuration !== undefined) {
+    properties['Reading Duration'] = {
+      number: parseInt(statusData.readingDuration)
+    }
+  }
+
+  // 备注
+  if (statusData.notes) {
+    properties['Notes'] = {
+      rich_text: [{ text: { content: statusData.notes } }]
+    }
+  }
+
+  // 今日亮点
+  if (statusData.highlights) {
+    properties['Highlights'] = {
+      rich_text: [{ text: { content: statusData.highlights } }]
+    }
+  }
+
+  // 用户ID
+  if (statusData.userId) {
+    properties['User ID'] = {
+      rich_text: [{ text: { content: statusData.userId } }]
+    }
+  }
+
+  return properties
+}
+
+/**
+ * 解析每日状态Notion页面
+ */
+function parseDailyStatusPage(page) {
+  const props = page.properties
+
+  return {
+    id: page.id,
+    date: props['Date']?.title?.[0]?.text?.content || '',
+    fullDate: props['Full Date']?.date?.start || '',
+    mood: props['Mood']?.select?.name || '',
+    energyLevel: props['Energy Level']?.select?.name || '',
+    stressLevel: props['Stress Level']?.select?.name || '',
+    wakeUpTime: props['Wake Up Time']?.rich_text?.[0]?.text?.content || '',
+    bedTime: props['Bed Time']?.rich_text?.[0]?.text?.content || '',
+    sleepHours: props['Sleep Hours']?.number || 0,
+    sleepQuality: props['Sleep Quality']?.select?.name || '',
+    weight: props['Weight']?.number || 0,
+    waterIntake: props['Water Intake']?.number || 0,
+    exerciseDuration: props['Exercise Duration']?.number || 0,
+    exerciseType: props['Exercise Type']?.multi_select?.map(t => t.name) || [],
+    meals: props['Meals']?.multi_select?.map(m => m.name) || [],
+    dietNotes: props['Diet Notes']?.rich_text?.[0]?.text?.content || '',
+    meditation: props['Meditation']?.checkbox || false,
+    meditationDuration: props['Meditation Duration']?.number || 0,
+    reading: props['Reading']?.checkbox || false,
+    readingDuration: props['Reading Duration']?.number || 0,
+    notes: props['Notes']?.rich_text?.[0]?.text?.content || '',
+    highlights: props['Highlights']?.rich_text?.[0]?.text?.content || '',
+    userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
   }
 }
