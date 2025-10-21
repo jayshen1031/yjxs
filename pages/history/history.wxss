@@ -6,10 +6,20 @@
 /* 页面标题 */
 .page-header {
   padding: 30rpx 30rpx 20rpx;
-  text-align: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   margin-bottom: 20rpx;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  flex: 1;
+  text-align: center;
 }
 
 .page-title {
@@ -21,6 +31,26 @@
 .page-desc {
   font-size: 24rpx;
   opacity: 0.8;
+}
+
+.refresh-btn {
+  width: 60rpx;
+  height: 60rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.refresh-btn:active {
+  background: rgba(255, 255, 255, 0.4);
+  transform: rotate(180deg);
+}
+
+.refresh-icon {
+  font-size: 36rpx;
 }
 
 /* 头部区域 */
@@ -59,32 +89,94 @@
   color: #6b7280;
 }
 
-/* 统计网格 */
-.stats-grid {
+/* 核心统计网格 - 只显示有价值和低效 */
+.stats-grid-simple {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20rpx;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24rpx;
   padding: 24rpx;
 }
 
 .stat-card {
   text-align: center;
-  padding: 20rpx;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 12rpx;
-  border-left: 4rpx solid #6366f1;
+  padding: 40rpx 20rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+
+.stat-card.valuable {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.stat-card.wasteful {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.stat-icon {
+  font-size: 48rpx;
+  margin-bottom: 12rpx;
 }
 
 .stat-number {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #6366f1;
+  font-size: 56rpx;
+  font-weight: bold;
+  color: white;
   margin-bottom: 8rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
 
 .stat-label {
-  font-size: 22rpx;
-  color: #6b7280;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* 总计时长横幅 */
+.total-time-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 0 30rpx 30rpx;
+  padding: 30rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.3);
+}
+
+.total-label {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  margin-right: 16rpx;
+}
+
+.total-time {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: white;
+  margin: 0 8rpx;
+}
+
+.total-unit {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  margin-right: 16rpx;
+}
+
+.activity-count {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* 高级筛选 */
@@ -288,16 +380,10 @@
   font-size: 20rpx;
 }
 
-.memo-type.text {
-  background: #d1fae5;
-}
-
-.memo-type.voice {
-  background: #fecaca;
-}
-
+.memo-type.text,
+.memo-type.voice,
 .memo-type.planning {
-  background: #fef3c7;
+  background: #e0e7ff;
 }
 
 .memo-time-info {
@@ -315,13 +401,13 @@
 
 .time-period-main {
   font-size: 22rpx;
-  color: #059669;
-  background: rgba(5, 150, 105, 0.1);
+  color: #6366f1;
+  background: #e0e7ff;
   padding: 4rpx 10rpx;
   border-radius: 10rpx;
   width: fit-content;
   font-weight: 600;
-  border: 1rpx solid rgba(5, 150, 105, 0.2);
+  border: 1rpx solid #c7d2fe;
 }
 
 .memo-actions {
@@ -360,6 +446,80 @@
   word-wrap: break-word;
 }
 
+/* 活动列表 - 统一样式 */
+.activity-list {
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  margin: 16rpx 0;
+  border-left: 4rpx solid #6366f1;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+  padding-bottom: 8rpx;
+  border-bottom: 2rpx solid #e5e7eb;
+}
+
+.activity-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.activity-count {
+  font-size: 20rpx;
+  color: #6366f1;
+  background: #e0e7ff;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid rgba(14, 165, 233, 0.1);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.activity-time {
+  font-size: 20rpx;
+  color: #6b7280;
+  background: white;
+  padding: 4rpx 8rpx;
+  border-radius: 8rpx;
+  white-space: nowrap;
+  min-width: 140rpx;
+  text-align: center;
+  font-weight: 500;
+}
+
+.activity-name {
+  flex: 1;
+  font-size: 24rpx;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.activity-duration {
+  font-size: 20rpx;
+  color: #6366f1;
+  background: white;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .memo-labels {
   display: flex;
   gap: 8rpx;
@@ -388,91 +548,26 @@
   color: #3730a3;
 }
 
-/* 时间段标签颜色 */
-.tag.period-morning {
-  background: #f97316;
-  color: #ffffff;
-}
-
-.tag.period-forenoon {
-  background: #eab308;
-  color: #ffffff;
-}
-
-.tag.period-noon {
-  background: #f59e0b;
-  color: #ffffff;
-}
-
-.tag.period-afternoon {
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-.tag.period-evening {
-  background: #8b5cf6;
-  color: #ffffff;
-}
-
-.tag.period-planning {
-  background: #10b981;
-  color: #ffffff;
-}
-
-.tag.period-rest {
-  background: #6b7280;
-  color: #ffffff;
-}
-
-/* 内容分类标签颜色 */
-.tag.category-life {
-  background: #10b981;
-  color: #ffffff;
-}
-
-.tag.category-work {
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-.tag.category-study {
-  background: #8b5cf6;
-  color: #ffffff;
-}
-
-.tag.category-growth {
-  background: #f97316;
-  color: #ffffff;
-}
-
-.tag.category-finance {
-  background: #eab308;
-  color: #ffffff;
-}
-
-.tag.category-health {
-  background: #ef4444;
-  color: #ffffff;
-}
-
-.tag.category-social {
-  background: #ec4899;
-  color: #ffffff;
-}
-
-.tag.category-goal {
-  background: #a855f7;
-  color: #ffffff;
-}
-
-.tag.category-idea {
-  background: #6b7280;
-  color: #ffffff;
-}
-
+/* 统一标签颜色 - 使用靛蓝色系 */
+.tag.period-morning,
+.tag.period-forenoon,
+.tag.period-noon,
+.tag.period-afternoon,
+.tag.period-evening,
+.tag.period-planning,
+.tag.period-rest,
+.tag.category-life,
+.tag.category-work,
+.tag.category-study,
+.tag.category-growth,
+.tag.category-finance,
+.tag.category-health,
+.tag.category-social,
+.tag.category-goal,
+.tag.category-idea,
 .tag.category-mood {
-  background: #06b6d4;
-  color: #ffffff;
+  background: #e0e7ff;
+  color: #4338ca;
 }
 
 /* 空状态 */
@@ -506,24 +601,179 @@
   padding: 40rpx 20rpx;
 }
 
+/* 活动列表主要展示 */
+.activity-list-primary {
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.activity-list-primary .activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid #e5e7eb;
+}
+
+.activity-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex: 1;
+  color: #1f2937;
+}
+
+.activity-period {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.activity-summary {
+  font-size: 24rpx;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 8rpx 16rpx;
+  border-radius: 12rpx;
+}
+
+/* 操作按钮 */
+.activity-actions {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.action-btn {
+  font-size: 32rpx;
+  padding: 8rpx 12rpx;
+  border-radius: 8rpx;
+  transition: all 0.3s;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2rpx 8rpx rgba(59, 130, 246, 0.3);
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+}
+
+.activity-list-primary .activity-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.activity-list-primary .activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+  color: #6366f1;
+}
+
+.activity-info {
+  flex: 1;
+}
+
+.activity-name {
+  font-size: 28rpx;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  font-weight: 500;
+}
+
+.activity-meta {
+  display: flex;
+  gap: 16rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.activity-meta .activity-time {
+  color: #6b7280;
+}
+
+.activity-meta .activity-duration {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* 折叠的记录详情 */
+.memo-summary {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx dashed #e5e7eb;
+  font-size: 24rpx;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.summary-label {
+  font-weight: 600;
+  color: #9ca3af;
+  margin-right: 8rpx;
+}
+
+.summary-text {
+  color: #6b7280;
+}
+
+/* 无活动明细时的降级显示 */
+.memo-content-fallback {
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.memo-content-fallback .memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.no-activity-hint {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: #fef3c7;
+  border-left: 4rpx solid #f59e0b;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #92400e;
+}
+
 /* 响应式调整 */
 @media (max-width: 320px) {
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .filter-tag,
   .time-range-item,
   .sort-option {
     font-size: 22rpx;
     padding: 10rpx 16rpx;
   }
-  
+
   .memo-header {
     flex-wrap: wrap;
     gap: 12rpx;
   }
-  
+
   .memo-actions {
     order: 3;
     width: 100%;

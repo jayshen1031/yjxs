@@ -423,7 +423,7 @@
   margin-bottom: 0;
 }
 
-/* 高级配置：五数据库 */
+/* 高级配置：七数据库 */
 .toggle-icon {
   font-size: 24rpx;
   color: #6b7280;

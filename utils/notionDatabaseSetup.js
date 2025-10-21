@@ -17,7 +17,7 @@ const GoalsDatabaseSchema = {
   description: '管理人生目标、年度目标、阶段目标',
   properties: {
     // === 基础信息 ===
-    'Name': {
+    'Goal Name': {
       title: {},
     },
     'Description': {
@@ -411,6 +411,12 @@ const MainRecordsDatabaseSchema = {
         ]
       }
     },
+    'Start Time': {
+      rich_text: {},  // 开始时间，格式：HH:MM
+    },
+    'End Time': {
+      rich_text: {},  // 结束时间，格式：HH:MM
+    },
 
     // === 价值分类 ===
     'Valuable Activities': {
@@ -496,10 +502,10 @@ const ActivityDetailsDatabaseSchema = {
 
     // === 时间信息 ===
     'Start Time': {
-      date: {},
+      rich_text: {},  // 开始时间，格式：HH:MM（继承主记录）
     },
     'End Time': {
-      date: {},
+      rich_text: {},  // 结束时间，格式：HH:MM（继承主记录）
     },
     'Duration': {
       number: {
@@ -847,11 +853,102 @@ const HappyThingsDatabaseSchema = {
   }
 }
 
+/**
+ * 箴言库（Quotes Database）数据库结构
+ */
+const QuotesDatabaseSchema = {
+  title: '💬 语寄心声 - 箴言库 (Quotes)',
+  description: '管理每日箴言、励志语录、人生格言',
+  properties: {
+    // === 基础信息 ===
+    'Quote': {
+      title: {},  // 箴言内容（主要字段）
+    },
+    'Author': {
+      rich_text: {},  // 作者/来源（可选）
+    },
+    'Source': {
+      rich_text: {},  // 出处（书籍、电影、演讲等）
+    },
+
+    // === 分类标签 ===
+    'Category': {
+      select: {
+        options: [
+          { name: '励志', color: 'red' },
+          { name: '人生', color: 'orange' },
+          { name: '成长', color: 'yellow' },
+          { name: '时间', color: 'green' },
+          { name: '坚持', color: 'blue' },
+          { name: '记录', color: 'purple' },
+          { name: '感悟', color: 'pink' },
+          { name: '习惯', color: 'brown' },
+          { name: '梦想', color: 'gray' }
+        ]
+      }
+    },
+
+    'Tags': {
+      multi_select: {
+        options: [
+          { name: '正能量', color: 'red' },
+          { name: '深度思考', color: 'blue' },
+          { name: '轻松', color: 'green' },
+          { name: '哲理', color: 'purple' },
+          { name: '实用', color: 'yellow' },
+          { name: '情感', color: 'pink' }
+        ]
+      }
+    },
+
+    // === 使用状态 ===
+    'Status': {
+      select: {
+        options: [
+          { name: '启用', color: 'green' },
+          { name: '禁用', color: 'gray' },
+          { name: '收藏', color: 'red' }
+        ]
+      }
+    },
+
+    'Is System Default': {
+      checkbox: {}  // 是否为系统默认箴言
+    },
+
+    // === 统计信息 ===
+    'Display Count': {
+      number: {
+        format: 'number'
+      }
+    },
+
+    'Last Displayed Date': {
+      date: {}
+    },
+
+    'Created Date': {
+      date: {}
+    },
+
+    // === 用户信息 ===
+    'User ID': {
+      rich_text: {},
+    },
+
+    // === 备注 ===
+    'Notes': {
+      rich_text: {},
+    }
+  }
+}
+
 module.exports = {
   GoalsDatabaseSchema,
   TodosDatabaseSchema,
   MainRecordsDatabaseSchema,
   ActivityDetailsDatabaseSchema,
   DailyStatusDatabaseSchema,
-  HappyThingsDatabaseSchema
+  HappyThingsDatabaseSchema,
+  QuotesDatabaseSchema
 }

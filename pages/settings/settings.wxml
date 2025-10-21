@@ -133,7 +133,7 @@
           />
         </view>
 
-        <view class="section-title">🎯 六数据库配置（推荐）</view>
+        <view class="section-title">🎯 七数据库配置（推荐）</view>
 
         <view class="input-group">
           <view class="input-label">🎯 目标库ID (Goals)</view>
@@ -197,6 +197,17 @@
           <view class="input-hint">💡 如果要使用开心事管理功能，此项必填</view>
         </view>
 
+        <view class="input-group">
+          <view class="input-label">💬 箴言库ID (Quotes) <text class="required-mark">*必填</text></view>
+          <input
+            class="notion-input"
+            placeholder="请输入箴言库数据库ID"
+            value="{{ notionConfig.databases.quotes }}"
+            bindinput="onQuotesDatabaseIdInput"
+          />
+          <view class="input-hint">💡 如果要使用每日箴言功能，此项必填</view>
+        </view>
+
         <button class="btn btn-primary" bindtap="saveManualConfig">
           <text>💾 保存配置</text>
         </button>
@@ -238,6 +249,10 @@
                 wx:if="{{ notionConfig.enabled }}"
                 loading="{{ diagnosing }}">
           <text>{{ diagnosing ? '诊断中...' : '🔍 诊断数据库' }}</text>
+        </button>
+        <button class="btn btn-warning" bindtap="fixActivityRelations"
+                wx:if="{{ notionConfig.enabled }}">
+          <text>🔧 修复活动关联</text>
         </button>
       </view>
     </view>

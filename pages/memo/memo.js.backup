@@ -86,12 +86,6 @@ Page({
     selectedTodoId: '', // 选中的待办事项ID
     selectedTodoInfo: null, // 选中的待办详细信息
     todoFilterScope: 'all', // 待办筛选范围：'all' | '今日' | '近期'
-    currentActivityTodoIndex: -1, // 有价值活动选中的待办索引
-    currentNeutralActivityTodoIndex: -1, // 中性活动选中的待办索引
-    currentWastefulActivityTodoIndex: -1, // 浪费性活动选中的待办索引
-    currentActivityTodoStatus: '进行中', // 有价值活动待办状态
-    currentNeutralActivityTodoStatus: '进行中', // 中性活动待办状态
-    currentWastefulActivityTodoStatus: '进行中', // 浪费性活动待办状态
     // 编辑模式相关
     isEditMode: false,
     editingMemoId: '',
@@ -153,9 +147,6 @@ Page({
 
     // 加载可关联的目标
     this.loadAvailableGoals()
-
-    // 加载可关联的待办事项
-    this.loadAvailableTodos()
   },
 
   onShow: function() {
@@ -189,12 +180,12 @@ Page({
         editFromPage: fromPage || 'timeline'
       })
 
-      // 初始化编辑模式（在清除globalData之前调用，因为initEditMode需要使用memoData）
+      // 清除全局数据，避免重复触发
+      app.globalData.editMemo = null
+
+      // 初始化编辑模式
       console.log('calling initEditMode with editId:', editId)
       this.initEditMode(editId)
-
-      // 清除全局数据，避免重复触发（在initEditMode之后清除）
-      app.globalData.editMemo = null
     } else {
       console.log('no edit params found in globalData')
     }
@@ -600,7 +591,7 @@ Page({
   // 获取最终使用的时间戳
   getFinalTimestamp: function() {
     // 明日规划模式：直接使用当前时间
-    if (false) {
+    if (this.data.recordMode === 'planning') {
       return Date.now()
     }
 
@@ -1144,7 +1135,7 @@ Page({
     const type = e.currentTarget.dataset.type || 'valuable'
     console.log('📋 活动类型:', type)
 
-    let activity, minutes, tags, goalId, todoId, todoStatus, entries, totalKey, activityKey, minutesKey, tagsKey, canAddKey, goalIndexKey, todoIndexKey, todoStatusKey
+    let activity, minutes, tags, goalId, entries, totalKey, activityKey, minutesKey, tagsKey, canAddKey, goalIndexKey
 
     if (type === 'neutral') {
       console.log('检查中性活动是否可添加:', this.data.canAddNeutralTimeEntry)
@@ -1156,16 +1147,12 @@ Page({
       minutes = parseInt(this.data.currentNeutralMinutes)
       tags = this.data.currentNeutralActivityTags
       goalId = this.data.currentNeutralActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentNeutralActivityGoalIndex].id : ''
-      todoId = this.data.currentNeutralActivityTodoIndex >= 0 ? this.data.availableTodos[this.data.currentNeutralActivityTodoIndex].id : ''
-      todoStatus = this.data.currentNeutralActivityTodoStatus // ⭐ 获取待办状态
       entries = this.data.neutralTimeEntries
       totalKey = 'totalNeutralMinutes'
       activityKey = 'currentNeutralActivity'
       minutesKey = 'currentNeutralMinutes'
       tagsKey = 'currentNeutralActivityTags'
       goalIndexKey = 'currentNeutralActivityGoalIndex'
-      todoIndexKey = 'currentNeutralActivityTodoIndex'
-      todoStatusKey = 'currentNeutralActivityTodoStatus' // ⭐ 状态字段
       canAddKey = 'canAddNeutralTimeEntry'
     } else if (type === 'wasteful') {
       console.log('检查低效活动是否可添加:', this.data.canAddWastefulTimeEntry)
@@ -1177,16 +1164,12 @@ Page({
       minutes = parseInt(this.data.currentWastefulMinutes)
       tags = this.data.currentWastefulActivityTags
       goalId = this.data.currentWastefulActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentWastefulActivityGoalIndex].id : ''
-      todoId = this.data.currentWastefulActivityTodoIndex >= 0 ? this.data.availableTodos[this.data.currentWastefulActivityTodoIndex].id : ''
-      todoStatus = this.data.currentWastefulActivityTodoStatus // ⭐ 获取待办状态
       entries = this.data.wastefulTimeEntries
       totalKey = 'totalWastefulMinutes'
       activityKey = 'currentWastefulActivity'
       minutesKey = 'currentWastefulMinutes'
       tagsKey = 'currentWastefulActivityTags'
       goalIndexKey = 'currentWastefulActivityGoalIndex'
-      todoIndexKey = 'currentWastefulActivityTodoIndex'
-      todoStatusKey = 'currentWastefulActivityTodoStatus' // ⭐ 状态字段
       canAddKey = 'canAddWastefulTimeEntry'
     } else {
       console.log('检查有价值活动是否可添加:', this.data.canAddTimeEntry)
@@ -1203,16 +1186,12 @@ Page({
       minutes = parseInt(this.data.currentMinutes)
       tags = this.data.currentActivityTags
       goalId = this.data.currentActivityGoalIndex >= 0 ? this.data.availableGoals[this.data.currentActivityGoalIndex].id : ''
-      todoId = this.data.currentActivityTodoIndex >= 0 ? this.data.availableTodos[this.data.currentActivityTodoIndex].id : ''
-      todoStatus = this.data.currentActivityTodoStatus // ⭐ 获取待办状态
       entries = this.data.valuableTimeEntries
       totalKey = 'totalValuableMinutes'
       activityKey = 'currentActivity'
       minutesKey = 'currentMinutes'
       tagsKey = 'currentActivityTags'
       goalIndexKey = 'currentActivityGoalIndex'
-      todoIndexKey = 'currentActivityTodoIndex'
-      todoStatusKey = 'currentActivityTodoStatus' // ⭐ 状态字段
       canAddKey = 'canAddTimeEntry'
     }
 
@@ -1236,34 +1215,13 @@ Page({
         duration: 1500
       })
     } else {
-      // 获取目标和待办的标题
-      const goalTitle = goalId && this.data.availableGoals ? (this.data.availableGoals.find(g => g.id === goalId)?.title || '') : ''
-      const todoTitle = todoId && this.data.availableTodos ? (this.data.availableTodos.find(t => t.id === todoId)?.title || '') : ''
-
-      console.log('🎯 待办关联信息:', {
-        todoId,
-        todoTitle,
-        todoStatus,
-        availableTodosCount: this.data.availableTodos?.length || 0,
-        selectedTodo: todoId ? this.data.availableTodos.find(t => t.id === todoId) : null
-      })
-
       // 添加新的时间投入记录
-      const newEntry = {
+      newEntries.push({
         activity: activity,
         minutes: minutes,
-        type: type, // ⭐ 保存活动类型（valuable/neutral/wasteful）
         tags: tags || [],
-        goalId: goalId || '', // 关联的目标ID
-        goalTitle: goalTitle,
-        todoId: todoId || '', // 关联的待办ID
-        todoTitle: todoTitle,
-        todoStatus: todoStatus || '进行中' // ⭐ 待办状态
-      }
-
-      console.log('📝 新增时间条目:', newEntry)
-
-      newEntries.push(newEntry)
+        goalId: goalId || '' // 关联的目标ID
+      })
       wx.showToast({
         title: '活动已添加',
         icon: 'success',
@@ -1283,8 +1241,6 @@ Page({
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
       updateData[goalIndexKey] = -1
-      updateData[todoIndexKey] = -1
-      updateData[todoStatusKey] = '进行中' // ⭐ 重置状态
       updateData[canAddKey] = false
     } else if (type === 'wasteful') {
       updateData.wastefulTimeEntries = newEntries
@@ -1293,8 +1249,6 @@ Page({
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
       updateData[goalIndexKey] = -1
-      updateData[todoIndexKey] = -1
-      updateData[todoStatusKey] = '进行中' // ⭐ 重置状态
       updateData[canAddKey] = false
     } else {
       updateData.valuableTimeEntries = newEntries
@@ -1303,8 +1257,6 @@ Page({
       updateData[minutesKey] = ''
       updateData[tagsKey] = []
       updateData[goalIndexKey] = -1
-      updateData[todoIndexKey] = -1
-      updateData[todoStatusKey] = '进行中' // ⭐ 重置状态
       updateData[canAddKey] = false
     }
 
@@ -2126,7 +2078,7 @@ Page({
       return result
     }
     
-    if (false) {
+    if (recordMode === 'planning') {
       result.textContent = content
       return result
     }
@@ -2155,25 +2107,25 @@ Page({
 
   // 获取最终的合并内容
   getFinalContent: function() {
-    if (false) {
+    if (this.data.recordMode === 'planning') {
       return this.data.textContent
     }
     
-    // 正常模式：合并三个分类的内容（只保留内容，不加前缀）
+    // 正常模式：合并三个分类的内容
     const parts = []
-
+    
     if (this.data.valuableContent && this.data.valuableContent.trim()) {
-      parts.push(this.data.valuableContent.trim())
+      parts.push(`🌟 有价值的活动：\n${this.data.valuableContent.trim()}`)
     }
-
+    
     if (this.data.neutralContent && this.data.neutralContent.trim()) {
-      parts.push(this.data.neutralContent.trim())
+      parts.push(`😐 中性的活动：\n${this.data.neutralContent.trim()}`)
     }
-
+    
     if (this.data.wastefulContent && this.data.wastefulContent.trim()) {
-      parts.push(this.data.wastefulContent.trim())
+      parts.push(`🗑️ 低效的活动：\n${this.data.wastefulContent.trim()}`)
     }
-
+    
     return parts.join('\n\n')
   },
 
@@ -2237,43 +2189,42 @@ Page({
     const finalTimestamp = this.getFinalTimestamp()
     const timestamp = new Date(finalTimestamp)
 
-    console.log('💾 保存记录 - 日期信息:', {
-      selectedDateType: this.data.selectedDateType,
-      customDate: this.data.customDate,
-      finalTimestamp: finalTimestamp,
-      timestampDate: timestamp.toISOString(),
-      dateString: timestamp.toISOString().split('T')[0]
-    })
-
     try {
       // 准备Main Record数据
-      // 生成唯一递增ID：从Notion查询最大ID + 1
-      let uniqueId
-      if (this.data.isEditMode && this.data.originalMemo.mainRecordSeqId) {
-        // 编辑模式：保持原有的序列ID
-        uniqueId = this.data.originalMemo.mainRecordSeqId
-        console.log('📝 编辑模式：使用原序列ID:', uniqueId)
-      } else {
-        // 新建模式：从Notion查询最大ID并+1
-        const mainDatabaseId = notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
-        uniqueId = await this.getNextMainRecordSeqIdFromNotion(notionConfig.apiKey, mainDatabaseId)
-        console.log('✨ 新建模式：从Notion分配新序列ID:', uniqueId)
-      }
+      // 生成唯一递增ID：使用时间戳
+      const uniqueId = Date.now().toString() // 纯数字ID
 
       const recordData = {
-        title: uniqueId.toString(),
+        title: uniqueId,
         content: finalContent.trim(),
         date: timestamp.toISOString().split('T')[0],
-        recordType: '日常记录',
+        recordType: this.data.recordMode === 'planning' ? '明日规划' : '日常记录',
         timePeriod: this.getTimePeriod(timestamp),
         tags: this.data.selectedTags,
         relatedGoalId: this.data.selectedGoalId || null
       }
 
       let mainRecordResult
-      let mainRecordId
 
-      // 计算开始和结束时间（在if-else之前，两个分支都需要）
+      if (this.data.isEditMode && this.data.originalMemo.notionPageId) {
+        // 编辑模式：更新现有Main Record (暂不支持，先创建新的)
+        console.warn('编辑模式暂时创建新记录而非更新')
+      }
+
+      // 使用前端直接调用创建Main Record（绕过云函数网络限制）
+      const mainDatabaseId = notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
+      if (!mainDatabaseId) {
+        throw new Error('未配置主记录表数据库ID')
+      }
+
+      // ⚠️ 调试信息：打印完整配置
+      console.log('========== Notion配置详情 ==========')
+      console.log('完整notionConfig:', JSON.stringify(notionConfig, null, 2))
+      console.log('使用的数据库ID:', mainDatabaseId)
+      console.log('currentUser.email:', currentUser.email)
+      console.log('====================================')
+
+      // 计算开始和结束时间
       const startTimeOption = this.data.timeOptions[this.data.startTimeIndex]
       const endTimeOption = this.data.timeOptions[this.data.endTimeIndex]
 
@@ -2282,7 +2233,7 @@ Page({
         let hour = Math.floor(timeValue)
         const minute = (timeValue % 1) === 0.5 ? 30 : 0
 
-        // 处理跨日情况
+        // 处理跨日情况（晚睡时间段）
         if (timeValue >= 24) {
           date.setDate(date.getDate() + 1)
           hour = hour - 24
@@ -2295,135 +2246,70 @@ Page({
       const startDateTime = getFullTimestamp(timestamp, startTimeOption.value)
       const endDateTime = getFullTimestamp(timestamp, endTimeOption.value)
 
-      if (this.data.isEditMode && this.data.originalMemo.notionPageId) {
-        // 编辑模式：更新现有Main Record
-        console.log('🔄 编辑模式：更新现有记录', this.data.originalMemo.notionPageId)
+      console.log('⏰ 时间段:', {
+        start: startDateTime.toISOString(),
+        end: endDateTime.toISOString(),
+        startLabel: startTimeOption.label,
+        endLabel: endTimeOption.label
+      })
 
-        // 构建更新的properties（只更新需要改变的字段）
-        const updateProperties = {
-          'Summary': {
-            rich_text: [{ text: { content: recordData.content || '' } }]
-          },
-          'Record Date': {
-            date: { start: recordData.date }
-          }
+      const properties = {
+        'Name': {
+          title: [{ text: { content: recordData.title } }]
+        },
+        'Summary': {
+          rich_text: [{ text: { content: recordData.content || '' } }]
+        },
+        'Record Date': {
+          date: { start: recordData.date }
+        },
+        'Type': {
+          select: { name: recordData.recordType === '明日规划' ? 'planning' : 'normal' }
+        },
+        'Is Planning': {
+          checkbox: recordData.recordType === '明日规划'
+        },
+        'User ID': {
+          rich_text: [{ text: { content: currentUser.email } }]
         }
-
-        updateProperties['Start Time'] = {
-          rich_text: [{ text: { content: `${startDateTime.getHours().toString().padStart(2, '0')}:${startDateTime.getMinutes().toString().padStart(2, '0')}` } }]
-        }
-        updateProperties['End Time'] = {
-          rich_text: [{ text: { content: `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}` } }]
-        }
-
-        // 更新标签
-        if (recordData.tags && recordData.tags.length > 0) {
-          updateProperties['Tags'] = {
-            multi_select: recordData.tags.map(tag => ({ name: tag }))
-          }
-        }
-
-        // 调用更新API
-        const updateResult = await notionApiService.updatePageProperties(
-          notionConfig.apiKey,
-          this.data.originalMemo.notionPageId,
-          updateProperties
-        )
-
-        if (!updateResult.success) {
-          throw new Error(updateResult.error || '更新Main Record失败')
-        }
-
-        mainRecordId = this.data.originalMemo.notionPageId
-        console.log('✅ 主记录更新成功，ID:', mainRecordId)
-
-        // TODO: 需要删除旧的Activity Details，然后创建新的
-        // 这里暂时只更新主记录，活动明细需要额外处理
-      } else {
-        // 创建模式：使用前端直接调用创建Main Record（绕过云函数网络限制）
-        const mainDatabaseId = notionConfig.mainRecordsDatabaseId || notionConfig.mainDatabaseId
-        if (!mainDatabaseId) {
-          throw new Error('未配置主记录表数据库ID')
-        }
-
-        // ⚠️ 调试信息：打印完整配置
-        console.log('========== Notion配置详情 ==========')
-        console.log('完整notionConfig:', JSON.stringify(notionConfig, null, 2))
-        console.log('使用的数据库ID:', mainDatabaseId)
-        console.log('currentUser.email:', currentUser.email)
-        console.log('====================================')
-
-        console.log('⏰ 时间段:', {
-          start: startDateTime.toISOString(),
-          end: endDateTime.toISOString(),
-          startLabel: startTimeOption.label,
-          endLabel: endTimeOption.label
-        })
-
-        const properties = {
-          'Name': {
-            title: [{ text: { content: recordData.title } }]
-          },
-          'Summary': {
-            rich_text: [{ text: { content: recordData.content || '' } }]
-          },
-          'Record Date': {
-            date: { start: recordData.date }
-          },
-          'Type': {
-            select: { name: 'normal' }
-          },
-          'User ID': {
-            rich_text: [{ text: { content: currentUser.email } }]
-          },
-          // 添加开始和结束时间
-          'Start Time': {
-            rich_text: [{ text: { content: `${startDateTime.getHours().toString().padStart(2, '0')}:${startDateTime.getMinutes().toString().padStart(2, '0')}` } }]
-          },
-          'End Time': {
-            rich_text: [{ text: { content: `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}` } }]
-          }
-        }
-
-        // 添加标签
-        if (recordData.tags && recordData.tags.length > 0) {
-          properties['Tags'] = {
-            multi_select: recordData.tags.map(tag => ({ name: tag }))
-          }
-        }
-
-        const pageData = {
-          parent: { database_id: mainDatabaseId },
-          properties: properties
-        }
-
-        console.log('创建Main Record - 数据库ID:', mainDatabaseId)
-        console.log('创建Main Record - properties:', properties)
-
-        mainRecordResult = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
-
-        if (!mainRecordResult.success) {
-          throw new Error(mainRecordResult.error || '创建Main Record失败')
-        }
-
-        mainRecordId = mainRecordResult.pageId || mainRecordResult.data?.id
-
-        if (!mainRecordId) {
-          console.error('未获取到mainRecordId:', mainRecordResult)
-          throw new Error('创建主记录成功但未返回页面ID')
-        }
-
-        console.log('✅ 主记录创建成功，ID:', mainRecordId)
       }
 
-      // 创建Activity Details（时间投入记录）⭐ 活动明细不需要单独的开始/结束时间
+      // 添加标签
+      if (recordData.tags && recordData.tags.length > 0) {
+        properties['Tags'] = {
+          multi_select: recordData.tags.map(tag => ({ name: tag }))
+        }
+      }
+
+      const pageData = {
+        parent: { database_id: mainDatabaseId },
+        properties: properties
+      }
+
+      console.log('创建Main Record - 数据库ID:', mainDatabaseId)
+      console.log('创建Main Record - properties:', properties)
+
+      mainRecordResult = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
+
+      if (!mainRecordResult.success) {
+        throw new Error(mainRecordResult.error || '创建Main Record失败')
+      }
+
+      const mainRecordId = mainRecordResult.pageId || mainRecordResult.data?.id
+
+      if (!mainRecordId) {
+        console.error('未获取到mainRecordId:', mainRecordResult)
+        throw new Error('创建主记录成功但未返回页面ID')
+      }
+
+      console.log('主记录创建成功，ID:', mainRecordId)
+
+      // 创建Activity Details（时间投入记录）
       await this.createActivityDetails(
         notionConfig,
         mainRecordId,
         timestamp,
-        currentUser.email,
-        startDateTime,  // 保留参数但不使用
-        endDateTime     // 保留参数但不使用
+        currentUser.email
       )
 
       // 保存成功，同步到本地存储
@@ -2431,25 +2317,21 @@ Page({
         id: this.data.isEditMode ? this.data.originalMemo.id : 'memo_' + Date.now(),
         content: finalContent.trim(),
         type: this.data.inputType,
-
+        recordMode: this.data.recordMode,
         tags: this.data.selectedTags,
         timestamp: finalTimestamp,
-
+        isPlanning: this.data.recordMode === 'planning',
         userId: currentUser.id,
         notionPageId: mainRecordId,
-        mainRecordSeqId: uniqueId, // ⭐ 保存全局自增ID
         valuableTimeEntries: this.data.valuableTimeEntries || [],
         neutralTimeEntries: this.data.neutralTimeEntries || [],
         wastefulTimeEntries: this.data.wastefulTimeEntries || [],
         relatedGoalId: this.data.selectedGoalId
       }
 
-      // 根据编辑模式保存到本地
       if (this.data.isEditMode) {
-        console.log('🔄 更新本地记录:', memo.id)
         app.updateMemo(memo)
       } else {
-        console.log('✨ 保存新记录到本地:', memo.id)
         app.saveMemo(memo)
       }
 
@@ -2481,7 +2363,7 @@ Page({
 
       // 如果是规划模式，创建待办
       // 已禁用自动拆分规划内容创建待办功能
-      // if (false) {
+      // if (this.data.recordMode === 'planning') {
       //   const todoItems = this.splitPlanningContent(memo.content)
       //   console.log('📋 规划内容:', memo.content)
       //   console.log('✂️ 拆分后的待办项:', todoItems)
@@ -2528,31 +2410,12 @@ Page({
   },
 
   // 创建Activity Details
-  // ⭐ 活动明细不需要单独的开始/结束时间，只保留时长（分钟数）
-  createActivityDetails: async function(notionConfig, mainRecordId, timestamp, userEmail, startDateTime, endDateTime) {
-    console.log('🔧 createActivityDetails 调用:', {
-      mainRecordId,
-      timestamp: timestamp.toISOString(),
-      userEmail,
-      valuableCount: this.data.valuableTimeEntries?.length || 0,
-      neutralCount: this.data.neutralTimeEntries?.length || 0,
-      wastefulCount: this.data.wastefulTimeEntries?.length || 0
-    })
-
+  createActivityDetails: async function(notionConfig, mainRecordId, timestamp, userEmail) {
     const allEntries = [
       ...this.data.valuableTimeEntries.map(e => ({ ...e, type: '有价值' })),
       ...this.data.neutralTimeEntries.map(e => ({ ...e, type: '中性' })),
       ...this.data.wastefulTimeEntries.map(e => ({ ...e, type: '低效' }))
     ]
-
-    console.log('📋 合并后的活动条目数:', allEntries.length)
-    if (allEntries.length > 0) {
-      console.log('📋 活动条目详情:', allEntries.map(e => ({
-        name: e.activity,
-        minutes: e.minutes,
-        type: e.type
-      })))
-    }
 
     const activityDatabaseId = notionConfig.activityDatabaseId || notionConfig.activitiesDatabaseId
     if (!activityDatabaseId) {
@@ -2560,35 +2423,43 @@ Page({
       return
     }
 
-    if (allEntries.length === 0) {
-      console.warn('⚠️ 没有活动条目需要创建')
-      return
+    // 获取用户选择的时间段
+    const startTimeOption = this.data.timeOptions[this.data.startTimeIndex]
+    const endTimeOption = this.data.timeOptions[this.data.endTimeIndex]
+
+    // 计算开始和结束时间的完整时间戳
+    const getFullTimestamp = (baseTimestamp, timeValue) => {
+      const date = new Date(baseTimestamp)
+      let hour = Math.floor(timeValue)
+      const minute = (timeValue % 1) === 0.5 ? 30 : 0
+
+      // 处理跨日情况（晚睡时间段）
+      if (timeValue >= 24) {
+        date.setDate(date.getDate() + 1)
+        hour = hour - 24
+      }
+
+      date.setHours(hour, minute, 0, 0)
+      return date
     }
 
-    // 类型映射：英文 -> 中文
-    const typeMap = {
-      'valuable': '有价值',
-      'neutral': '中性',
-      'wasteful': '低效'
-    }
+    const startDateTime = getFullTimestamp(timestamp, startTimeOption.value)
+    const endDateTime = getFullTimestamp(timestamp, endTimeOption.value)
 
     for (const entry of allEntries) {
       try {
-        // 获取中文类型名称
-        const valueTypeCN = typeMap[entry.type] || entry.type
-
         const properties = {
           'Activity Name': {
             title: [{ text: { content: entry.activity } }]
           },
           'Description': {
-            rich_text: [{ text: { content: `${valueTypeCN}活动，投入${entry.minutes}分钟` } }]
+            rich_text: [{ text: { content: `${entry.type}活动，投入${entry.minutes}分钟` } }]
           },
           'Minutes': {
             number: entry.minutes
           },
           'Value Type': {
-            select: { name: valueTypeCN }  // '有价值', '中性', '低效'
+            select: { name: entry.type }  // '有价值', '中性', '低效'
           },
           'Record Date': {
             date: { start: timestamp.toISOString().split('T')[0] }
@@ -2597,8 +2468,6 @@ Page({
             rich_text: [{ text: { content: userEmail } }]
           }
         }
-
-        // ⭐ 活动明细不需要单独的开始/结束时间，只保留时长（分钟数）
 
         // 添加标签
         if (entry.tags && entry.tags.length > 0) {
@@ -2609,12 +2478,9 @@ Page({
 
         // 添加关联的主记录
         if (mainRecordId) {
-          console.log(`🔗 添加主记录关联: ${entry.activity} -> ${mainRecordId}`)
           properties['Record'] = {
             relation: [{ id: mainRecordId }]
           }
-        } else {
-          console.warn(`⚠️ mainRecordId为空，无法关联活动: ${entry.activity}`)
         }
 
         // 添加关联的目标（优先使用条目级别的goalId，其次使用全局selectedGoalId）
@@ -2625,10 +2491,10 @@ Page({
           }
         }
 
-        // ⭐ 添加关联的待办事项（使用条目级别的todoId）
-        if (entry.todoId) {
+        // ⭐ 添加关联的待办事项
+        if (this.data.selectedTodoId) {
           properties['Related Todo'] = {
-            relation: [{ id: entry.todoId }]
+            relation: [{ id: this.data.selectedTodoId }]
           }
         }
 
@@ -2637,20 +2503,12 @@ Page({
           properties: properties
         }
 
-        console.log(`📤 准备创建活动: ${entry.activity}`, {
-          databaseId: activityDatabaseId,
-          hasRecordRelation: !!properties['Record'],
-          recordRelationId: properties['Record']?.relation?.[0]?.id,
-          valueType: properties['Value Type']?.select?.name,
-          minutes: properties['Minutes']?.number
-        })
-
         const result = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
 
         if (!result.success) {
-          console.error(`❌ 创建Activity失败 [${entry.activity}]:`, result.error)
+          console.error('创建Activity失败:', result.error)
         } else {
-          console.log(`✅ Activity创建成功 [${entry.activity}], ID:`, result.pageId)
+          console.log('Activity创建成功，ID:', result.pageId)
         }
 
       } catch (error) {
@@ -2658,46 +2516,68 @@ Page({
       }
     }
 
-    // ⭐ 所有活动创建完成后，更新各个关联的待办事项状态
-    const todoUpdates = new Map() // todoId -> {minutes, todoTitle, todoStatus}
-
-    // 收集所有关联的待办及其投入时间和状态
-    allEntries.forEach(entry => {
-      if (entry.todoId) {
-        if (!todoUpdates.has(entry.todoId)) {
-          todoUpdates.set(entry.todoId, {
-            minutes: 0,
-            todoTitle: entry.todoTitle || '未知待办',
-            todoStatus: entry.todoStatus || '进行中' // ⭐ 收集用户选择的状态
-          })
-        }
-        const update = todoUpdates.get(entry.todoId)
-        update.minutes += entry.minutes
-        // 如果当前条目有状态，使用它（优先最后一个）
-        if (entry.todoStatus) {
-          update.todoStatus = entry.todoStatus
-        }
-      }
-    })
-
-    // 更新每个待办的状态
-    for (const [todoId, update] of todoUpdates) {
+    // ⭐ 所有活动创建完成后，更新待办事项状态
+    if (this.data.selectedTodoId && this.data.selectedTodoInfo) {
       try {
-        console.log('更新待办事项状态:', todoId, '投入时间:', update.minutes, '分钟', '目标状态:', update.todoStatus)
+        console.log('更新待办事项状态:', this.data.selectedTodoId)
 
-        // ⭐ 直接设置用户选择的状态
-        const updateResult = await notionApiService.updatePageProperties(
+        const todo = this.data.selectedTodoInfo
+        const currentStatus = todo.status
+        const estimatedMinutes = todo.estimatedMinutes
+        const actualMinutes = todo.actualMinutes || 0
+
+        // 计算新的实际时长（当前累计 + 本次新增）
+        const totalMinutes = allEntries.reduce((sum, e) => sum + (e.minutes || 0), 0)
+        const newActualMinutes = actualMinutes + totalMinutes
+
+        // 智能更新状态
+        const updateResult = await notionApiService.smartUpdateTodoStatus(
           notionConfig.apiKey,
-          todoId,
-          {
-            'Status': {
-              select: { name: update.todoStatus }
-            }
-          }
+          this.data.selectedTodoId,
+          newActualMinutes,
+          estimatedMinutes,
+          currentStatus
         )
 
         if (updateResult.success) {
-          console.log(`✅ 待办"${update.todoTitle}"状态更新为"${update.todoStatus}"`)
+          console.log('待办事项状态更新成功')
+
+          // 如果状态从"待办"变为"进行中"，给用户提示
+          if (currentStatus === '待办') {
+            wx.showToast({
+              title: '待办已开始',
+              icon: 'success',
+              duration: 1500
+            })
+          }
+
+          // 如果已达到预计时长，提示用户
+          if (newActualMinutes >= estimatedMinutes && estimatedMinutes > 0) {
+            wx.showModal({
+              title: '待办进度提醒',
+              content: `"${todo.title}"已达到预计时长（${estimatedMinutes}分钟），是否已完成？`,
+              confirmText: '已完成',
+              cancelText: '继续',
+              success: async (res) => {
+                if (res.confirm) {
+                  // 用户确认完成，更新为已完成状态
+                  await notionApiService.updateTodoPage(
+                    notionConfig.apiKey,
+                    this.data.selectedTodoId,
+                    { status: '已完成' }
+                  )
+                  wx.showToast({
+                    title: '待办已完成',
+                    icon: 'success'
+                  })
+                  // 清除待办选择
+                  this.clearTodoSelection()
+                  // 重新加载待办列表
+                  this.loadAvailableTodos()
+                }
+              }
+            })
+          }
         } else {
           console.error('待办事项状态更新失败:', updateResult.error)
         }
@@ -2717,10 +2597,10 @@ Page({
       id: this.data.isEditMode ? this.data.originalMemo.id : 'memo_' + Date.now(),
       content: finalContent.trim(),
       type: this.data.inputType,
-      
+      recordMode: this.data.recordMode,
       tags: this.data.selectedTags,
       timestamp: finalTimestamp,
-      
+      isPlanning: this.data.recordMode === 'planning',
       userId: currentUser?.id || 'default_user',
       valuableTimeEntries: this.data.valuableTimeEntries || [],
       neutralTimeEntries: this.data.neutralTimeEntries || [],
@@ -2762,7 +2642,7 @@ Page({
       })
 
       // 已禁用自动拆分规划内容创建待办功能
-      // if (false) {
+      // if (this.data.recordMode === 'planning') {
       //   const todoItems = this.splitPlanningContent(memo.content)
       //   if (todoItems.length > 0) {
       //     await this.createTodosFromPlanning(memo, todoItems)
@@ -2837,7 +2717,7 @@ Page({
   updateCanSave: function() {
     let canSave = false
     
-    if (false) {
+    if (this.data.recordMode === 'planning') {
       // 规划模式检查textContent
       canSave = this.data.textContent && this.data.textContent.trim().length > 0
     } else {
@@ -2852,38 +2732,14 @@ Page({
   },
 
   // 加载可关联的目标
-  loadAvailableGoals: async function() {
+  loadAvailableGoals: function() {
     try {
-      const currentUser = userManager.getCurrentUser()
-      if (!currentUser || !currentUser.notionConfig) {
-        console.log('⚠️ 未配置Notion，无法加载目标')
-        this.setData({ availableGoals: [] })
-        return
-      }
-
-      const apiKey = currentUser.notionConfig.apiKey
-      const goalsDatabaseId = currentUser.notionConfig.databases?.goals
-
-      if (!goalsDatabaseId) {
-        console.log('⚠️ 未配置目标库ID')
-        this.setData({ availableGoals: [] })
-        return
-      }
-
-      console.log('🎯 开始从Notion加载目标...')
-      const result = await notionApiService.queryGoals(apiKey, goalsDatabaseId, {
-        status: '进行中'
+      // 只获取进行中的目标
+      const goals = app.getGoals().filter(goal => goal.status === '进行中')
+      console.log('📋 加载可关联目标:', goals.length, '个')
+      this.setData({
+        availableGoals: goals
       })
-
-      if (result.success) {
-        console.log('✅ 成功加载目标:', result.goals.length, '个')
-        this.setData({
-          availableGoals: result.goals
-        })
-      } else {
-        console.error('❌ 加载目标失败:', result.error)
-        this.setData({ availableGoals: [] })
-      }
     } catch (error) {
       console.error('加载可关联目标失败:', error)
       this.setData({
@@ -2931,47 +2787,6 @@ Page({
     }
   },
 
-  // 活动待办选择变化 ⭐ 新增
-  onActivityTodoChange: function(e) {
-    const type = e.currentTarget.dataset.type
-    const index = parseInt(e.detail.value)
-
-    console.log('活动待办选择变化:', { type, index, todo: this.data.availableTodos[index] })
-
-    if (type === 'valuable') {
-      this.setData({
-        currentActivityTodoIndex: index,
-        currentActivityTodoStatus: '进行中' // 重置状态为默认值
-      })
-    } else if (type === 'neutral') {
-      this.setData({
-        currentNeutralActivityTodoIndex: index,
-        currentNeutralActivityTodoStatus: '进行中'
-      })
-    } else if (type === 'wasteful') {
-      this.setData({
-        currentWastefulActivityTodoIndex: index,
-        currentWastefulActivityTodoStatus: '进行中'
-      })
-    }
-  },
-
-  // 选择待办状态 ⭐ 新增
-  selectTodoStatus: function(e) {
-    const status = e.currentTarget.dataset.status
-    const type = e.currentTarget.dataset.type
-
-    console.log('选择待办状态:', { type, status })
-
-    if (type === 'valuable') {
-      this.setData({ currentActivityTodoStatus: status })
-    } else if (type === 'neutral') {
-      this.setData({ currentNeutralActivityTodoStatus: status })
-    } else if (type === 'wasteful') {
-      this.setData({ currentWastefulActivityTodoStatus: status })
-    }
-  },
-
   // 加载待办事项列表 ⭐ 新增
   loadAvailableTodos: async function() {
     try {
@@ -3005,13 +2820,12 @@ Page({
       const result = await notionApiService.queryTodos(apiKey, todosDatabaseId, options)
 
       if (result.success) {
-        console.log(`✅ 成功加载 ${result.todos.length} 个待办事项`)
-        console.log('待办列表详情:', result.todos.map(t => ({ id: t.id, title: t.title })))
+        console.log(`加载到 ${result.todos.length} 个待办事项`)
         this.setData({
           availableTodos: result.todos
         })
       } else {
-        console.error('❌ 加载待办事项失败:', result.error)
+        console.error('加载待办事项失败:', result.error)
         wx.showToast({
           title: '加载待办失败',
           icon: 'none'
@@ -3265,28 +3079,15 @@ Page({
     const parsedContent = this.parseContentForEdit(memo.content, memo.type, memo.recordMode)
     
     // 计算已有时间投入数据的总时间
-    const existingValuableEntries = memo.valuableTimeEntries || []
-    const existingNeutralEntries = memo.neutralTimeEntries || []
-    const existingWastefulEntries = memo.wastefulTimeEntries || []
-
-    const totalValuableMinutes = existingValuableEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0)
-    const totalNeutralMinutes = existingNeutralEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0)
-    const totalWastefulMinutes = existingWastefulEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0)
-
-    console.log('加载编辑模式的时间投入数据:', {
-      valuableCount: existingValuableEntries.length,
-      neutralCount: existingNeutralEntries.length,
-      wastefulCount: existingWastefulEntries.length,
-      totalValuableMinutes,
-      totalNeutralMinutes,
-      totalWastefulMinutes
-    })
-
+    const existingTimeEntries = memo.valuableTimeEntries || []
+    const existingTotalMinutes = existingTimeEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0)
+    
     this.setData({
       isEditMode: true,
       editingMemoId: memoId,
       originalMemo: memo,
       inputType: memo.type,
+      recordMode: memo.recordMode || 'normal',
       textContent: parsedContent.textContent,
       voiceContent: parsedContent.voiceContent,
       neutralContent: parsedContent.neutralContent,
@@ -3297,21 +3098,17 @@ Page({
       goalTimeInvestment: memo.goalTimeInvestment || 60,
       goalValueAssessment: memo.goalValueAssessment || 'medium',
       goalInvestmentNote: memo.goalInvestmentNote || '',
-      // 加载已有的时间投入数据（三种类型）
-      valuableTimeEntries: existingValuableEntries,
-      neutralTimeEntries: existingNeutralEntries,
-      wastefulTimeEntries: existingWastefulEntries,
-      totalValuableMinutes: totalValuableMinutes,
-      totalNeutralMinutes: totalNeutralMinutes,
-      totalWastefulMinutes: totalWastefulMinutes,
+      // 加载已有的时间投入数据
+      valuableTimeEntries: existingTimeEntries,
+      totalValuableMinutes: existingTotalMinutes,
       selectedDateType: selectedDateType,
       customDate: dateStr,
       customDateDisplay: displayText,
       startTimeIndex: startTimeIndex,
       endTimeIndex: endTimeIndex,
-      startTimeDisplay: this.data.timeOptions && this.data.timeOptions[startTimeIndex] ?
+      startTimeDisplay: this.data.timeOptions && this.data.timeOptions[startTimeIndex] ? 
         this.data.timeOptions[startTimeIndex].label : '上午 06:00',
-      endTimeDisplay: this.data.timeOptions && this.data.timeOptions[endTimeIndex] ?
+      endTimeDisplay: this.data.timeOptions && this.data.timeOptions[endTimeIndex] ? 
         this.data.timeOptions[endTimeIndex].label : '上午 07:00',
       selectedTimeDisplay: this.getSelectedTimeDisplay(selectedDateType, startTimeIndex, endTimeIndex)
     })
@@ -3533,86 +3330,6 @@ Page({
         title: '创建待办失败',
         icon: 'none'
       })
-    }
-  },
-
-  /**
-   * 从Notion数据库查询最大ID并生成下一个自增ID
-   * @param {string} apiKey - Notion API Key
-   * @param {string} databaseId - Main Records数据库ID
-   * @returns {Promise<number>} 下一个自增ID
-   */
-  getNextMainRecordSeqIdFromNotion: async function(apiKey, databaseId) {
-    try {
-      console.log('🔍 从Notion查询最大主记录ID...')
-
-      // 查询数据库，按Name字段降序排序，取第一条
-      const queryBody = {
-        sorts: [
-          {
-            property: 'Name',
-            direction: 'descending'
-          }
-        ],
-        page_size: 1 // 只需要第一条记录
-      }
-
-      return new Promise((resolve, reject) => {
-        wx.request({
-          url: `https://api.notion.com/v1/databases/${databaseId}/query`,
-          method: 'POST',
-          header: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Notion-Version': '2022-06-28',
-            'Content-Type': 'application/json'
-          },
-          data: queryBody,
-          timeout: 10000,
-          success: (res) => {
-            if (res.statusCode === 200 && res.data.results && res.data.results.length > 0) {
-              // 获取第一条记录的Name字段值
-              const firstRecord = res.data.results[0]
-              const nameProperty = firstRecord.properties.Name
-
-              let maxId = 0
-              if (nameProperty && nameProperty.title && nameProperty.title.length > 0) {
-                const nameValue = nameProperty.title[0].plain_text
-                const parsedId = parseInt(nameValue)
-                if (!isNaN(parsedId)) {
-                  maxId = parsedId
-                }
-              }
-
-              const nextId = maxId + 1
-              console.log('✅ 当前最大ID:', maxId, '下一个ID:', nextId)
-              resolve(nextId)
-            } else if (res.statusCode === 200 && res.data.results && res.data.results.length === 0) {
-              // 数据库为空，从1开始
-              console.log('📋 数据库为空，从ID 1开始')
-              resolve(1)
-            } else {
-              console.error('❌ 查询Notion失败:', res.statusCode, res.data)
-              // 失败时使用时间戳作为fallback
-              const fallbackId = Date.now()
-              console.warn('⚠️ 使用时间戳作为fallback ID:', fallbackId)
-              resolve(fallbackId)
-            }
-          },
-          fail: (err) => {
-            console.error('❌ 查询Notion请求失败:', err)
-            // 失败时使用时间戳作为fallback
-            const fallbackId = Date.now()
-            console.warn('⚠️ 使用时间戳作为fallback ID:', fallbackId)
-            resolve(fallbackId)
-          }
-        })
-      })
-    } catch (error) {
-      console.error('❌ getNextMainRecordSeqIdFromNotion异常:', error)
-      // 失败时使用时间戳作为fallback
-      const fallbackId = Date.now()
-      console.warn('⚠️ 使用时间戳作为fallback ID:', fallbackId)
-      return fallbackId
     }
   }
 })

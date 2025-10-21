@@ -63,7 +63,7 @@
 
     <view class="form-item">
       <view class="form-label">起床时间</view>
-      <picker mode="time" value="{{statusData.wakeUpTime}}" bindchange="onWakeUpTimeChange">
+      <picker mode="selector" range="{{timeOptions}}" value="{{wakeUpTimeIndex}}" bindchange="onWakeUpTimeChange">
         <view class="picker-input">
           <text>{{statusData.wakeUpTime || '选择时间'}}</text>
           <text class="arrow">▼</text>
@@ -73,7 +73,7 @@
 
     <view class="form-item">
       <view class="form-label">睡觉时间</view>
-      <picker mode="time" value="{{statusData.bedTime}}" bindchange="onBedTimeChange">
+      <picker mode="selector" range="{{timeOptions}}" value="{{bedTimeIndex}}" bindchange="onBedTimeChange">
         <view class="picker-input">
           <text>{{statusData.bedTime || '选择时间'}}</text>
           <text class="arrow">▼</text>
@@ -102,8 +102,8 @@
     <view class="section-title">⚖️ 身体数据</view>
 
     <view class="form-item">
-      <view class="form-label">体重 (kg)</view>
-      <input class="form-input" type="digit" placeholder="如: 70" value="{{statusData.weight}}" bindinput="onWeightInput" />
+      <view class="form-label">体重 (斤)</view>
+      <input class="form-input" type="digit" placeholder="如: 140" value="{{statusData.weight}}" bindinput="onWeightInput" />
     </view>
 
     <view class="form-item">

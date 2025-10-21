@@ -40,13 +40,6 @@ Page({
       averageProgress: 0
     },
     todayGoals: [],
-    // 快速添加目标
-    showQuickGoalModal: false,
-    quickGoalForm: {
-      title: '',
-      type: 'short',
-      category: '个人成长'
-    },
     // 今日待办
     todayTodos: [],
     todayTodosStats: {
@@ -55,14 +48,8 @@ Page({
       inProgress: 0,
       completed: 0
     },
-    quickGoalTypes: [
-      { value: 'short', label: '短期目标 (1-3个月)' },
-      { value: 'medium', label: '中期目标 (3-12个月)' },
-      { value: 'long', label: '长期目标 (1年以上)' }
-    ],
-    quickGoalCategories: ['个人成长', '健康生活', '职业发展', '学习技能', '人际关系', '财务管理', '兴趣爱好', '旅行体验'],
-    quickGoalTypeIndex: 0,
-    quickGoalCategoryIndex: 0
+    // 进行中待办
+    inProgressTodos: []
   },
 
   onLoad: function() {
@@ -118,6 +105,9 @@ Page({
     // 获取今日目标
     this.loadTodayGoals()
 
+    // 获取进行中待办
+    this.loadInProgressTodos()
+
     // 获取今日待办
     this.loadTodayTodos()
 
@@ -132,9 +122,20 @@ Page({
   loadCurrentQuote: function() {
     const currentQuote = app.globalData.currentQuote
     const fallbackQuote = '记录生活的美好，让每个瞬间都有意义。'
-    
-    if (typeof currentQuote === 'object' && currentQuote.content) {
-      // 新版本的箴言对象
+
+    if (typeof currentQuote === 'object' && currentQuote.quote) {
+      // Notion箴言对象格式
+      this.setData({
+        currentQuote: currentQuote.quote,
+        currentQuoteData: {
+          author: currentQuote.author,
+          source: currentQuote.source,
+          category: currentQuote.category,
+          tags: currentQuote.tags || []
+        }
+      })
+    } else if (typeof currentQuote === 'object' && currentQuote.content) {
+      // 旧版本的箴言对象
       this.setData({
         currentQuote: currentQuote.content,
         currentQuoteData: currentQuote
@@ -323,57 +324,197 @@ Page({
   },
 
   // 加载今日待办（昨日规划）
-  loadTodayPlanning: function() {
-    const memoList = app.getMemoList()
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toDateString()
-
-    // 找到昨天最后一条规划记录（作为今日待办）
-    const yesterdayPlannings = memoList.filter(memo => {
-      const memoDate = new Date(memo.timestamp).toDateString()
-      return memoDate === yesterdayStr && memo.isPlanning
-    })
-
-    if (yesterdayPlannings.length > 0) {
-      // 按时间排序，取最后一条
-      yesterdayPlannings.sort((a, b) => b.timestamp - a.timestamp)
-      const latestPlanning = yesterdayPlannings[0]
-      const planningDate = new Date(latestPlanning.timestamp)
-
-      this.setData({
-        todayPlanning: {
-          ...latestPlanning,
-          formattedTime: this.formatRelativeTime(planningDate)
-        },
-        planningDate: `昨日规划（${planningDate.getMonth() + 1}月${planningDate.getDate()}日）`
-      })
-    } else {
-      // 如果没有昨天的规划，查找今天的规划（刚制定的今日规划）
-      const today = new Date().toDateString()
-      const todayPlannings = memoList.filter(memo => {
-        const memoDate = new Date(memo.timestamp).toDateString()
-        return memoDate === today && memo.isPlanning
-      })
-
-      if (todayPlannings.length > 0) {
-        todayPlannings.sort((a, b) => b.timestamp - a.timestamp)
-        const latestPlanning = todayPlannings[0]
-
+  // 加载今日待办重点（昨日规划）
+  loadTodayPlanning: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('未配置Notion，无法加载今日规划')
         this.setData({
-          todayPlanning: {
-            ...latestPlanning,
-            formattedTime: this.formatRelativeTime(new Date(latestPlanning.timestamp))
-          },
-          planningDate: '今日规划（刚制定）'
+          todayPlanning: null,
+          planningDate: ''
         })
+        return
+      }
+
+      const { apiKey, databases } = currentUser.notionConfig
+      const todosDatabaseId = databases?.todos || currentUser.notionConfig.todosDatabaseId
+
+      if (!todosDatabaseId) {
+        console.log('未配置待办库ID')
+        this.setData({
+          todayPlanning: null,
+          planningDate: ''
+        })
+        return
+      }
+
+      console.log('从Notion加载今日规划...')
+
+      // 计算昨天的日期
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+      // 查询昨天的规划类型待办
+      const result = await notionApiService.queryTodos(apiKey, todosDatabaseId, {
+        scope: 'all'
+      })
+
+      if (result.success && result.todos.length > 0) {
+        // 筛选昨天的明日规划类型待办
+        const yesterdayPlannings = result.todos.filter(todo => {
+          return todo.todoType === '明日规划 (Planning)' &&
+                 todo.dueDate &&
+                 todo.dueDate.startsWith(yesterdayStr)
+        })
+
+        if (yesterdayPlannings.length > 0) {
+          // 取第一个
+          const planning = yesterdayPlannings[0]
+
+          // 映射字段名
+          const priorityClassMap = {
+            '紧急重要': 'urgent-important',
+            '重要不紧急': 'important',
+            '紧急不重要': 'urgent',
+            '不紧急不重要': 'normal'
+          }
+
+          const priorityTextMap = {
+            '紧急重要': '🔴 紧急重要',
+            '重要不紧急': '🟠 重要不紧急',
+            '紧急不重要': '🟡 紧急不重要',
+            '不紧急不重要': '⚪ 不紧急不重要'
+          }
+
+          this.setData({
+            todayPlanning: {
+              title: planning.title,
+              description: planning.description,
+              dueDate: planning.dueDate,
+              dueDateDisplay: yesterdayStr,
+              priorityClass: priorityClassMap[planning.priority] || 'normal',
+              priorityText: priorityTextMap[planning.priority] || planning.priority
+            },
+            planningDate: `昨日规划（${yesterday.getMonth() + 1}月${yesterday.getDate()}日）`
+          })
+          console.log('加载到昨日规划:', planning.title)
+        } else {
+          console.log('暂无昨日规划')
+          this.setData({
+            todayPlanning: null,
+            planningDate: ''
+          })
+        }
       } else {
-        // 清空显示
+        console.log('查询待办失败或无数据')
         this.setData({
           todayPlanning: null,
           planningDate: ''
         })
       }
+    } catch (error) {
+      console.error('加载今日规划失败:', error)
+      this.setData({
+        todayPlanning: null,
+        planningDate: ''
+      })
+    }
+  },
+
+  // 加载进行中待办 ⭐ 新增
+  loadInProgressTodos: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      console.log('🔍 [进行中待办] 当前用户:', currentUser ? '已登录' : '未登录')
+      console.log('🔍 [进行中待办] notionConfig:', JSON.stringify(currentUser?.notionConfig, null, 2))
+
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('❌ [进行中待办] 未配置Notion，无法加载进行中待办')
+        return
+      }
+
+      const { apiKey, databases } = currentUser.notionConfig
+      const todosDatabaseId = databases?.todos || currentUser.notionConfig.todosDatabaseId || currentUser.notionConfig.databaseId
+
+      console.log('🔍 [进行中待办] databases对象:', databases)
+      console.log('🔍 [进行中待办] 待办库ID:', todosDatabaseId)
+
+      if (!todosDatabaseId) {
+        console.log('❌ [进行中待办] 未配置待办库ID')
+        return
+      }
+
+      console.log('⏳ [进行中待办] 开始从Notion加载...')
+
+      // 查询进行中的待办
+      const result = await notionApiService.queryTodos(apiKey, todosDatabaseId, {
+        scope: '进行中'
+      })
+
+      console.log('✅ [进行中待办] Notion API调用结果:', result)
+
+      if (result.success && result.todos.length > 0) {
+        // 处理数据，添加进度百分比
+        const todos = result.todos.map(todo => {
+          const progressPercentage = todo.estimatedMinutes > 0
+            ? Math.min(Math.round((todo.actualMinutes / todo.estimatedMinutes) * 100), 100)
+            : 0
+
+          console.log(`📋 [进行中待办] ${todo.title} - ${todo.actualMinutes}/${todo.estimatedMinutes}分钟 (${progressPercentage}%)`)
+
+          return {
+            ...todo,
+            progressPercentage: progressPercentage
+          }
+        })
+
+        console.log(`✅ [进行中待办] 成功加载 ${todos.length} 个进行中待办`)
+        this.setData({
+          inProgressTodos: todos
+        })
+      } else {
+        console.log('⚠️ [进行中待办] 暂无进行中待办')
+        this.setData({
+          inProgressTodos: []
+        })
+      }
+    } catch (error) {
+      console.error('❌ [进行中待办] 加载失败:', error)
+      this.setData({
+        inProgressTodos: []
+      })
+    }
+  },
+
+  // 跳转到memo页面并预填待办 ⭐ 新增
+  goToMemoWithTodo: function(e) {
+    const todoId = e.currentTarget.dataset.todoId
+    const todo = this.data.inProgressTodos.find(t => t.id === todoId)
+
+    if (todo) {
+      // 跳转到memo页面，并通过URL参数传递待办ID
+      wx.switchTab({
+        url: '/pages/memo/memo',
+        success: function() {
+          // 获取memo页面实例
+          const pages = getCurrentPages()
+          const memoPage = pages[pages.length - 1]
+          if (memoPage && memoPage.route === 'pages/memo/memo') {
+            // 预设待办关联
+            memoPage.setData({
+              selectedTodoId: todoId,
+              selectedTodoInfo: todo,
+              todoFilterScope: '进行中'
+            })
+            // 重新加载待办列表
+            if (memoPage.loadAvailableTodos) {
+              memoPage.loadAvailableTodos()
+            }
+          }
+        }
+      })
     }
   },
 
@@ -421,22 +562,10 @@ Page({
   },
 
 
-  // 跳转到规划记录
-  goToPlanningMemo: function() {
+  // 跳转到待办管理
+  goToGoalsTodos: function() {
     wx.switchTab({
-      url: '/pages/memo/memo',
-      success: function() {
-        // 设置为规划模式
-        const pages = getCurrentPages()
-        const memoPage = pages[pages.length - 1]
-        if (memoPage && memoPage.route === 'pages/memo/memo') {
-          memoPage.setData({ 
-            recordMode: 'planning',
-            inputType: 'text'
-          })
-          memoPage.updateCurrentTemplates()
-        }
-      }
+      url: '/pages/goals-todos/goals-todos'
     })
   },
 
@@ -849,12 +978,72 @@ Page({
   },
 
   // 加载目标统计数据
-  loadGoalStats: function() {
+  loadGoalStats: async function() {
     try {
-      const goalStats = app.getGoalStats()
-      this.setData({
-        goalStats: goalStats
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('未配置Notion，无法加载目标统计')
+        this.setData({
+          goalStats: {
+            total: 0,
+            active: 0,
+            completed: 0,
+            averageProgress: 0
+          }
+        })
+        return
+      }
+
+      const { apiKey, databases } = currentUser.notionConfig
+      const goalsDatabaseId = databases?.goals || currentUser.notionConfig.goalsDatabaseId
+
+      if (!goalsDatabaseId) {
+        console.log('未配置目标库ID')
+        this.setData({
+          goalStats: {
+            total: 0,
+            active: 0,
+            completed: 0,
+            averageProgress: 0
+          }
+        })
+        return
+      }
+
+      console.log('从Notion加载目标统计...')
+
+      // 查询所有目标
+      const result = await notionApiService.queryGoals(apiKey, goalsDatabaseId, {
+        status: 'all' // 查询所有状态的目标
       })
+
+      if (result.success && result.goals) {
+        const goals = result.goals
+        const active = goals.filter(g => g.status === '进行中').length
+        const completed = goals.filter(g => g.status === '已完成').length
+        const totalProgress = goals.reduce((sum, g) => sum + (g.progress || 0), 0)
+
+        console.log(`目标统计: 总计${goals.length}个, 进行中${active}个, 已完成${completed}个`)
+
+        this.setData({
+          goalStats: {
+            total: goals.length,
+            active: active,
+            completed: completed,
+            averageProgress: goals.length > 0 ? Math.round(totalProgress / goals.length) : 0
+          }
+        })
+      } else {
+        console.log('查询目标失败或无数据')
+        this.setData({
+          goalStats: {
+            total: 0,
+            active: 0,
+            completed: 0,
+            averageProgress: 0
+          }
+        })
+      }
     } catch (error) {
       console.error('加载目标统计失败:', error)
       this.setData({
@@ -869,12 +1058,48 @@ Page({
   },
 
   // 加载今日目标
-  loadTodayGoals: function() {
+  loadTodayGoals: async function() {
     try {
-      const todayGoals = app.getTodayGoals()
-      this.setData({
-        todayGoals: todayGoals
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('未配置Notion，无法加载今日目标')
+        this.setData({
+          todayGoals: []
+        })
+        return
+      }
+
+      const { apiKey, databases } = currentUser.notionConfig
+      const goalsDatabaseId = databases?.goals || currentUser.notionConfig.goalsDatabaseId
+
+      if (!goalsDatabaseId) {
+        console.log('未配置目标库ID')
+        this.setData({
+          todayGoals: []
+        })
+        return
+      }
+
+      console.log('从Notion加载今日目标...')
+
+      // 查询进行中的目标
+      const result = await notionApiService.queryGoals(apiKey, goalsDatabaseId, {
+        status: '进行中'
       })
+
+      if (result.success && result.goals) {
+        // 取前3个进行中的目标
+        const todayGoals = result.goals.slice(0, 3)
+        console.log(`加载到${todayGoals.length}个今日目标`)
+        this.setData({
+          todayGoals: todayGoals
+        })
+      } else {
+        console.log('查询今日目标失败或无数据')
+        this.setData({
+          todayGoals: []
+        })
+      }
     } catch (error) {
       console.error('加载今日目标失败:', error)
       this.setData({
@@ -883,95 +1108,6 @@ Page({
     }
   },
 
-  // 跳转到目标管理页面
-  goToGoalManager: function() {
-    wx.navigateTo({
-      url: '/pages/goal-manager/goal-manager'
-    })
-  },
-
-  // 快速添加目标
-  quickAddGoal: function() {
-    this.setData({
-      showQuickGoalModal: true,
-      quickGoalForm: {
-        title: '',
-        type: 'short',
-        category: '个人成长'
-      },
-      quickGoalTypeIndex: 0,
-      quickGoalCategoryIndex: 0
-    })
-  },
-
-  // 关闭快速添加目标弹窗
-  closeQuickGoalModal: function() {
-    this.setData({
-      showQuickGoalModal: false
-    })
-  },
-
-  // 快速目标标题输入
-  onQuickGoalTitleInput: function(e) {
-    this.setData({
-      'quickGoalForm.title': e.detail.value
-    })
-  },
-
-  // 快速目标类型选择
-  onQuickGoalTypeChange: function(e) {
-    const index = parseInt(e.detail.value)
-    this.setData({
-      quickGoalTypeIndex: index,
-      'quickGoalForm.type': this.data.quickGoalTypes[index].value
-    })
-  },
-
-  // 快速目标分类选择
-  onQuickGoalCategoryChange: function(e) {
-    const index = parseInt(e.detail.value)
-    this.setData({
-      quickGoalCategoryIndex: index,
-      'quickGoalForm.category': this.data.quickGoalCategories[index]
-    })
-  },
-
-  // 确认快速添加目标
-  confirmQuickAddGoal: function() {
-    if (!this.data.quickGoalForm.title.trim()) {
-      wx.showToast({
-        title: '请输入目标标题',
-        icon: 'none'
-      })
-      return
-    }
-
-    try {
-      const goalData = {
-        ...this.data.quickGoalForm,
-        title: this.data.quickGoalForm.title.trim(),
-        priority: 'medium', // 默认中优先级
-        description: '' // 快速添加时描述为空
-      }
-
-      app.createGoal(goalData)
-      
-      wx.showToast({
-        title: '目标创建成功',
-        icon: 'success'
-      })
-
-      this.closeQuickGoalModal()
-      this.loadGoalStats()
-      this.loadTodayGoals()
-    } catch (error) {
-      console.error('创建目标失败:', error)
-      wx.showToast({
-        title: '创建失败',
-        icon: 'none'
-      })
-    }
-  },
 
   // ========== 今日待办相关方法 ==========
 

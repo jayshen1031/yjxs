@@ -1,27 +1,10 @@
 <view class="container">
-  <!-- 记录模式选择 -->
-  <view class="mode-selector">
-    <view class="selector-item {{ recordMode === 'normal' ? 'active' : '' }}" bindtap="selectNormalMode">
-      <text class="icon">📝</text>
-      <text class="label">日常记录</text>
-    </view>
-    <view class="selector-item {{ recordMode === 'planning' ? 'active' : '' }}" bindtap="selectPlanningMode">
-      <text class="icon">📋</text>
-      <text class="label">明日规划</text>
-    </view>
-  </view>
-
-
   <!-- 记录输入区域 -->
   <view class="input-section fade-in">
     <view class="card">
       <view class="card-content">
-        <view class="title">{{ recordMode === 'planning' ? '明日规划' : '过去1小时的价值回顾' }}</view>
-        <view wx:if="{{ recordMode === 'planning' }}" class="planning-tip">
-          <text class="tip-icon">💡</text>
-          <text class="tip-text">规划明天的重要事项，让每一天都有方向</text>
-        </view>
-        <view wx:else class="value-tip">
+        <view class="title">过去1小时的价值回顾</view>
+        <view class="value-tip">
           <text class="tip-icon">🎯</text>
           <text class="tip-text">分类记录过去1小时的活动，提升自我认知</text>
         </view>
@@ -36,7 +19,7 @@
         </view>
 
         <!-- 价值分类输入 -->
-        <view wx:if="{{ recordMode === 'normal' }}" class="value-categories">
+        <view class="value-categories">
           <!-- Tab导航栏 -->
           <view class="activity-tabs">
             <view
@@ -119,6 +102,11 @@
                   <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="entry-tags">
                     <text class="tag-item" wx:for="{{ item.tags }}" wx:key="tag" wx:for-item="tag">{{ tag }}</text>
                   </view>
+                  <!-- 关联信息显示 ⭐ 新增 -->
+                  <view wx:if="{{ item.goalTitle || item.todoTitle }}" class="entry-associations">
+                    <text wx:if="{{ item.goalTitle }}" class="association-item goal-association">🎯 {{ item.goalTitle }}</text>
+                    <text wx:if="{{ item.todoTitle }}" class="association-item todo-association">✅ {{ item.todoTitle }}</text>
+                  </view>
                 </view>
                 <view class="total-time">
                   <text class="total-label">总计：</text>
@@ -191,6 +179,47 @@
                       <text>{{ currentActivityGoalIndex >= 0 ? availableGoals[currentActivityGoalIndex].title : '选择目标' }}</text>
                     </view>
                   </picker>
+                </view>
+
+                <!-- 待办关联选择 ⭐ 新增 -->
+                <view class="todo-selector">
+                  <text class="todo-label">✅ 关联待办（可选）：</text>
+                  <picker
+                    class="todo-picker"
+                    mode="selector"
+                    range="{{ availableTodos }}"
+                    range-key="title"
+                    value="{{ currentActivityTodoIndex }}"
+                    bindchange="onActivityTodoChange"
+                    data-type="valuable"
+                  >
+                    <view class="picker-display">
+                      <text>{{ currentActivityTodoIndex >= 0 ? availableTodos[currentActivityTodoIndex].title : '选择待办' }}</text>
+                    </view>
+                  </picker>
+
+                  <!-- 待办状态选择 ⭐ 新增 -->
+                  <view wx:if="{{ currentActivityTodoIndex >= 0 }}" class="todo-status-selector">
+                    <text class="status-label">标记为：</text>
+                    <view class="status-options">
+                      <view
+                        class="status-option {{ currentActivityTodoStatus === '进行中' ? 'selected' : '' }}"
+                        bindtap="selectTodoStatus"
+                        data-status="进行中"
+                        data-type="valuable"
+                      >
+                        <text>▶️ 进行中</text>
+                      </view>
+                      <view
+                        class="status-option {{ currentActivityTodoStatus === '已完成' ? 'selected' : '' }}"
+                        bindtap="selectTodoStatus"
+                        data-status="已完成"
+                        data-type="valuable"
+                      >
+                        <text>✅ 已完成</text>
+                      </view>
+                    </view>
+                  </view>
                 </view>
 
                 <!-- 调试提示：显示当前状态 -->
@@ -273,6 +302,11 @@
                   <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="entry-tags">
                     <text class="tag-item" wx:for="{{ item.tags }}" wx:key="tag" wx:for-item="tag">{{ tag }}</text>
                   </view>
+                  <!-- 关联信息显示 ⭐ 新增 -->
+                  <view wx:if="{{ item.goalTitle || item.todoTitle }}" class="entry-associations">
+                    <text wx:if="{{ item.goalTitle }}" class="association-item goal-association">🎯 {{ item.goalTitle }}</text>
+                    <text wx:if="{{ item.todoTitle }}" class="association-item todo-association">✅ {{ item.todoTitle }}</text>
+                  </view>
                 </view>
                 <view class="total-time">
                   <text class="total-label">总计：</text>
@@ -345,6 +379,47 @@
                       <text>{{ currentNeutralActivityGoalIndex >= 0 ? availableGoals[currentNeutralActivityGoalIndex].title : '选择目标' }}</text>
                     </view>
                   </picker>
+                </view>
+
+                <!-- 待办关联选择 ⭐ 新增 -->
+                <view class="todo-selector">
+                  <text class="todo-label">✅ 关联待办（可选）：</text>
+                  <picker
+                    class="todo-picker"
+                    mode="selector"
+                    range="{{ availableTodos }}"
+                    range-key="title"
+                    value="{{ currentNeutralActivityTodoIndex }}"
+                    bindchange="onActivityTodoChange"
+                    data-type="neutral"
+                  >
+                    <view class="picker-display">
+                      <text>{{ currentNeutralActivityTodoIndex >= 0 ? availableTodos[currentNeutralActivityTodoIndex].title : '选择待办' }}</text>
+                    </view>
+                  </picker>
+
+                  <!-- 待办状态选择 ⭐ 新增 -->
+                  <view wx:if="{{ currentNeutralActivityTodoIndex >= 0 }}" class="todo-status-selector">
+                    <text class="status-label">标记为：</text>
+                    <view class="status-options">
+                      <view
+                        class="status-option {{ currentNeutralActivityTodoStatus === '进行中' ? 'selected' : '' }}"
+                        bindtap="selectTodoStatus"
+                        data-status="进行中"
+                        data-type="neutral"
+                      >
+                        <text>▶️ 进行中</text>
+                      </view>
+                      <view
+                        class="status-option {{ currentNeutralActivityTodoStatus === '已完成' ? 'selected' : '' }}"
+                        bindtap="selectTodoStatus"
+                        data-status="已完成"
+                        data-type="neutral"
+                      >
+                        <text>✅ 已完成</text>
+                      </view>
+                    </view>
+                  </view>
                 </view>
 
                 <!-- 调试提示：显示当前状态 -->
@@ -427,6 +502,11 @@
                   <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="entry-tags">
                     <text class="tag-item" wx:for="{{ item.tags }}" wx:key="tag" wx:for-item="tag">{{ tag }}</text>
                   </view>
+                  <!-- 关联信息显示 ⭐ 新增 -->
+                  <view wx:if="{{ item.goalTitle || item.todoTitle }}" class="entry-associations">
+                    <text wx:if="{{ item.goalTitle }}" class="association-item goal-association">🎯 {{ item.goalTitle }}</text>
+                    <text wx:if="{{ item.todoTitle }}" class="association-item todo-association">✅ {{ item.todoTitle }}</text>
+                  </view>
                 </view>
                 <view class="total-time">
                   <text class="total-label">总计：</text>
@@ -483,24 +563,6 @@
                   </view>
                 </view>
 
-                <!-- 目标关联选择 -->
-                <view class="goal-selector">
-                  <text class="goal-label">🎯 关联目标（可选）：</text>
-                  <picker
-                    class="goal-picker"
-                    mode="selector"
-                    range="{{ availableGoals }}"
-                    range-key="title"
-                    value="{{ currentWastefulActivityGoalIndex }}"
-                    bindchange="onActivityGoalChange"
-                    data-type="wasteful"
-                  >
-                    <view class="picker-display">
-                      <text>{{ currentWastefulActivityGoalIndex >= 0 ? availableGoals[currentWastefulActivityGoalIndex].title : '选择目标' }}</text>
-                    </view>
-                  </picker>
-                </view>
-
                 <!-- 调试提示：显示当前状态 -->
                 <view wx:if="{{ !canAddWastefulTimeEntry }}" class="debug-hint">
                   <text class="debug-text">
@@ -527,57 +589,14 @@
             </view>
           </view>
         </view>
-
-        <!-- 规划模式保持原有输入 -->
-        <view wx:if="{{ recordMode === 'planning' }}">
-          <view class="planning-input-header">
-            <view class="planning-input-title">
-              <text class="icon">📋</text>
-              <text>明日规划内容</text>
-            </view>
-            <button class="voice-input-btn {{ isRecording && currentVoiceType === 'planning' ? 'recording' : '' }}" bindtap="toggleVoiceInput" data-type="planning">
-              <text class="btn-icon">{{ isRecording && currentVoiceType === 'planning' ? '⏹️' : '🎤' }}</text>
-            </button>
-          </view>
-          <textarea 
-            class="memo-textarea planning"
-            placeholder="明天我要做的重要事情..."
-            value="{{ textContent }}"
-            bindinput="onTextInput"
-            maxlength="{{ maxLength }}"
-            auto-focus="{{ inputType === 'text' }}"
-          />
-          <view class="textarea-footer">
-            <view class="char-count">{{ textContent.length }}/{{ maxLength }}</view>
-            <button wx:if="{{ textContent.length > 0 }}"
-                    class="format-btn"
-                    bindtap="applyMarkdownFormatting"
-                    data-type="planning">
-              <text class="format-icon">✨</text>
-              <text class="format-text">格式化</text>
-            </button>
-          </view>
-
-          <!-- 规划时间提示 -->
-          <view class="planning-time-notice">
-            <text class="notice-icon">⏰</text>
-            <text class="notice-text">规划时间将自动记录为当前时刻</text>
-          </view>
-
-          <!-- 多待办提示 -->
-          <view class="planning-time-notice" style="margin-top: 12rpx; border-left-color: #6366f1;">
-            <text class="notice-icon">💡</text>
-            <text class="notice-text">多个待办事项请用<text style="font-weight: bold; color: #6366f1;">换行</text>分隔，保存时可智能创建</text>
-          </view>
-        </view>
       </view>
     </view>
 
   </view>
 
 
-  <!-- 时间选择 (明日规划模式下隐藏) -->
-  <view class="card" wx:if="{{ recordMode === 'normal' }}">
+  <!-- 时间选择 -->
+  <view class="card">
     <view class="card-content">
       <view class="subtitle">选择时间</view>
       <view class="time-tip">
@@ -683,214 +702,6 @@
     </view>
   </view>
 
-  <!-- 目标关联 -->
-  <view class="card" wx:if="{{ recordMode === 'normal' && availableGoals.length > 0 }}">
-    <view class="card-content">
-      <view class="subtitle">关联目标</view>
-      <view class="goal-association-tip">
-        <text class="tip-icon">🎯</text>
-        <text class="tip-text">将这条记录关联到目标，记录实现路径</text>
-      </view>
-      
-      <!-- 目标选择列表 -->
-      <view class="goal-selector">
-        <view 
-          class="goal-item {{ selectedGoalId === goal.id ? 'selected' : '' }}"
-          wx:for="{{ availableGoals }}"
-          wx:key="id"
-          wx:for-item="goal"
-          bindtap="selectGoal"
-          data-goal-id="{{ goal.id }}"
-        >
-          <view class="goal-header">
-            <view class="goal-title">{{ goal.title }}</view>
-            <view class="goal-type type-{{ goal.type }}">
-              {{ goal.type === 'short' ? '短期' : goal.type === 'medium' ? '中期' : '长期' }}
-            </view>
-          </view>
-          <view class="goal-meta">
-            <text class="goal-category">{{ goal.category }}</text>
-            <text class="goal-progress">{{ goal.progress }}%</text>
-          </view>
-          <view class="goal-progress-bar">
-            <view class="progress-fill" style="width: {{ goal.progress }}%"></view>
-          </view>
-        </view>
-      </view>
-      
-      <!-- 清除选择 -->
-      <view wx:if="{{ selectedGoalId }}" class="clear-selection">
-        <button class="btn btn-text" bindtap="clearGoalSelection">
-          <text>❌ 取消关联</text>
-        </button>
-      </view>
-      
-      <!-- 目标投入详情 -->
-      <view wx:if="{{ selectedGoalId }}" class="goal-investment-section">
-        <view class="investment-header">
-          <text class="icon">⏱️</text>
-          <text class="investment-title">投入评估</text>
-        </view>
-        
-        <!-- 时间投入 -->
-        <view class="investment-group">
-          <label class="investment-label">过去1小时对此目标的投入时间</label>
-          <view class="investment-hint">💡 记录过去1小时中花在这个目标上的时间</view>
-          <view class="time-input-row">
-            <slider 
-              value="{{ goalTimeInvestment }}" 
-              min="5" 
-              max="120" 
-              step="5"
-              show-value
-              bindchange="onTimeInvestmentChange"
-              activeColor="#6366f1"
-              backgroundColor="#e5e7eb"
-            />
-            <view class="time-display">{{ goalTimeInvestment }}分钟</view>
-          </view>
-        </view>
-        
-        <!-- 价值评估 -->
-        <view class="investment-group">
-          <label class="investment-label">价值评估</label>
-          <view class="value-selector">
-            <view 
-              class="value-item {{ goalValueAssessment === item.value ? 'selected' : '' }}"
-              wx:for="{{ valueOptions }}"
-              wx:key="value"
-              bindtap="selectValueAssessment"
-              data-value="{{ item.value }}"
-            >
-              <text class="value-emoji">{{ item.emoji }}</text>
-              <text class="value-text">{{ item.label }}</text>
-            </view>
-          </view>
-        </view>
-        
-        <!-- 收获说明 -->
-        <view class="investment-group">
-          <label class="investment-label">收获说明（可选）</label>
-          <textarea 
-            class="investment-textarea"
-            placeholder="简述本次为目标投入的收获或成果..."
-            value="{{ goalInvestmentNote }}"
-            bindinput="onInvestmentNoteInput"
-            maxlength="100"
-          />
-          <view class="char-count">{{ goalInvestmentNote.length }}/100</view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 待办事项关联 ⭐ 新增 -->
-  <view class="card" wx:if="{{ recordMode === 'normal' }}">
-    <view class="card-content">
-      <view class="subtitle">关联待办事项</view>
-      <view class="todo-association-tip">
-        <text class="tip-icon">✅</text>
-        <text class="tip-text">将时间投入关联到待办事项，自动更新进度</text>
-      </view>
-
-      <!-- 筛选范围 -->
-      <view class="todo-filter">
-        <radio-group bindchange="changeTodoFilterScope" class="filter-group">
-          <label class="filter-item">
-            <radio value="all" checked="{{ todoFilterScope === 'all' }}" color="#6366f1"/>
-            <text>全部</text>
-          </label>
-          <label class="filter-item">
-            <radio value="今日" checked="{{ todoFilterScope === '今日' }}" color="#6366f1"/>
-            <text>今日</text>
-          </label>
-          <label class="filter-item">
-            <radio value="近期" checked="{{ todoFilterScope === '近期' }}" color="#6366f1"/>
-            <text>近期</text>
-          </label>
-        </radio-group>
-      </view>
-
-      <!-- 待办列表 -->
-      <view wx:if="{{ availableTodos.length > 0 }}" class="todo-selector">
-        <view
-          class="todo-item {{ selectedTodoId === todo.id ? 'selected' : '' }}"
-          wx:for="{{ availableTodos }}"
-          wx:key="id"
-          wx:for-item="todo"
-          bindtap="selectTodo"
-          data-todo-id="{{ todo.id }}"
-        >
-          <view class="todo-header">
-            <view class="todo-title">
-              <text class="todo-status-icon">{{ todo.status === '待办' ? '⏳' : '▶️' }}</text>
-              <text class="todo-title-text">{{ todo.title }}</text>
-            </view>
-            <view class="todo-priority priority-{{ todo.priority }}">
-              {{ todo.priority === '紧急重要' ? '🔴' : todo.priority === '重要不紧急' ? '🟠' : todo.priority === '紧急不重要' ? '🟡' : '⚪' }}
-            </view>
-          </view>
-          <view class="todo-meta">
-            <text class="todo-type">{{ todo.todoType }}</text>
-            <text class="todo-scope">{{ todo.scope }}</text>
-            <text class="todo-time" wx:if="{{ todo.estimatedMinutes > 0 }}">
-              预计{{ todo.estimatedMinutes }}分 | 已投入{{ todo.actualMinutes || 0 }}分
-            </text>
-          </view>
-          <view wx:if="{{ todo.estimatedMinutes > 0 }}" class="todo-progress-bar">
-            <view class="progress-fill" style="width: {{ (todo.actualMinutes || 0) / todo.estimatedMinutes * 100 }}%"></view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 空状态 -->
-      <view wx:if="{{ availableTodos.length === 0 }}" class="empty-state">
-        <text class="empty-icon">📋</text>
-        <text class="empty-text">暂无{{ todoFilterScope === 'all' ? '' : todoFilterScope }}待办事项</text>
-      </view>
-
-      <!-- 清除选择 -->
-      <view wx:if="{{ selectedTodoId }}" class="clear-selection">
-        <button class="btn btn-text" bindtap="clearTodoSelection">
-          <text>❌ 取消关联</text>
-        </button>
-      </view>
-
-      <!-- 已选待办信息展示 -->
-      <view wx:if="{{ selectedTodoId && selectedTodoInfo }}" class="selected-todo-info">
-        <view class="info-header">
-          <text class="icon">📌</text>
-          <text class="info-title">已选择待办</text>
-        </view>
-        <view class="info-content">
-          <view class="info-row">
-            <text class="info-label">标题：</text>
-            <text class="info-value">{{ selectedTodoInfo.title }}</text>
-          </view>
-          <view class="info-row" wx:if="{{ selectedTodoInfo.description }}">
-            <text class="info-label">描述：</text>
-            <text class="info-value">{{ selectedTodoInfo.description }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">状态：</text>
-            <text class="info-value">{{ selectedTodoInfo.status }}</text>
-          </view>
-          <view class="info-row" wx:if="{{ selectedTodoInfo.estimatedMinutes > 0 }}">
-            <text class="info-label">预计时长：</text>
-            <text class="info-value">{{ selectedTodoInfo.estimatedMinutes }}分钟</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">已投入：</text>
-            <text class="info-value">{{ selectedTodoInfo.actualMinutes || 0 }}分钟</text>
-          </view>
-        </view>
-        <view class="info-hint">
-          💡 记录时间投入后，此待办将自动更新状态和累计时长
-        </view>
-      </view>
-    </view>
-  </view>
-
   <!-- 保存按钮 -->
   <view class="save-section">
     <!-- 编辑模式下显示取消按钮 -->
@@ -907,7 +718,7 @@
       bindtap="saveMemo"
       disabled="{{ !canSave || isSaving }}"
     >
-      <text>{{ isSaving ? (isEditMode ? '更新中...' : '保存中...') : (isEditMode ? '💾 更新记录' : (recordMode === 'planning' ? '📋 保存规划' : '💾 保存记录')) }}</text>
+      <text>{{ isSaving ? (isEditMode ? '更新中...' : '保存中...') : (isEditMode ? '💾 更新记录' : '💾 保存记录') }}</text>
     </button>
   </view>
 </view>

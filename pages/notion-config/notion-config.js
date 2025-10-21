@@ -17,7 +17,8 @@ Page({
         mainRecords: '',
         activityDetails: '',
         dailyStatus: '',
-        happyThings: ''
+        happyThings: '',
+        quotes: ''  // 箴言库
       }
     },
     showApiKey: false,
@@ -33,7 +34,7 @@ Page({
     },
     showHelp: false,
     helpContent: {},
-    showAdvanced: true  // 是否显示高级配置（六数据库ID），默认展开
+    showAdvanced: true  // 是否显示高级配置（七数据库ID），默认展开
   },
 
   onLoad: function (options) {
@@ -255,6 +256,14 @@ Page({
     })
   },
 
+  onQuotesDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.quotes': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
   // 验证输入格式 - 简化版本
   validateInputs: function () {
     const { notionConfig } = this.data
@@ -442,9 +451,9 @@ Page({
           '- 只配置一个主数据库ID即可',
           '- 适合简单使用场景',
           '',
-          '📋 方式二：六数据库架构（推荐）',
-          '- 需要配置Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things六个数据库',
-          '- 功能更强大，支持目标管理、待办事项、每日状态、开心事管理等',
+          '📋 方式二：七数据库架构（推荐）',
+          '- 需要配置Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes七个数据库',
+          '- 功能更强大，支持目标管理、待办事项、每日状态、开心事管理、每日箴言等',
           '',
           '🔧 如何获取数据库ID：',
           '1. 打开Notion数据库页面',

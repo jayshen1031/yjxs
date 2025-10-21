@@ -1,8 +1,15 @@
 <view class="container">
   <!-- 页面标题说明 -->
   <view class="page-header">
-    <view class="page-title">完整历史记录</view>
-    <view class="page-desc">高级筛选、搜索和管理所有记录</view>
+    <view class="header-top">
+      <view class="header-left">
+        <view class="page-title">⏱️ 我的足迹</view>
+        <view class="page-desc">看看时间都去哪了，每一分钟都值得回顾</view>
+      </view>
+      <view class="refresh-btn" bindtap="onRefresh">
+        <text class="refresh-icon">🔄</text>
+      </view>
+    </view>
   </view>
 
   <!-- 日期选择和统计 -->
@@ -16,23 +23,17 @@
       </picker>
     </view>
     
-    <!-- 统计卡片 -->
-    <view class="stats-grid">
-      <view class="stat-card">
-        <view class="stat-number">{{ stats.total }}</view>
-        <view class="stat-label">总记录</view>
+    <!-- 核心统计卡片 - 只显示有意义的指标 -->
+    <view class="stats-grid-simple">
+      <view class="stat-card valuable" bindtap="showStatsDebug">
+        <view class="stat-icon">✅</view>
+        <view class="stat-number">{{ stats.valuableMinutes }}</view>
+        <view class="stat-label">分钟</view>
       </view>
-      <view class="stat-card">
-        <view class="stat-number">{{ stats.text }}</view>
-        <view class="stat-label">文字记录</view>
-      </view>
-      <view class="stat-card">
-        <view class="stat-number">{{ stats.voice }}</view>
-        <view class="stat-label">语音记录</view>
-      </view>
-      <view class="stat-card">
-        <view class="stat-number">{{ stats.todayCount }}</view>
-        <view class="stat-label">今日记录</view>
+      <view class="stat-card wasteful" bindtap="showStatsDebug">
+        <view class="stat-icon">⚠️</view>
+        <view class="stat-number">{{ stats.wastefulMinutes }}</view>
+        <view class="stat-label">分钟</view>
       </view>
     </view>
   </view>
@@ -87,37 +88,57 @@
       </view>
       
       <view class="memo-item" wx:for="{{ item.memos }}" wx:key="id" wx:for-item="memo">
-        <view class="memo-content" bindtap="viewMemoDetail" data-memo="{{ memo }}">
+        <!-- 活动时间段列表 - 提升为主要内容 -->
+        <view class="activity-list-primary" wx:if="{{ memo.activities && memo.activities.length > 0 }}">
+          <view class="activity-header">
+            <view class="activity-header-left">
+              <text class="activity-period">{{ memo.timePeriodDisplay }}</text>
+              <text class="activity-summary">{{ memo.activities.length }}项活动</text>
+            </view>
+            <view class="activity-actions">
+              <text class="action-btn edit-btn" bindtap="editMemo" data-id="{{ memo.id }}">✏️</text>
+              <text class="action-btn delete-btn" bindtap="deleteMemo" data-id="{{ memo.id }}">🗑️</text>
+            </view>
+          </view>
+          <view class="activity-item" wx:for="{{ memo.activities }}" wx:key="index" wx:for-item="activity">
+            <view class="activity-icon" data-type="{{ activity.activityType }}">
+              <text wx:if="{{ activity.activityType.includes('有价值') || activity.activityType === 'valuable' }}">✅</text>
+              <text wx:elif="{{ activity.activityType.includes('低效') || activity.activityType === 'wasteful' }}">⚠️</text>
+              <text wx:else>📊</text>
+            </view>
+            <view class="activity-info">
+              <view class="activity-name">{{ activity.name }}</view>
+              <view class="activity-meta">
+                <text class="activity-duration">{{ activity.duration }}分钟</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 折叠的记录详情 -->
+          <view class="memo-summary" wx:if="{{ memo.content }}">
+            <text class="summary-label">📝 当时记录：</text>
+            <text class="summary-text">{{ memo.content }}</text>
+          </view>
+        </view>
+
+        <!-- 无活动明细时显示原记录 -->
+        <view class="memo-content-fallback" wx:else>
           <view class="memo-header">
-            <view class="memo-type {{ memo.isPlanning ? 'planning' : memo.type }}">
-              <text>{{ memo.isPlanning ? '📋' : (memo.type === 'voice' ? '🎤' : '📝') }}</text>
+            <view class="memo-header-left">
+              <view class="memo-type {{ memo.isPlanning ? 'planning' : memo.type }}">
+                <text>{{ memo.isPlanning ? '📋' : (memo.type === 'voice' ? '🎤' : '📝') }}</text>
+              </view>
+              <view class="memo-time-info">
+                <view class="time-period-main">{{ memo.timePeriodDisplay }}</view>
+              </view>
             </view>
-            <view class="memo-time-info">
-              <view class="time-period-main">{{ memo.timePeriodDisplay }}</view>
-            </view>
-            <view class="memo-actions">
-              <button class="action-btn" wx:if="{{ memo.type === 'voice' }}" catchtap="playVoice" data-memo="{{ memo }}">
-                <text>{{ memo.isPlaying ? '⏸️' : '▶️' }}</text>
-              </button>
-              <button class="action-btn" bindtap="editMemo" data-id="{{ memo.id }}" data-type="{{ memo.type }}">
-                <text>✏️</text>
-              </button>
-              <button class="action-btn delete" catchtap="deleteMemo" data-memo="{{ memo }}">
-                <text>🗑️</text>
-              </button>
+            <view class="activity-actions">
+              <text class="action-btn edit-btn" bindtap="editMemo" data-id="{{ memo.id }}">✏️</text>
+              <text class="action-btn delete-btn" bindtap="deleteMemo" data-id="{{ memo.id }}">🗑️</text>
             </view>
           </view>
-          
+
           <view class="memo-text">{{ memo.content }}</view>
-          
-          <view class="memo-labels">
-            <text class="tag period-{{ memo.periodColor }}">{{ memo.timePeriod }}</text>
-            <text class="tag category-{{ memo.categoryColor }}">{{ memo.category }}</text>
-          </view>
-          
-          <view class="memo-tags" wx:if="{{ memo.tags && memo.tags.length > 0 }}">
-            <text class="tag user-tag" wx:for="{{ memo.tags }}" wx:key="index" wx:for-item="tag">{{ tag }}</text>
-          </view>
         </view>
       </view>
     </view>

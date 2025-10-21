@@ -407,9 +407,23 @@ Page({
     this.setData({ notionConfig })
   },
 
+  // 箴言库ID输入
+  onQuotesDatabaseIdInput: function(e) {
+    const quotesDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      databases: {
+        ...this.data.notionConfig.databases,
+        quotes: quotesDatabaseId
+      }
+    }
+    this.setData({ notionConfig })
+  },
+
   // 保存手动配置
   saveManualConfig: async function() {
-    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId, dailyStatusDatabaseId, happyThingsDatabaseId } = this.data.notionConfig
+    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId, dailyStatusDatabaseId, happyThingsDatabaseId, databases } = this.data.notionConfig
+    const quotesDatabaseId = databases?.quotes
 
     if (!apiKey) {
       toast.error('请输入API Key')
@@ -433,7 +447,8 @@ Page({
           mainRecords: mainDatabaseId,
           activityDetails: activityDatabaseId,
           dailyStatus: dailyStatusDatabaseId || '',
-          happyThings: happyThingsDatabaseId || ''
+          happyThings: happyThingsDatabaseId || '',
+          quotes: quotesDatabaseId || ''
         },
         // 兼容字段（向后兼容）
         goalsDatabaseId: goalsDatabaseId,
@@ -699,6 +714,13 @@ Page({
   },
 
   // 诊断Notion数据库结构
+  // 修复活动关联
+  fixActivityRelations: function() {
+    wx.navigateTo({
+      url: '/pages/fix-relations/fix-relations'
+    })
+  },
+
   diagnoseDatabases: async function() {
     if (!this.data.notionConfigured) {
       toast.error('请先配置Notion集成')

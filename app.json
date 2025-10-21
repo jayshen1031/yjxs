@@ -10,7 +10,8 @@
     "pages/happy-manager/happy-manager",
     "pages/goals-todos/goals-todos",
     "pages/daily-status/daily-status",
-    "pages/update-notion/update-notion"
+    "pages/update-notion/update-notion",
+    "pages/fix-relations/fix-relations"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -40,7 +41,7 @@
       },
       {
         "pagePath": "pages/history/history",
-        "text": "历史"
+        "text": "足迹"
       },
       {
         "pagePath": "pages/settings/settings",

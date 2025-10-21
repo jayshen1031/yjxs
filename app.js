@@ -6,6 +6,9 @@ console.log('========================================')
 const userManager = require('./utils/userManager.js')
 console.log('[App.js] userManager已加载')
 
+const quoteService = require('./utils/quoteService.js')
+console.log('[App.js] quoteService已加载')
+
 const { getCurrentEnv } = require('./envList.js')
 console.log('[App.js] envList已加载')
 
@@ -51,11 +54,10 @@ App({
     // 加载箴言设置
     this.loadQuoteSettings()
 
-    // 加载箴言库
-    this.loadWisdomQuotes()
-
-    // 设置每日箴言
-    this.setDailyQuote()
+    // 加载箴言库并设置每日箴言（需要等待异步加载完成）
+    this.loadWisdomQuotes().then(() => {
+      this.setDailyQuote()
+    })
 
     // 加载开心库
     this.loadHappyThings()
@@ -159,39 +161,41 @@ App({
   },
 
   // 加载箴言库
-  loadWisdomQuotes: function() {
-    this.globalData.wisdomQuotes = [
-      "今天的努力，是为了明天的惊喜。",
-      "记录生活的美好，让每个瞬间都有意义。",
-      "时间是最好的见证者，坚持是最美的回答。",
-      "每一个小小的记录，都是成长的足迹。",
-      "用心感受每一刻，让平凡的日子闪闪发光。",
-      "善待时光，善待自己，记录属于你的故事。",
-      "不是每天都有新鲜事，但每天都值得记录。",
-      "生活不在于长短，而在于是否精彩。",
-      "用文字定格时光，用声音留住回忆。",
-      "每个今天，都是明天的珍贵回忆。",
-      "保持好奇心，记录发现的惊喜。",
-      "小小的坚持，会带来大大的改变。",
-      "今天比昨天进步一点点，就是成功。",
-      "记录是为了更好地前行。",
-      "在平凡中发现不平凡，在记录中找到意义。"
-    ]
+  loadWisdomQuotes: async function() {
+    try {
+      console.log('📚 开始加载箴言库...')
+      const quotes = await quoteService.loadQuotesFromNotion()
+      this.globalData.wisdomQuotes = quotes
+      console.log(`✅ 箴言库加载成功，共 ${quotes.length} 条`)
+    } catch (error) {
+      console.error('❌ 加载箴言库失败，使用默认箴言:', error)
+      this.globalData.wisdomQuotes = quoteService.DEFAULT_QUOTES
+    }
   },
 
   // 设置每日箴言
-  setDailyQuote: function() {
+  setDailyQuote: async function() {
     const today = new Date().toDateString()
     const lastQuoteDate = wx.getStorageSync('lastQuoteDate')
 
     if (lastQuoteDate !== today) {
-      // 新的一天，随机选择一句箴言
-      const randomIndex = Math.floor(Math.random() * this.globalData.wisdomQuotes.length)
-      this.globalData.currentQuote = this.globalData.wisdomQuotes[randomIndex]
+      // 新的一天，选择一句箴言
+      const selectedQuote = quoteService.selectDailyQuote(
+        this.globalData.wisdomQuotes,
+        'random'  // 可选策略: 'random' 或 'least_displayed'
+      )
+
+      this.globalData.currentQuote = selectedQuote
 
       // 保存今日箴言和日期
-      wx.setStorageSync('currentQuote', this.globalData.currentQuote)
+      wx.setStorageSync('currentQuote', selectedQuote)
       wx.setStorageSync('lastQuoteDate', today)
+
+      // 更新展示统计（如果有Notion ID）
+      if (selectedQuote.id) {
+        quoteService.updateQuoteDisplayStats(selectedQuote.id)
+          .catch(err => console.warn('更新箴言统计失败:', err))
+      }
     } else {
       // 使用已存储的今日箴言
       this.globalData.currentQuote = wx.getStorageSync('currentQuote')
@@ -363,6 +367,28 @@ App({
     // this.tryAutoSyncToNotion(memo)
   },
 
+  // 更新备忘录（编辑模式）
+  updateMemo: function(memo) {
+    console.log('🔄 更新备忘录到本地存储:', memo.id)
+    const memos = userManager.getUserMemos()
+
+    // 查找并更新现有记录
+    const index = memos.findIndex(m => m.id === memo.id)
+
+    if (index !== -1) {
+      // 找到记录，更新
+      memos[index] = memo
+      console.log('✅ 找到并更新记录，索引:', index)
+    } else {
+      // 未找到记录，可能是从Notion加载的记录，添加到列表开头
+      console.log('⚠️ 本地未找到记录，添加为新记录')
+      memos.unshift(memo)
+    }
+
+    userManager.saveUserMemos(memos)
+    console.log('✅ 备忘录已保存到本地存储')
+  },
+
   // 尝试自动同步到Notion
   tryAutoSyncToNotion: async function(memo) {
     try {
@@ -393,44 +419,89 @@ App({
   },
 
   // 删除备忘录
-  deleteMemo: async function(id) {
+  deleteMemo: async function(id, memoData = null) {
+    console.log('🗑️ 准备删除备忘录，ID:', id)
+
     const memos = userManager.getUserMemos()
-    const memoToDelete = memos.find(memo => memo.id === id)
-    
+    let memoToDelete = memos.find(memo => memo.id === id)
+
+    // 如果本地没有找到，但传入了memoData（从Notion加载的数据），使用传入的数据
+    if (!memoToDelete && memoData) {
+      console.log('⚠️ 本地未找到备忘录，使用传入的Notion数据')
+      memoToDelete = memoData
+    }
+
     if (!memoToDelete) {
-      console.error('要删除的备忘录不存在:', id)
+      console.error('❌ 要删除的备忘录不存在（本地和传入数据都没有）:', id)
       return false
     }
 
-    // 先删除本地记录
-    const filteredMemos = memos.filter(memo => memo.id !== id)
-    userManager.saveUserMemos(filteredMemos)
+    console.log('📋 找到待删除的备忘录:', {
+      id: memoToDelete.id,
+      title: memoToDelete.title || memoToDelete.content?.substring(0, 20),
+      notionPageId: memoToDelete.notionPageId || '未同步到Notion',
+      hasActivities: !!(memoToDelete.activities && memoToDelete.activities.length > 0),
+      source: memoData ? 'Notion传入数据' : '本地存储'
+    })
+
+    // 如果本地存在，删除本地记录
+    if (memos.find(memo => memo.id === id)) {
+      const filteredMemos = memos.filter(memo => memo.id !== id)
+      userManager.saveUserMemos(filteredMemos)
+      console.log('✅ 已从本地删除，剩余记录数:', filteredMemos.length)
+    } else {
+      console.log('⚠️ 本地不存在该记录，跳过本地删除')
+    }
 
     // 尝试从Notion删除（异步进行，不阻塞界面）
-    this.tryDeleteFromNotion(memoToDelete)
-    
+    await this.tryDeleteFromNotion(memoToDelete)
+
     return true
   },
 
   // 尝试从Notion删除备忘录
   tryDeleteFromNotion: async function(memo) {
     try {
+      console.log('🔄 开始从Notion删除...')
+
       const currentUser = userManager.getCurrentUser()
       if (!currentUser) {
         console.log('没有当前用户，跳过Notion删除')
         return
       }
 
+      if (!memo.notionPageId) {
+        console.log('⚠️ 备忘录没有notionPageId，可能未同步到Notion，跳过Notion删除')
+        return
+      }
+
+      console.log('🌐 准备调用Notion API删除:', memo.notionPageId)
+
       const apiService = require('./utils/apiService.js')
       const result = await apiService.deleteUserMemo(currentUser.email, memo)
-      
+
       if (result.success) {
-        console.log('Notion删除成功:', result.message)
+        console.log('✅ Notion删除成功:', result.message)
+        wx.showToast({
+          title: '已同步删除到Notion',
+          icon: 'success',
+          duration: 2000
+        })
       } else {
-        console.error('Notion删除失败:', result.error)
+        console.error('❌ Notion删除失败:', result.error)
+        wx.showToast({
+          title: 'Notion删除失败',
+          icon: 'none',
+          duration: 3000
+        })
       }
     } catch (error) {
-      console.error('Notion删除异常:', error)
+      console.error('❌ Notion删除异常:', error)
+      wx.showToast({
+        title: '删除异常: ' + error.message,
+        icon: 'none',
+        duration: 3000
+      })
     }
   },
 
@@ -489,10 +560,26 @@ App({
   // 刷新箴言
   refreshQuote: function() {
     const quotes = this.globalData.wisdomQuotes
+    if (!quotes || quotes.length === 0) {
+      console.warn('箴言库为空')
+      return null
+    }
+
     const randomIndex = Math.floor(Math.random() * quotes.length)
+    const selectedQuote = quotes[randomIndex]
+
+    // 如果已经是完整的箴言对象，直接使用
+    if (typeof selectedQuote === 'object' && (selectedQuote.content || selectedQuote.quote)) {
+      this.globalData.currentQuote = selectedQuote
+      wx.setStorageSync('currentQuote', selectedQuote)
+      return selectedQuote
+    }
+
+    // 兼容旧版本：如果是字符串，包装成对象
     const newQuote = {
       id: Date.now(),
-      content: quotes[randomIndex],
+      content: selectedQuote,
+      quote: selectedQuote,
       category: '默认',
       isFavorite: false,
       usageCount: 0,
@@ -533,10 +620,14 @@ App({
     if (categoryQuotes.length === 0) return null
 
     const randomIndex = Math.floor(Math.random() * categoryQuotes.length)
+    const selectedQuote = categoryQuotes[randomIndex]
+
+    // categoryQuotes是字符串数组，需要包装成对象
     return {
       quote: {
         id: Date.now(),
-        content: categoryQuotes[randomIndex],
+        content: selectedQuote,
+        quote: selectedQuote,
         category: category,
         isFavorite: false,
         usageCount: 0,
@@ -585,6 +676,164 @@ App({
     this.globalData.currentQuote = newQuote
     wx.setStorageSync('currentQuote', newQuote)
     return newQuote
+  },
+
+  // 添加用户箴言
+  addUserQuote: async function(quoteData) {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.error('未登录')
+        return null
+      }
+
+      const newQuote = {
+        id: Date.now().toString(),
+        content: quoteData.content,
+        category: quoteData.category || '励志',
+        tags: quoteData.tags || [],
+        source: quoteData.source || '用户添加',
+        isFavorite: false,
+        usageCount: 0,
+        createdAt: Date.now()
+      }
+
+      // 保存到用户的箴言库（本地）
+      const userQuotes = wx.getStorageSync(`quotes_${currentUser.id}`) || []
+      userQuotes.unshift(newQuote)
+      wx.setStorageSync(`quotes_${currentUser.id}`, userQuotes)
+
+      // 更新全局箴言库
+      this.globalData.wisdomQuotes.push(newQuote.content)
+
+      // 同步到Notion（如果已配置）
+      console.log('🔍 检查Notion配置...')
+      console.log('notionConfig:', currentUser.notionConfig)
+      console.log('databases:', currentUser.notionConfig?.databases)
+      console.log('quotes数据库ID:', currentUser.notionConfig?.databases?.quotes)
+
+      if (currentUser.notionConfig?.databases?.quotes) {
+        console.log('📝 同步箴言到Notion...')
+        const quoteService = require('./utils/quoteService.js')
+
+        const quotePayload = {
+          quote: quoteData.content,
+          author: quoteData.source || '用户添加',
+          category: quoteData.category || '励志',
+          tags: quoteData.tags || []
+        }
+        console.log('📦 箴言数据:', quotePayload)
+
+        const notionResult = await quoteService.addCustomQuote(quotePayload)
+        console.log('📡 Notion返回结果:', notionResult)
+
+        if (notionResult.success) {
+          console.log('✅ 箴言已同步到Notion，页面ID:', notionResult.data.id)
+          // 更新本地箴言ID为Notion页面ID
+          newQuote.id = notionResult.data.id
+          userQuotes[0] = newQuote
+          wx.setStorageSync(`quotes_${currentUser.id}`, userQuotes)
+        } else {
+          console.error('❌ 箴言Notion同步失败:', notionResult.error)
+        }
+      } else {
+        console.warn('⚠️ 箴言库未配置，跳过Notion同步')
+        console.log('当前用户Notion配置:', JSON.stringify(currentUser.notionConfig, null, 2))
+      }
+
+      return newQuote
+    } catch (e) {
+      console.error('添加箴言失败:', e)
+      return null
+    }
+  },
+
+  // 更新箴言
+  updateQuote: function(quoteId, updates) {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.error('未登录')
+        return false
+      }
+
+      const userQuotes = wx.getStorageSync(`quotes_${currentUser.id}`) || []
+      const index = userQuotes.findIndex(q => q.id === quoteId)
+
+      if (index === -1) {
+        console.error('箴言不存在')
+        return false
+      }
+
+      userQuotes[index] = {
+        ...userQuotes[index],
+        ...updates,
+        updatedAt: Date.now()
+      }
+
+      wx.setStorageSync(`quotes_${currentUser.id}`, userQuotes)
+      return true
+    } catch (e) {
+      console.error('更新箴言失败:', e)
+      return false
+    }
+  },
+
+  // 删除用户箴言
+  deleteUserQuote: function(quoteId) {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        console.error('未登录')
+        return false
+      }
+
+      const userQuotes = wx.getStorageSync(`quotes_${currentUser.id}`) || []
+      const filteredQuotes = userQuotes.filter(q => q.id !== quoteId)
+
+      wx.setStorageSync(`quotes_${currentUser.id}`, filteredQuotes)
+      return true
+    } catch (e) {
+      console.error('删除箴言失败:', e)
+      return false
+    }
+  },
+
+  // 根据分类随机获取箴言
+  getRandomQuoteByCategory: function(category) {
+    const categories = this.getQuoteCategories()
+    const categoryQuotes = categories[category] || []
+
+    if (categoryQuotes.length === 0) return null
+
+    const randomIndex = Math.floor(Math.random() * categoryQuotes.length)
+    return {
+      id: Date.now(),
+      content: categoryQuotes[randomIndex],
+      category: category,
+      isFavorite: false,
+      usageCount: 0,
+      source: '内置'
+    }
+  },
+
+  // 更新箴言使用次数
+  updateQuoteUsage: function(quoteId) {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) return
+
+      const userQuotes = wx.getStorageSync(`quotes_${currentUser.id}`) || []
+      const index = userQuotes.findIndex(q => q.id === quoteId)
+
+      if (index !== -1) {
+        userQuotes[index].usageCount = (userQuotes[index].usageCount || 0) + 1
+        userQuotes[index].lastUsedAt = Date.now()
+        wx.setStorageSync(`quotes_${currentUser.id}`, userQuotes)
+      }
+    } catch (e) {
+      console.error('更新箴言使用次数失败:', e)
+    }
   },
 
   // ========== 目标系统相关方法 ==========

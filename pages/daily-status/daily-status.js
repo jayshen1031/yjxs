@@ -94,7 +94,12 @@ Page({
     ],
 
     // 是否存在记录（用于判断是创建还是更新）
-    existingPageId: null
+    existingPageId: null,
+
+    // 时间选项（半小时间隔）
+    wakeUpTimeIndex: 0,
+    bedTimeIndex: 0,
+    timeOptions: []
   },
 
   onLoad: function(options) {
@@ -117,6 +122,14 @@ Page({
       return
     }
 
+    // 生成时间选项（半小时间隔，从00:00到23:30）
+    const timeOptions = []
+    for (let hour = 0; hour < 24; hour++) {
+      const h = hour.toString().padStart(2, '0')
+      timeOptions.push(`${h}:00`)
+      timeOptions.push(`${h}:30`)
+    }
+
     // 设置当前日期
     const today = new Date()
     const dateStr = this.formatDate(today)
@@ -126,7 +139,8 @@ Page({
       'statusData.date': dateStr,
       'statusData.fullDate': dateStr,
       'statusData.userId': currentUser.email,
-      formattedDate: formattedDateStr
+      formattedDate: formattedDateStr,
+      timeOptions: timeOptions
     })
 
     // 加载今日状态（如果存在）
@@ -262,6 +276,10 @@ Page({
     const stressIndex = this.data.stressOptions.findIndex(opt => opt.value === status.stressLevel)
     const sleepQualityIndex = this.data.sleepQualityOptions.findIndex(opt => opt.value === status.sleepQuality)
 
+    // 找到时间对应的索引
+    const wakeUpTimeIndex = status.wakeUpTime ? this.data.timeOptions.findIndex(t => t === status.wakeUpTime) : 0
+    const bedTimeIndex = status.bedTime ? this.data.timeOptions.findIndex(t => t === status.bedTime) : 0
+
     // 更新运动类型选择状态
     const exerciseTypes = this.data.exerciseTypes.map(type => ({
       ...type,
@@ -286,6 +304,8 @@ Page({
       energyIndex: energyIndex >= 0 ? energyIndex : 0,
       stressIndex: stressIndex >= 0 ? stressIndex : 0,
       sleepQualityIndex: sleepQualityIndex >= 0 ? sleepQualityIndex : 0,
+      wakeUpTimeIndex: wakeUpTimeIndex >= 0 ? wakeUpTimeIndex : 0,  // 设置起床时间索引
+      bedTimeIndex: bedTimeIndex >= 0 ? bedTimeIndex : 0,  // 设置睡觉时间索引
       exerciseTypes: exerciseTypes,
       mealOptions: mealOptions,
       existingPageId: pageId,
@@ -372,15 +392,19 @@ Page({
 
   // 起床时间变更
   onWakeUpTimeChange: function(e) {
+    const index = parseInt(e.detail.value)
     this.setData({
-      'statusData.wakeUpTime': e.detail.value
+      wakeUpTimeIndex: index,
+      'statusData.wakeUpTime': this.data.timeOptions[index]
     })
   },
 
   // 睡觉时间变更
   onBedTimeChange: function(e) {
+    const index = parseInt(e.detail.value)
     this.setData({
-      'statusData.bedTime': e.detail.value
+      bedTimeIndex: index,
+      'statusData.bedTime': this.data.timeOptions[index]
     })
   },
 

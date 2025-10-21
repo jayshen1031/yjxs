@@ -242,25 +242,55 @@ class ApiService {
   // 删除用户备忘录（包含Notion同步）
   async deleteUserMemo(userEmail, memo) {
     try {
+      console.log('📧 [deleteUserMemo] 准备删除用户备忘录:', {
+        userEmail,
+        memoId: memo.id,
+        notionPageId: memo.notionPageId
+      })
+
       const user = userManager.getUserByEmail(userEmail)
 
+      if (!user) {
+        console.warn('⚠️ [deleteUserMemo] 未找到用户，仅删除本地')
+        return {
+          success: true,
+          message: '本地删除成功（未找到用户配置）'
+        }
+      }
+
       // 如果用户配置了Notion且备忘录已同步，先从Notion删除
-      if (user && user.notionConfig && user.notionConfig.enabled && memo.notionPageId) {
-        const { apiKey, activityDatabaseId, activitiesDatabaseId } = user.notionConfig
+      if (user.notionConfig && user.notionConfig.apiKey && memo.notionPageId) {
+        console.log('🌐 [deleteUserMemo] 用户已配置Notion，准备同步删除')
+
+        const activityDatabaseId = user.notionConfig.databases?.activityDetails ||
+                                   user.notionConfig.activityDatabaseId ||
+                                   user.notionConfig.activitiesDatabaseId
+
+        console.log('📋 [deleteUserMemo] 活动数据库ID:', activityDatabaseId)
 
         // 传递activityDatabaseId用于级联删除
         const memoWithDbId = {
           ...memo,
-          activityDatabaseId: activityDatabaseId || activitiesDatabaseId
+          activityDatabaseId: activityDatabaseId
         }
 
-        const result = await notionApiService.deleteMemoFromNotion(apiKey, memoWithDbId)
-        
+        const result = await notionApiService.deleteMemoFromNotion(user.notionConfig.apiKey, memoWithDbId)
+
         if (!result.success) {
-          console.warn('从Notion删除失败，但继续删除本地记录:', result.error)
+          console.error('❌ [deleteUserMemo] 从Notion删除失败:', result.error)
+          return {
+            success: false,
+            error: '从Notion删除失败: ' + result.error
+          }
         } else {
-          console.log('已从Notion删除备忘录:', result.message)
+          console.log('✅ [deleteUserMemo] 已从Notion删除备忘录:', result.message)
         }
+      } else {
+        console.log('⚠️ [deleteUserMemo] 跳过Notion删除:', {
+          hasNotionConfig: !!user.notionConfig,
+          hasApiKey: !!(user.notionConfig && user.notionConfig.apiKey),
+          hasNotionPageId: !!memo.notionPageId
+        })
       }
 
       return {
@@ -268,7 +298,7 @@ class ApiService {
         message: '删除成功'
       }
     } catch (error) {
-      console.error('删除备忘录异常:', error)
+      console.error('❌ [deleteUserMemo] 删除备忘录异常:', error)
       return {
         success: false,
         error: '删除失败: ' + error.message

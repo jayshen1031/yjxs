@@ -10,15 +10,18 @@ Page({
     todayDate: '',
     showFilterPanel: false,
     selectedTags: [],
-    timeRange: 'all',
-    sortBy: 'time_desc',
+    timeRange: 'today',  // 默认只显示今天的记录
+    sortBy: 'time_asc',  // 默认按时间升序排列（最早的在前）
+    refreshing: false,
     
-    // 统计数据
+    // 统计数据 - 改为以时间为中心
     stats: {
-      total: 0,
-      text: 0,
-      voice: 0,
-      todayCount: 0
+      totalMinutes: 0,        // 总时长（分钟）
+      valuableMinutes: 0,     // 有价值活动时长
+      neutralMinutes: 0,      // 中性活动时长
+      wastefulMinutes: 0,     // 低效活动时长
+      activityCount: 0,       // 活动总数
+      todayMinutes: 0         // 今日时长
     },
     
     // 筛选选项
@@ -54,11 +57,46 @@ Page({
   // 音频播放器
   innerAudioContext: null,
 
+  /**
+   * 清理活动名称中的类型前缀
+   * 去除：🌟 有价值的活动：、😐 中性的活动：、🗑️ 低效的活动：等前缀
+   */
+  cleanActivityName: function(name) {
+    if (!name) return name
+
+    // 定义需要清理的前缀模式
+    const prefixPatterns = [
+      /^🌟\s*有价值的活动[：:]\s*/,
+      /^😐\s*中性的活动[：:]\s*/,
+      /^🗑️\s*低效的活动[：:]\s*/,
+      /^有价值的活动[：:]\s*/,
+      /^中性的活动[：:]\s*/,
+      /^低效的活动[：:]\s*/,
+      /^🌟\s*/,
+      /^😐\s*/,
+      /^🗑️\s*/
+    ]
+
+    let cleanedName = name
+    for (const pattern of prefixPatterns) {
+      cleanedName = cleanedName.replace(pattern, '')
+    }
+
+    return cleanedName.trim()
+  },
+
   onLoad: function() {
     // 检查登录状态
     if (!this.checkLoginStatus()) {
       return
     }
+
+    // 确保使用正确的默认值
+    this.setData({
+      sortBy: 'time_asc',   // 时间升序（最早的在前）
+      timeRange: 'today'    // 只显示今天
+    })
+
     this.initData()
     this.initAudioContext()
     this.loadAllMemos()
@@ -69,7 +107,32 @@ Page({
     if (!this.checkLoginStatus()) {
       return
     }
+
+    // 确保使用正确的默认排序（时间升序）
+    if (this.data.sortBy === 'time_desc') {
+      this.setData({ sortBy: 'time_asc' })
+    }
+
     this.loadAllMemos()
+  },
+
+  // 下拉刷新
+  onRefresh: function() {
+    console.log('🔄 触发下拉刷新')
+    this.setData({ refreshing: true })
+    this.loadAllMemos().then(() => {
+      this.setData({ refreshing: false })
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success'
+      })
+    }).catch(() => {
+      this.setData({ refreshing: false })
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      })
+    })
   },
 
   // 检查登录状态
@@ -177,6 +240,17 @@ Page({
       console.log('📊 从Notion获取的主记录数据:', records)
       console.log('📊 主记录数量:', records.length)
 
+      // 特别检查"王者荣耀"相关的主记录
+      const wangzheRecord = records.find(r => r.content && r.content.includes('王者荣耀'))
+      if (wangzheRecord) {
+        console.log('🎮 找到"王者荣耀"主记录:', {
+          id: wangzheRecord.id,
+          title: wangzheRecord.title,
+          content: wangzheRecord.content,
+          recordType: wangzheRecord.recordType
+        })
+      }
+
       // 如果没有记录，给用户明确提示
       if (records.length === 0) {
         console.warn('⚠️ 未查询到任何主记录')
@@ -219,33 +293,156 @@ Page({
         console.warn(`⚠️ 去除了 ${records.length - uniqueRecords.length} 条重复记录`)
       }
 
-      uniqueRecords.forEach((rec, index) => {
-        console.log(`  ${index + 1}. ${rec.title} - ${rec.content} (${rec.date})`)
-      })
+      // 打印前3个主记录的ID，方便对比
+      if (uniqueRecords.length > 0) {
+        console.log('📋 前3个主记录的ID:')
+        uniqueRecords.slice(0, 3).forEach((rec, index) => {
+          console.log(`  ${index + 1}. ID: ${rec.id}, 标题: ${rec.title}`)
+        })
+      }
+
+      // 加载所有主记录的活动明细
+      const activityDetailsDatabaseId = notionConfig.databases?.activityDetails || notionConfig.activityDetailsDatabaseId
+      let allActivities = []
+
+      if (activityDetailsDatabaseId) {
+        console.log('🔍 开始加载活动明细，数据库ID:', activityDetailsDatabaseId)
+        const activitiesResult = await notionApiService.queryActivities(
+          notionConfig.apiKey,
+          activityDetailsDatabaseId,
+          currentUser.email,
+          {}
+        )
+
+        if (activitiesResult.success && activitiesResult.activities) {
+          allActivities = activitiesResult.activities
+          console.log('📊 加载活动明细成功，数量:', allActivities.length)
+
+          // 特别检查"王者荣耀"活动
+          const wangzheActivity = allActivities.find(act => act.name && act.name.includes('王者荣耀'))
+          if (wangzheActivity) {
+            console.log('🎮 找到"王者荣耀"活动:', {
+              name: wangzheActivity.name,
+              relatedMainRecordId: wangzheActivity.relatedMainRecordId,
+              activityType: wangzheActivity.activityType,
+              duration: wangzheActivity.duration,
+              startTime: wangzheActivity.startTime,
+              endTime: wangzheActivity.endTime
+            })
+          }
+
+          // 打印前3个活动的详细信息，查看关联字段
+          if (allActivities.length > 0) {
+            console.log('📊 前3个活动详情:')
+            allActivities.slice(0, 3).forEach((act, i) => {
+              console.log(`  ${i + 1}. ${act.name}`, {
+                relatedMainRecordId: act.relatedMainRecordId,
+                relatedGoalId: act.relatedGoalId,
+                relatedTodoId: act.relatedTodoId,
+                startTime: act.startTime,
+                endTime: act.endTime,
+                duration: act.duration
+              })
+            })
+          }
+        } else {
+          console.warn('⚠️ 加载活动明细失败:', activitiesResult.error)
+        }
+      }
 
       // 转换Main Records为memo格式
       const processedMemos = uniqueRecords.map(record => {
         const recordDate = new Date(record.date)
         const timePeriod = record.timePeriod || this.getTimePeriodFromTime(recordDate)
+
+        // 查找该主记录关联的活动明细
+        const relatedActivities = allActivities.filter(activity => {
+          const isMatch = activity.relatedMainRecordId === record.id
+          if (!isMatch && record.content && record.content.includes('王者荣耀')) {
+            console.log(`🔍 检查主记录 "${record.title}" (ID: ${record.id})`)
+            console.log(`   活动 "${activity.name}" 的关联ID: ${activity.relatedMainRecordId}`)
+            console.log(`   是否匹配: ${isMatch}`)
+          }
+          return isMatch
+        }).map(activity => {
+          // ⭐ 活动明细不需要单独的开始/结束时间，只显示时长
+          return {
+            name: this.cleanActivityName(activity.name), // 清理活动名称前缀
+            duration: activity.duration,
+            activityType: activity.activityType
+          }
+        })
+
+        if (relatedActivities.length > 0) {
+          console.log(`📌 主记录 ${record.title} 关联了 ${relatedActivities.length} 个活动:`, relatedActivities)
+        }
+
+        // 从主记录中获取开始和结束时间（如果有的话）
+        let actualStartTime = null
+        let actualEndTime = null
+        if (record.startTime && record.endTime) {
+          // startTime 和 endTime 是 "HH:MM" 格式
+          const [startHour, startMin] = record.startTime.split(':').map(Number)
+          const [endHour, endMin] = record.endTime.split(':').map(Number)
+          actualStartTime = new Date(recordDate)
+          actualStartTime.setHours(startHour, startMin, 0, 0)
+          actualEndTime = new Date(recordDate)
+          actualEndTime.setHours(endHour, endMin, 0, 0)
+          console.log(`⏰ 主记录 ${record.title} 时间范围: ${record.startTime} - ${record.endTime}`)
+        }
+
+        // 计算实际发生时间（用于排序）⭐
+        let sortTimestamp = recordDate.getTime()
+        if (actualStartTime) {
+          // 优先使用主记录的实际开始时间
+          sortTimestamp = actualStartTime.getTime()
+        } else if (relatedActivities.length > 0) {
+          // 否则查找最早的活动开始时间
+          const earliestActivity = allActivities
+            .filter(act => act.relatedMainRecordId === record.id && act.startTime)
+            .sort((a, b) => {
+              // 解析时间字符串 "HH:MM"
+              const parseTime = (timeStr) => {
+                const [h, m] = timeStr.split(':').map(Number)
+                return h * 60 + m // 转换为分钟数比较
+              }
+              return parseTime(a.startTime) - parseTime(b.startTime)
+            })[0]
+
+          if (earliestActivity && earliestActivity.startTime) {
+            const [hour, min] = earliestActivity.startTime.split(':').map(Number)
+            const activityTime = new Date(recordDate)
+            activityTime.setHours(hour, min, 0, 0)
+            sortTimestamp = activityTime.getTime()
+          }
+        }
+
         return {
           id: record.id,
           content: record.content, // Summary字段的内容
-          timestamp: recordDate.getTime(),
+          timestamp: recordDate.getTime(), // 记录创建时间
+          sortTimestamp: sortTimestamp, // ⭐ 实际发生时间（用于排序）
           type: 'text',
           tags: record.tags || [],
           notionPageId: record.id,
-          timeStr: this.formatTime(recordDate),
+          timeStr: this.formatTime(actualStartTime || recordDate),
           dateStr: this.formatDate(recordDate),
           timePeriod: timePeriod,
-          timePeriodDisplay: this.formatMainRecordTimePeriodDisplay(record, recordDate, timePeriod),
-          periodColor: this.getTimePeriodColorFromTime(recordDate),
+          timePeriodDisplay: this.formatMainRecordTimePeriodDisplay(
+            { ...record, startTime: actualStartTime, endTime: actualEndTime },
+            actualStartTime || recordDate,
+            timePeriod
+          ),
+          periodColor: this.getTimePeriodColorFromTime(actualStartTime || recordDate),
           category: this.getCategoryFromContent(record.content),
           categoryColor: this.getCategoryColorFromContent(record.content),
           isPlaying: false,
           isPlanning: record.recordType === '明日规划',
           // 主记录特有信息
           title: record.title,
-          recordType: record.recordType
+          recordType: record.recordType,
+          // 关联的活动明细
+          activities: relatedActivities
         }
       })
 
@@ -317,6 +514,7 @@ Page({
     const memoList = app.getMemoList()
     const processedMemos = memoList.map(memo => ({
       ...memo,
+      sortTimestamp: memo.timestamp, // ⭐ 本地数据使用记录时间作为排序时间
       timeStr: this.formatTime(new Date(memo.timestamp)),
       dateStr: this.formatDate(new Date(memo.timestamp)),
       timePeriodDisplay: this.formatTimePeriodDisplay(memo),
@@ -368,8 +566,23 @@ Page({
       dateStr = `${recordDate.getMonth() + 1}月${recordDate.getDate()}日`
     }
 
-    // 返回日期 + 时间段
-    return `${dateStr} ${timePeriod}`
+    // 如果有具体的开始时间，使用之
+    let startTime, endTime
+    if (record.startTime && record.endTime) {
+      startTime = `${record.startTime.getHours().toString().padStart(2, '0')}:${record.startTime.getMinutes().toString().padStart(2, '0')}`
+      endTime = `${record.endTime.getHours().toString().padStart(2, '0')}:${record.endTime.getMinutes().toString().padStart(2, '0')}`
+    } else if (recordDate.getHours() > 0 || recordDate.getMinutes() > 0) {
+      // 如果recordDate包含具体时间（不是00:00），使用它
+      startTime = `${recordDate.getHours().toString().padStart(2, '0')}:${recordDate.getMinutes().toString().padStart(2, '0')}`
+      const endDate = new Date(recordDate.getTime() + 60 * 60 * 1000)
+      endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`
+    } else {
+      // 如果都没有具体时间，只显示时间段标签
+      return `${dateStr} ${timePeriod}`
+    }
+
+    // 返回日期 + 时间范围 (附带时间段标签)
+    return `${dateStr} ${startTime}-${endTime} (${timePeriod})`
   },
 
   // 格式化活动时间段显示（保留用于兼容性）
@@ -424,18 +637,353 @@ Page({
     return colorMap[activityType] || '#3b82f6'
   },
 
+  // 编辑记录
+  editMemo: function(e) {
+    const memoId = e.currentTarget.dataset.id
+    console.log('编辑记录:', memoId)
+
+    // 先从allMemos中找，如果没找到再从groupedMemos中找
+    let memo = this.data.allMemos.find(m => m.id === memoId)
+
+    if (!memo) {
+      // 从groupedMemos中查找
+      for (const group of this.data.groupedMemos) {
+        const found = group.memos.find(m => m.id === memoId)
+        if (found) {
+          memo = found
+          break
+        }
+      }
+    }
+
+    if (!memo) {
+      wx.showToast({
+        title: '记录不存在',
+        icon: 'none'
+      })
+      return
+    }
+
+    // 将activities转换为timeEntries格式
+    const valuableTimeEntries = []
+    const neutralTimeEntries = []
+    const wastefulTimeEntries = []
+
+    console.log('📝 准备编辑记录:', {
+      id: memo.id,
+      content: memo.content,
+      hasActivities: !!(memo.activities && memo.activities.length > 0),
+      activitiesCount: memo.activities ? memo.activities.length : 0
+    })
+
+    if (memo.activities && memo.activities.length > 0) {
+      console.log('🔄 开始转换activities到timeEntries:', memo.activities)
+
+      memo.activities.forEach((activity, index) => {
+        const cleanedName = this.cleanActivityName(activity.name)
+        console.log(`  活动${index + 1}:`, {
+          name: cleanedName,
+          duration: activity.duration,
+          activityType: activity.activityType
+        })
+
+        const entry = {
+          activity: cleanedName,
+          minutes: activity.duration || 0,
+          type: activity.activityType || '有价值',
+          tags: [],
+          goalId: '',
+          goalTitle: '',
+          todoId: '',
+          todoTitle: '',
+          todoStatus: '进行中'
+        }
+
+        // 根据活动类型分类
+        if (activity.activityType && activity.activityType.includes('有价值')) {
+          valuableTimeEntries.push(entry)
+          console.log(`    → 分类为: 有价值`)
+        } else if (activity.activityType && activity.activityType.includes('低效')) {
+          wastefulTimeEntries.push(entry)
+          console.log(`    → 分类为: 低效`)
+        } else {
+          neutralTimeEntries.push(entry)
+          console.log(`    → 分类为: 中性`)
+        }
+      })
+
+      console.log('✅ 转换完成:', {
+        valuableCount: valuableTimeEntries.length,
+        neutralCount: neutralTimeEntries.length,
+        wastefulCount: wastefulTimeEntries.length
+      })
+    } else {
+      console.warn('⚠️ 该记录没有activities数组，无法加载时间投入数据')
+    }
+
+    // 构建完整的memo对象（补充编辑所需的字段）
+    const editMemo = {
+      ...memo,
+      valuableTimeEntries: valuableTimeEntries,
+      neutralTimeEntries: neutralTimeEntries,
+      wastefulTimeEntries: wastefulTimeEntries,
+      recordMode: memo.isPlanning ? 'planning' : 'daily'
+    }
+
+    console.log('准备编辑的memo对象:', editMemo)
+
+    // 通过globalData传递完整的memo对象
+    const app = getApp()
+    app.globalData.editMemo = {
+      editId: memoId,
+      memoData: editMemo,
+      fromPage: 'history'
+    }
+
+    // 使用switchTab跳转到memo页面（tabBar页面）
+    wx.switchTab({
+      url: '/pages/memo/memo'
+    })
+  },
+
+  // 删除记录
+  deleteMemo: function(e) {
+    const memoId = e.currentTarget.dataset.id
+    const memo = this.data.allMemos.find(m => m.id === memoId)
+
+    if (!memo) {
+      wx.showToast({
+        title: '记录不存在',
+        icon: 'none'
+      })
+      return
+    }
+
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除这条记录吗？\n\n${memo.content ? memo.content.substring(0, 30) + '...' : '无内容'}`,
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          await this.performDelete(memo)
+        }
+      }
+    })
+  },
+
+  // 执行删除操作
+  performDelete: async function(memo) {
+    try {
+      wx.showLoading({ title: '删除中...' })
+
+      const currentUser = userManager.getCurrentUser()
+      const notionConfig = currentUser?.notionConfig
+
+      // 如果有Notion配置，同时删除Notion中的记录
+      if (notionConfig && notionConfig.apiKey && memo.notionPageId) {
+        console.log('🗑️ 开始删除主记录和关联的活动明细')
+
+        // 1. 先查询并归档所有关联的活动明细
+        const activityDatabaseId = notionConfig.databases?.activityDetails
+        if (activityDatabaseId) {
+          console.log('🔍 查询关联的活动明细记录...')
+
+          try {
+            // 查询与此主记录关联的所有活动明细
+            // Notion API relation filter语法: https://developers.notion.com/reference/post-database-query-filter
+            const queryResult = await notionApiService.queryDatabase(
+              notionConfig.apiKey,
+              activityDatabaseId,
+              {
+                filter: {
+                  property: 'Related Main Record',
+                  relation: {
+                    contains: memo.notionPageId
+                  }
+                },
+                page_size: 100 // 最多查询100条关联记录
+              }
+            )
+
+            if (queryResult.success && queryResult.data && queryResult.data.results) {
+              const activities = queryResult.data.results
+              console.log(`📝 找到 ${activities.length} 条关联的活动明细`)
+
+              // 归档每个活动明细
+              for (const activity of activities) {
+                console.log(`🗑️ 归档活动明细: ${activity.id}`)
+                await notionApiService.updatePageProperties(
+                  notionConfig.apiKey,
+                  activity.id,
+                  {
+                    'Archived': { checkbox: true }
+                  }
+                )
+              }
+
+              console.log('✅ 所有活动明细已归档')
+            } else {
+              console.warn('⚠️ 查询活动明细失败或没有找到关联记录')
+            }
+          } catch (activityError) {
+            console.error('❌ 删除活动明细时出错:', activityError)
+            // 继续执行主记录删除，不因活动明细删除失败而中断
+          }
+        }
+
+        // 2. 归档主记录
+        console.log('🗑️ 归档主记录:', memo.notionPageId)
+        const archiveResult = await notionApiService.updatePageProperties(
+          notionConfig.apiKey,
+          memo.notionPageId,
+          {
+            'Archived': { checkbox: true }
+          }
+        )
+
+        if (!archiveResult.success) {
+          console.warn('⚠️ 主记录归档失败，仅删除本地记录:', archiveResult.error)
+        } else {
+          console.log('✅ 主记录已归档')
+        }
+      }
+
+      // 3. 删除本地记录
+      app.deleteMemo(memo.id)
+
+      wx.hideLoading()
+      wx.showToast({
+        title: '删除成功',
+        icon: 'success'
+      })
+
+      // 重新加载数据
+      this.loadAllMemos()
+
+    } catch (error) {
+      console.error('❌ 删除失败:', error)
+      wx.hideLoading()
+      wx.showToast({
+        title: '删除失败：' + error.message,
+        icon: 'none'
+      })
+    }
+  },
+
+  // 显示统计详情（调试用）
+  showStatsDebug: function() {
+    const today = new Date().toDateString()
+    const todayActivities = []
+
+    this.data.allMemos.forEach(memo => {
+      const isToday = new Date(memo.timestamp).toDateString() === today
+      if (isToday && memo.activities && memo.activities.length > 0) {
+        memo.activities.forEach(activity => {
+          todayActivities.push({
+            name: this.cleanActivityName(activity.name),
+            type: activity.activityType,
+            duration: activity.duration,
+            recordTime: new Date(memo.timestamp).toLocaleString()
+          })
+        })
+      }
+    })
+
+    const debugInfo = `今日统计详情：
+有价值: ${this.data.stats.valuableMinutes}分钟
+低效: ${this.data.stats.wastefulMinutes}分钟
+
+今日活动(${todayActivities.length}项)：
+${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}分钟`).join('\n')}
+
+当前日期: ${today}
+当前时间: ${new Date().toLocaleString()}`
+
+    wx.showModal({
+      title: '统计调试信息',
+      content: debugInfo,
+      showCancel: false
+    })
+  },
+
   // 计算统计数据
   calculateStats: function(memoList) {
     const today = new Date().toDateString()
-    const todayMemos = memoList.filter(memo => {
-      return new Date(memo.timestamp).toDateString() === today
+
+    // 今日统计
+    let todayValuableMinutes = 0
+    let todayNeutralMinutes = 0
+    let todayWastefulMinutes = 0
+    let todayActivityCount = 0
+    let todayTotalMinutes = 0
+
+    // 全部统计（用于总览）
+    let totalMinutes = 0
+    let totalActivityCount = 0
+
+    console.log('📊 开始计算统计数据，记录数:', memoList.length)
+    console.log('📊 今日日期字符串:', today)
+
+    memoList.forEach(memo => {
+      const isToday = new Date(memo.timestamp).toDateString() === today
+
+      // 统计每条记录的活动明细
+      if (memo.activities && memo.activities.length > 0) {
+        if (isToday) {
+          console.log(`📌 [今日] 记录 ${memo.title} 有 ${memo.activities.length} 个活动`)
+        }
+
+        memo.activities.forEach(activity => {
+          const duration = activity.duration || 0
+          const activityType = activity.activityType || ''
+
+          // 全部统计
+          totalMinutes += duration
+          totalActivityCount++
+
+          // 只统计今日的分类数据
+          if (isToday) {
+            todayTotalMinutes += duration
+            todayActivityCount++
+
+            console.log(`  - ${activity.name}: ${duration}分钟, 类型: ${activityType}`)
+
+            if (activityType.includes('有价值') || activityType === 'valuable') {
+              todayValuableMinutes += duration
+              console.log(`    ✅ 今日有价值: +${duration}分钟`)
+            } else if (activityType.includes('低效') || activityType === 'wasteful') {
+              todayWastefulMinutes += duration
+              console.log(`    ❌ 今日低效: +${duration}分钟`)
+            } else {
+              todayNeutralMinutes += duration
+              console.log(`    ⚪ 今日中性: +${duration}分钟`)
+            }
+          }
+        })
+      }
+    })
+
+    console.log('📊 今日统计:', {
+      todayTotalMinutes,
+      todayValuableMinutes,
+      todayNeutralMinutes,
+      todayWastefulMinutes,
+      todayActivityCount
+    })
+
+    console.log('📊 总体统计:', {
+      totalMinutes,
+      totalActivityCount
     })
 
     return {
-      total: memoList.length,
-      text: memoList.filter(memo => memo.type === 'text').length,
-      voice: memoList.filter(memo => memo.type === 'voice').length,
-      todayCount: todayMemos.length
+      totalMinutes: totalMinutes,              // 历史总时长
+      valuableMinutes: todayValuableMinutes,   // 今日有价值
+      neutralMinutes: todayNeutralMinutes,     // 今日中性
+      wastefulMinutes: todayWastefulMinutes,   // 今日低效
+      activityCount: totalActivityCount,       // 历史总活动数
+      todayMinutes: todayTotalMinutes          // 今日总时长
     }
   },
 
@@ -594,17 +1142,30 @@ Page({
         break
     }
 
-    // 排序
+    // 排序 ⭐ 使用实际发生时间（sortTimestamp）而不是记录创建时间（timestamp）
+    console.log('📊 当前排序方式:', this.data.sortBy)
     switch (this.data.sortBy) {
       case 'time_desc':
-        filteredMemos.sort((a, b) => b.timestamp - a.timestamp)
+        filteredMemos.sort((a, b) => (b.sortTimestamp || b.timestamp) - (a.sortTimestamp || a.timestamp))
+        console.log('📊 使用实际发生时间降序排序（最新在前）')
         break
       case 'time_asc':
-        filteredMemos.sort((a, b) => a.timestamp - b.timestamp)
+        filteredMemos.sort((a, b) => (a.sortTimestamp || a.timestamp) - (b.sortTimestamp || b.timestamp))
+        console.log('📊 使用实际发生时间升序排序（最早在前）')
         break
       case 'length':
         filteredMemos.sort((a, b) => b.content.length - a.content.length)
+        console.log('📊 使用内容长度排序')
         break
+    }
+
+    // 打印排序后的前3条记录的实际发生时间
+    if (filteredMemos.length > 0) {
+      console.log('📊 排序后前3条记录（按实际发生时间）:')
+      filteredMemos.slice(0, 3).forEach((memo, i) => {
+        const time = new Date(memo.sortTimestamp || memo.timestamp)
+        console.log(`  ${i + 1}. ${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')} - ${memo.content?.substring(0, 20)}`)
+      })
     }
 
     // 按日期分组
@@ -616,9 +1177,13 @@ Page({
       console.log('🔧 第一个group:', groupedMemos[0])
     }
 
+    // 重新计算统计数据（基于筛选后的记录）
+    const stats = this.calculateStats(filteredMemos)
+
     this.setData({
       filteredMemos: filteredMemos,
       groupedMemos: groupedMemos,
+      stats: stats,  // 更新统计数据
       currentPage: 1,
       hasMore: filteredMemos.length > this.data.pageSize
     })
@@ -633,9 +1198,10 @@ Page({
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
 
     memos.forEach(memo => {
-      const memoDate = new Date(memo.timestamp)
+      // 使用实际发生时间而不是记录创建时间 ⭐
+      const memoDate = new Date(memo.sortTimestamp || memo.timestamp)
       const dateKey = memo.dateStr
-      
+
       if (!groups[dateKey]) {
         let dateDisplay = dateKey
         if (memoDate.toDateString() === today.toDateString()) {
@@ -649,14 +1215,27 @@ Page({
         groups[dateKey] = {
           date: dateKey,
           dateDisplay: dateDisplay,
+          timestamp: memoDate.getTime(), // 添加时间戳用于排序
           memos: []
         }
       }
-      
+
       groups[dateKey].memos.push(memo)
     })
 
-    return Object.values(groups)
+    // 将分组转为数组并按日期排序
+    const groupArray = Object.values(groups)
+
+    // 根据当前排序方式决定日期分组的顺序
+    if (this.data.sortBy === 'time_desc') {
+      // 时间降序：最新的日期在前
+      groupArray.sort((a, b) => b.timestamp - a.timestamp)
+    } else {
+      // 时间升序或其他：最早的日期在前
+      groupArray.sort((a, b) => a.timestamp - b.timestamp)
+    }
+
+    return groupArray
   },
 
   // 查看备忘录详情
@@ -708,71 +1287,30 @@ Page({
     this.setData({ groupedMemos })
   },
 
-  // 编辑备忘录
-  editMemo: function(e) {
-    console.log('editMemo clicked', e)
-    const { id, type } = e.currentTarget.dataset
-    console.log('memo id:', id, 'type:', type)
-
-    if (!id) {
-      console.error('memo data is invalid. id:', id, 'type:', type)
-      wx.showToast({
-        title: '记录数据错误',
-        icon: 'none'
-      })
-      return
-    }
-
-    // 查找完整的memo对象
-    let memoData = null
-    for (const group of this.data.groupedMemos) {
-      const found = group.memos.find(m => m.id === id)
-      if (found) {
-        memoData = found
-        break
-      }
-    }
-
-    if (!memoData) {
-      console.error('memo not found in groupedMemos for id:', id)
-      wx.showToast({
-        title: '找不到记录',
-        icon: 'none'
-      })
-      return
-    }
-
-    console.log('found memo data:', memoData)
-
-    // type字段可能为undefined（历史记录兼容），这是正常的
-
-    // 由于memo页面是tabBar页面，不能使用navigateTo传参
-    // 使用全局数据传递编辑参数和完整memo对象
-    const app = getApp()
-    app.globalData.editMemo = {
-      type: type,
-      editId: id,
-      memoData: memoData,  // 传递完整memo对象
-      fromPage: 'history'
-    }
-
-    console.log('switching to memo tab with edit params:', type, id)
-    wx.switchTab({
-      url: '/pages/memo/memo',
-      fail: (err) => {
-        console.error('switch tab failed:', err)
-        wx.showToast({
-          title: '跳转失败',
-          icon: 'none'
-        })
-      }
-    })
-  },
+  // 编辑备忘录（已删除重复定义，使用577行的版本）
 
   // 删除备忘录
   deleteMemo: async function(e) {
-    const memo = e.currentTarget.dataset.memo
-    
+    const memoId = e.currentTarget.dataset.id
+    console.log('删除记录:', memoId)
+
+    // 从 allMemos 或 groupedMemos 查找 memo 对象
+    let memo = this.data.allMemos.find(m => m.id === memoId)
+    if (!memo) {
+      for (const group of this.data.groupedMemos) {
+        const found = group.memos.find(m => m.id === memoId)
+        if (found) {
+          memo = found
+          break
+        }
+      }
+    }
+
+    if (!memo) {
+      wx.showToast({ title: '记录不存在', icon: 'none' })
+      return
+    }
+
     wx.showModal({
       title: '确认删除',
       content: '删除后无法恢复，确定要删除这条记录吗？',
@@ -780,22 +1318,26 @@ Page({
       confirmColor: '#ef4444',
       success: async (res) => {
         if (res.confirm) {
-          if (memo.isPlaying) {
+          // 如果正在播放音频，先停止
+          if (memo.isPlaying && this.innerAudioContext) {
             this.innerAudioContext.stop()
           }
-          
+
           // 显示删除中状态
           wx.showLoading({ title: '删除中...' })
-          
+
           try {
-            const success = await app.deleteMemo(memo.id)
+            // 传递完整的memo对象给deleteMemo，包含notionPageId等信息
+            const success = await app.deleteMemo(memoId, memo)
             wx.hideLoading()
-            
+
             if (success) {
-              this.loadAllMemos()
+              // 删除成功后重新加载
+              await this.loadAllMemos()
               wx.showToast({
                 title: '已删除并同步',
-                icon: 'success'
+                icon: 'success',
+                duration: 2000
               })
             } else {
               wx.showToast({
@@ -807,8 +1349,9 @@ Page({
             wx.hideLoading()
             console.error('删除备忘录错误:', error)
             wx.showToast({
-              title: '删除失败',
-              icon: 'error'
+              title: '删除失败: ' + error.message,
+              icon: 'none',
+              duration: 3000
             })
           }
         }

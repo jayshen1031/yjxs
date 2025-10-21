@@ -72,47 +72,53 @@
       </view>
 
       <view wx:for="{{ filteredGoals }}" wx:key="id" class="goal-card">
-        <view class="goal-header">
-          <view class="goal-title-row">
-            <text class="goal-title">{{ item.title }}</text>
-            <text class="goal-category">{{ item.category }}</text>
-          </view>
-
-          <view class="goal-meta">
-            <text class="goal-status status-{{ item.status }}">{{ item.statusText }}</text>
-            <text wx:if="{{ item.priority }}" class="goal-priority priority-{{ item.priority }}">{{ item.priorityText }}</text>
-          </view>
+        <!-- 目标标题行 -->
+        <view class="goal-title-row">
+          <text class="goal-title">{{ item.title }}</text>
+          <text wx:if="{{ item.importance }}" class="goal-importance importance-{{ item.importance }}">{{ item.importanceText }}</text>
         </view>
 
-        <text wx:if="{{ item.description }}" class="goal-description">{{ item.description }}</text>
+        <!-- 时间和投入信息表格 -->
+        <view class="goal-info-table">
+          <view class="info-row">
+            <view class="info-cell">
+              <text class="info-label">起始时间</text>
+              <text class="info-value">{{ item.startDateText || '-' }}</text>
+            </view>
+            <view class="info-cell">
+              <text class="info-label">结束时间</text>
+              <text class="info-value">{{ item.targetDateText || '-' }}</text>
+            </view>
+          </view>
+          <view class="info-row">
+            <view class="info-cell">
+              <text class="info-label">实际投入</text>
+              <text class="info-value highlight">{{ item.actualTimeMinutes || 0 }}分钟</text>
+            </view>
+            <view class="info-cell">
+              <text class="info-label">占比预计</text>
+              <text class="info-value {{ item.timePercentage >= 100 ? 'warning' : '' }}">{{ item.timePercentage || 0 }}%</text>
+            </view>
+          </view>
+        </view>
 
         <!-- 进度条 -->
         <view class="progress-section">
           <view class="progress-info">
-            <text class="progress-label">进度</text>
-            <text class="progress-value">{{ item.progress }}%</text>
+            <text class="progress-label">完成进度</text>
+            <text class="progress-value">{{ item.progress || 0 }}%</text>
           </view>
           <view class="progress-bar">
-            <view class="progress-fill" style="width: {{ item.progress }}%"></view>
-          </view>
-        </view>
-
-        <!-- 时间和标签 -->
-        <view class="goal-footer">
-          <view class="goal-info">
-            <text wx:if="{{ item.targetDate }}" class="info-item">📅 {{ item.targetDateText }}</text>
-            <text wx:if="{{ item.totalTimeInvestment > 0 }}" class="info-item">⏱ {{ item.timeInvestmentDisplay }}</text>
-          </view>
-          <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="goal-tags">
-            <text wx:for="{{ item.tags }}" wx:key="*this" wx:for-item="tag" class="tag">{{ tag }}</text>
+            <view class="progress-fill" style="width: {{ item.progress || 0 }}%"></view>
           </view>
         </view>
 
         <!-- 操作按钮 -->
         <view class="goal-actions">
-          <text class="action-btn-small" bindtap="editGoal" data-id="{{ item.id }}">编辑</text>
-          <text class="action-btn-small" bindtap="updateProgress" data-id="{{ item.id }}">更新进度</text>
-          <text class="action-btn-small" bindtap="viewRelatedTodos" data-id="{{ item.id }}">查看待办</text>
+          <text class="action-btn-small" bindtap="editGoal" data-id="{{ item.id }}">✏️ 编辑</text>
+          <text class="action-btn-small" bindtap="updateProgress" data-id="{{ item.id }}">📊 更新进度</text>
+          <text class="action-btn-small" bindtap="viewRelatedTodos" data-id="{{ item.id }}">📝 查看待办</text>
+          <text class="action-btn-small delete" bindtap="deleteGoal" data-id="{{ item.id }}" data-title="{{ item.title }}">🗑️ 删除</text>
         </view>
       </view>
     </scroll-view>
@@ -165,6 +171,7 @@
           <text class="chip {{ selectedTodoType === '临时待办' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="临时待办">临时待办</text>
           <text class="chip {{ selectedTodoType === '习惯养成' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="习惯养成">习惯养成</text>
           <text class="chip {{ selectedTodoType === '紧急处理' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="紧急处理">紧急处理</text>
+          <text class="chip toggle-completed {{ showCompletedTodos ? 'active' : '' }}" bindtap="toggleShowCompleted">{{ showCompletedTodos ? '隐藏已完成' : '显示已完成' }}</text>
         </view>
       </scroll-view>
     </view>
@@ -187,29 +194,27 @@
           <view class="todo-main">
             <view class="todo-title-row">
               <text class="todo-title {{ item.status === '已完成' ? 'completed' : '' }}">{{ item.title }}</text>
-              <text class="todo-type type-{{ item.type }}">{{ item.type }}</text>
             </view>
 
             <view class="todo-meta">
+              <text class="todo-type type-{{ item.type }}">{{ item.type }}</text>
               <text class="priority priority-{{ item.priority }}">{{ item.priorityLabel }}</text>
               <text wx:if="{{ item.dueDate }}" class="due-date {{ item.isOverdue ? 'overdue' : '' }}">{{ item.dueDateText }}</text>
             </view>
 
             <view wx:if="{{ item.relatedGoalName }}" class="related-goal">
-              <text class="goal-icon">🎯</text>
-              <text class="goal-name">{{ item.relatedGoalName }}</text>
+              🎯 {{ item.relatedGoalName }}
             </view>
 
             <view wx:if="{{ item.tags && item.tags.length > 0 }}" class="todo-tags">
               <text wx:for="{{ item.tags }}" wx:key="*this" wx:for-item="tag" class="tag">{{ tag }}</text>
             </view>
           </view>
-        </view>
 
-        <view class="todo-actions">
-          <text class="action-btn-small" bindtap="editTodo" data-id="{{ item.id }}">编辑</text>
-          <text class="action-btn-small" bindtap="recordTime" data-id="{{ item.id }}">记录时间</text>
-          <text class="action-btn-small danger" bindtap="deleteTodo" data-id="{{ item.id }}">删除</text>
+          <view class="todo-actions-compact">
+            <text class="action-icon" bindtap="editTodo" data-id="{{ item.id }}">✏️</text>
+            <text class="action-icon danger" bindtap="deleteTodo" data-id="{{ item.id }}">🗑️</text>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -226,12 +231,26 @@
       <view class="modal-body">
         <view class="form-group">
           <text class="form-label">目标名称</text>
-          <input class="form-input" placeholder="请输入目标名称" value="{{ goalFormData.title }}" bindinput="onGoalTitleInput" maxlength="50" />
+          <input
+            class="form-input"
+            placeholder="请输入目标名称"
+            placeholder-style="color: #94a3b8; font-size: 30rpx;"
+            value="{{ goalFormData.title }}"
+            bindinput="onGoalTitleInput"
+            maxlength="50"
+          />
         </view>
 
         <view class="form-group">
           <text class="form-label">描述</text>
-          <textarea class="form-textarea" placeholder="请输入描述（可选）" value="{{ goalFormData.description }}" bindinput="onGoalDescriptionInput" maxlength="200" />
+          <textarea
+            class="form-textarea"
+            placeholder="请输入描述（可选）"
+            placeholder-style="color: #94a3b8; font-size: 28rpx;"
+            value="{{ goalFormData.description }}"
+            bindinput="onGoalDescriptionInput"
+            maxlength="200"
+          />
         </view>
 
         <view class="form-group">
@@ -264,12 +283,25 @@
 
         <view class="form-group">
           <text class="form-label">预计投入时间（小时）*</text>
-          <input class="form-input" type="digit" placeholder="例如：100" value="{{ goalEstimatedHours }}" bindinput="onGoalEstimatedHoursInput" />
+          <input
+            class="form-input"
+            type="digit"
+            placeholder="例如：100"
+            placeholder-style="color: #94a3b8; font-size: 30rpx;"
+            value="{{ goalEstimatedHours }}"
+            bindinput="onGoalEstimatedHoursInput"
+          />
         </view>
 
         <view class="form-group">
           <text class="form-label">标签（空格分隔）</text>
-          <input class="form-input" placeholder="例如：工作 重要" value="{{ goalTagsInput }}" bindinput="onGoalTagsInput" />
+          <input
+            class="form-input"
+            placeholder="例如：工作 重要"
+            placeholder-style="color: #94a3b8; font-size: 30rpx;"
+            value="{{ goalTagsInput }}"
+            bindinput="onGoalTagsInput"
+          />
         </view>
       </view>
 
@@ -314,7 +346,14 @@
         </view>
 
         <view class="form-group">
-          <text class="form-label">截止日期</text>
+          <text class="form-label">状态</text>
+          <picker class="form-picker" mode="selector" range="{{ todoStatusOptions }}" range-key="label" value="{{ todoStatusIndex }}" bindchange="onTodoStatusChange">
+            <view class="picker-value">{{ todoStatusOptions[todoStatusIndex].label }}</view>
+          </picker>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">记录日期</text>
           <picker class="form-picker" mode="date" value="{{ todoDueDate }}" bindchange="onTodoDueDateChange">
             <view class="picker-value">{{ todoDueDate || '选择日期' }}</view>
           </picker>

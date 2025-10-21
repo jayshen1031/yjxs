@@ -1,0 +1,123 @@
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="page-title">📊 今日总结</view>
+    <view class="page-desc">回顾今天的时间投入，总结收获与成长</view>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{ loading }}" class="loading-section">
+    <view class="loading-text">加载今日数据中...</view>
+  </view>
+
+  <!-- 无数据 -->
+  <view wx:elif="{{ !hasData }}" class="empty-section">
+    <view class="empty-icon">📝</view>
+    <view class="empty-text">今日暂无记录</view>
+    <view class="empty-hint">记录你的时间投入后，才能生成总结哦</view>
+  </view>
+
+  <!-- 有数据 -->
+  <view wx:else class="content-section">
+    <!-- 今日数据概览 -->
+    <view class="data-overview">
+      <view class="overview-title">今日数据</view>
+
+      <view class="stats-row">
+        <view class="stat-item">
+          <view class="stat-value">{{ todayData.activities.length }}</view>
+          <view class="stat-label">活动数</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-value">{{ totalHours }}</view>
+          <view class="stat-label">总时长(h)</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-value">{{ todayData.mainRecords.length }}</view>
+          <view class="stat-label">记录数</view>
+        </view>
+      </view>
+
+      <view class="time-distribution">
+        <view class="distribution-item valuable">
+          <view class="distribution-label">✅ 有价值</view>
+          <view class="distribution-bar">
+            <view class="distribution-fill" style="width: {{ valuablePercent }}%"></view>
+          </view>
+          <view class="distribution-value">{{ todayData.stats.valuableMinutes }}分</view>
+        </view>
+
+        <view class="distribution-item neutral">
+          <view class="distribution-label">⚪ 中性</view>
+          <view class="distribution-bar">
+            <view class="distribution-fill" style="width: {{ neutralPercent }}%"></view>
+          </view>
+          <view class="distribution-value">{{ todayData.stats.neutralMinutes }}分</view>
+        </view>
+
+        <view class="distribution-item wasteful">
+          <view class="distribution-label">❌ 低效</view>
+          <view class="distribution-bar">
+            <view class="distribution-fill" style="width: {{ wastefulPercent }}%"></view>
+          </view>
+          <view class="distribution-value">{{ todayData.stats.wastefulMinutes }}分</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons">
+      <button class="btn btn-primary" bindtap="generateSummary" disabled="{{ generateStatus === 'loading' }}">
+        <text wx:if="{{ generateStatus === 'loading' }}">生成中...</text>
+        <text wx:else>🤖 生成完整总结</text>
+      </button>
+
+      <button class="btn btn-secondary" bindtap="generateQuickSummary">
+        ⚡ 快速总结
+      </button>
+    </view>
+
+    <!-- AI总结结果 -->
+    <view wx:if="{{ summary }}" class="summary-section">
+      <view class="summary-header">
+        <view class="summary-title">AI总结</view>
+        <view class="summary-actions">
+          <text class="action-icon" bindtap="copySummary">📋</text>
+          <text class="action-icon" bindtap="saveSummary">💾</text>
+          <text class="action-icon" bindtap="shareSummary">📤</text>
+        </view>
+      </view>
+
+      <view class="summary-content">
+        {{ summary }}
+      </view>
+
+      <!-- 提示词查看 -->
+      <view class="prompt-section">
+        <view class="prompt-toggle" bindtap="togglePrompt">
+          <text>{{ showPrompt ? '▼' : '▶' }} 查看提示词</text>
+        </view>
+
+        <view wx:if="{{ showPrompt }}" class="prompt-content">
+          <view class="prompt-text">{{ prompt }}</view>
+          <button class="btn btn-text" bindtap="copyPrompt">复制提示词</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 错误提示 -->
+    <view wx:if="{{ generateStatus === 'error' }}" class="error-section">
+      <view class="error-icon">⚠️</view>
+      <view class="error-message">{{ errorMessage }}</view>
+    </view>
+
+    <!-- 使用说明 -->
+    <view class="help-section">
+      <view class="help-title">💡 使用说明</view>
+      <view class="help-item">1. 点击"生成完整总结"获取详细的今日分析报告</view>
+      <view class="help-item">2. 点击"快速总结"获取简洁版3句话总结</view>
+      <view class="help-item">3. 总结可以保存到Notion或复制分享</view>
+      <view class="help-item">4. 提示词可用于其他AI工具（豆包、通义千问等）</view>
+    </view>
+  </view>
+</view>

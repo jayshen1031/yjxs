@@ -64,18 +64,18 @@
                type="text"/>
       </view>
       <text class="input-hint">
-        从Notion数据库URL中复制的ID，任何格式都可以（可选，如果使用五数据库架构可以忽略）
+        从Notion数据库URL中复制的ID，任何格式都可以（可选，如果使用七数据库架构可以忽略）
       </text>
     </view>
 
-    <!-- 高级配置：六数据库架构 -->
+    <!-- 高级配置：七数据库架构 -->
     <view class="form-section">
       <view class="section-header" bindtap="toggleAdvanced">
-        <text class="section-title">🎯 六数据库配置（推荐）</text>
+        <text class="section-title">🎯 七数据库配置（推荐）</text>
         <text class="toggle-icon">{{showAdvanced ? '▼' : '▶'}}</text>
       </view>
       <text class="input-hint" style="margin-bottom: 12rpx;">
-        如果你已经手动创建了Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things六个数据库，请在这里配置它们的ID
+        如果你已经手动创建了Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes七个数据库，请在这里配置它们的ID
       </text>
 
       <view wx:if="{{showAdvanced}}" class="advanced-config">
@@ -139,6 +139,17 @@
                  bindinput="onHappyThingsDbInput"
                  type="text"/>
           <text class="input-hint">如果要使用开心事管理功能，此项必填</text>
+        </view>
+
+        <!-- 箴言库 -->
+        <view class="database-input-group">
+          <text class="db-label">💬 箴言库 (Quotes)</text>
+          <input class="input-field"
+                 placeholder="箴言库数据库ID"
+                 value="{{notionConfig.databases.quotes}}"
+                 bindinput="onQuotesDbInput"
+                 type="text"/>
+          <text class="input-hint">如果要使用每日箴言功能，此项必填</text>
         </view>
       </view>
     </view>

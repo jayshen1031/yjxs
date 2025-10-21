@@ -913,11 +913,21 @@ class NotionApiService {
   // 查询数据库
   async queryDatabase(apiKey, databaseId, filter = {}) {
     const endpoint = `/databases/${databaseId}/query`
-    
+
     return await this.callApi(endpoint, {
       apiKey: apiKey,
       method: 'POST',
       data: filter
+    })
+  }
+
+  // 获取单个页面详情
+  async getPage(apiKey, pageId) {
+    const endpoint = `/pages/${pageId}`
+
+    return await this.callApi(endpoint, {
+      apiKey: apiKey,
+      method: 'GET'
     })
   }
 
@@ -1566,11 +1576,15 @@ class NotionApiService {
   // 删除备忘录从Notion（包含级联删除Activity Details）
   async deleteMemoFromNotion(apiKey, memo) {
     try {
-      console.log('开始从Notion删除备忘录:', memo)
+      console.log('🔧 [deleteMemoFromNotion] 开始删除:', {
+        memoId: memo.id,
+        notionPageId: memo.notionPageId,
+        activityDatabaseId: memo.activityDatabaseId
+      })
 
       // 检查备忘录是否有notionPageId
       if (!memo.notionPageId) {
-        console.log('备忘录没有notionPageId，无需从Notion删除')
+        console.log('⚠️ [deleteMemoFromNotion] 备忘录没有notionPageId，无需从Notion删除')
         return {
           success: true,
           message: '备忘录未同步到Notion，删除完成'
@@ -1579,7 +1593,7 @@ class NotionApiService {
 
       // 1. 级联删除关联的Activity Details（如果有配置）
       if (memo.activityDatabaseId) {
-        console.log('查询关联的Activity Details...')
+        console.log('🔍 [deleteMemoFromNotion] 查询关联的Activity Details...')
         const queryResult = await this.callApi('/databases/' + memo.activityDatabaseId + '/query', {
           apiKey: apiKey,
           method: 'POST',
@@ -1595,25 +1609,30 @@ class NotionApiService {
 
         if (queryResult.success && queryResult.data && queryResult.data.results) {
           const activities = queryResult.data.results
-          console.log(`找到 ${activities.length} 条关联的Activity Details，开始删除...`)
+          console.log(`📊 [deleteMemoFromNotion] 找到 ${activities.length} 条关联的Activity Details，开始删除...`)
 
           // 批量删除所有Activity Details
           for (const activity of activities) {
-            await this.deletePage(apiKey, activity.id)
-            console.log('已删除Activity Detail:', activity.id)
+            const deleteResult = await this.deletePage(apiKey, activity.id)
+            console.log(`🗑️ [deleteMemoFromNotion] 删除Activity Detail ${activity.id}:`, deleteResult.success ? '成功' : '失败')
           }
+          console.log('✅ [deleteMemoFromNotion] 所有Activity Details删除完成')
         } else {
-          console.log('未找到关联的Activity Details或查询失败')
+          console.log('⚠️ [deleteMemoFromNotion] 未找到关联的Activity Details或查询失败')
         }
       } else {
-        console.log('未配置activityDatabaseId，跳过Activity Details删除')
+        console.log('⚠️ [deleteMemoFromNotion] 未配置activityDatabaseId，跳过Activity Details删除')
       }
 
       // 2. 删除Main Record
-      console.log('删除Main Record:', memo.notionPageId)
+      console.log('🗑️ [deleteMemoFromNotion] 删除Main Record:', memo.notionPageId)
       const result = await this.deletePage(apiKey, memo.notionPageId)
 
-      console.log('删除Notion页面结果:', result)
+      console.log('📋 [deleteMemoFromNotion] 删除Notion页面结果:', {
+        success: result.success,
+        error: result.error,
+        archived: result.data?.archived
+      })
 
       if (result.success) {
         return {
@@ -1623,11 +1642,11 @@ class NotionApiService {
       } else {
         return {
           success: false,
-          error: result.error
+          error: result.error || '删除失败'
         }
       }
     } catch (error) {
-      console.error('从Notion删除备忘录异常:', error)
+      console.error('❌ [deleteMemoFromNotion] 从Notion删除备忘录异常:', error)
       return {
         success: false,
         error: '删除失败: ' + error.message
@@ -2076,12 +2095,17 @@ class NotionApiService {
     try {
       console.log('前端直接查询主记录表:', databaseId, '用户邮箱:', userEmail)
 
-      // 构建过滤条件
+      // 构建过滤条件（排除已归档的记录）
       const filter = {
-        property: 'User ID',
-        rich_text: {
-          equals: userEmail
-        }
+        and: [
+          {
+            property: 'User ID',
+            rich_text: {
+              equals: userEmail
+            }
+          }
+          // Notion API会自动排除archived的页面，无需显式过滤
+        ]
       }
 
       // 构建查询参数
@@ -2136,7 +2160,10 @@ class NotionApiService {
           recordType: recordType,
           timePeriod: props['Time Period']?.select?.name || '',
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
-          userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
+          userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
+          // 读取开始和结束时间
+          startTime: props['Start Time']?.rich_text?.[0]?.text?.content || '',
+          endTime: props['End Time']?.rich_text?.[0]?.text?.content || ''
         }
       })
 
@@ -2225,16 +2252,27 @@ class NotionApiService {
       // 解析结果（使用实际的字段名）
       const activities = result.data.results.map(page => {
         const props = page.properties
+
+        // 提取关联字段（Relation类型返回的是包含ID的数组）
+        // 注意：活动明细表中的主记录关联字段名是 'Record' 而不是 'Related Main Record'
+        const relatedMainRecord = props['Record']?.relation?.[0]?.id || null
+        const relatedGoal = props['Related Goal']?.relation?.[0]?.id || null
+        const relatedTodo = props['Related Todo']?.relation?.[0]?.id || null
+
         return {
           id: page.id,
           name: props['Activity Name']?.title?.[0]?.text?.content || '',
           description: props['Description']?.rich_text?.[0]?.text?.content || '',
-          startTime: props['Record Date']?.date?.start || '',  // 使用Record Date作为startTime
-          endTime: props['Record Date']?.date?.start || '',    // 同样使用Record Date
+          startTime: props['Start Time']?.rich_text?.[0]?.text?.content || props['Record Date']?.date?.start || '',
+          endTime: props['End Time']?.rich_text?.[0]?.text?.content || props['Record Date']?.date?.start || '',
           duration: props['Minutes']?.number || 0,              // 使用Minutes字段
           activityType: props['Value Type']?.select?.name || '', // 使用Value Type字段
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
-          userId: props['User ID']?.rich_text?.[0]?.text?.content || ''
+          userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
+          // 关联字段
+          relatedMainRecordId: relatedMainRecord,
+          relatedGoalId: relatedGoal,
+          relatedTodoId: relatedTodo
         }
       })
 
@@ -2258,41 +2296,82 @@ class NotionApiService {
    * 查询待办事项列表（仅查询未完成的）
    * @param {string} apiKey - Notion API Key
    * @param {string} todosDatabaseId - 待办库数据库ID
-   * @param {object} options - 查询选项 {scope: '今日'|'近期'|null, status: '待办'|'进行中'|null}
+   * @param {object} options - 查询选项 {scope: '今日'|'近期'|'进行中'|'跨天'|'all'|null, status: '待办'|'进行中'|null}
    */
   async queryTodos(apiKey, todosDatabaseId, options = {}) {
     try {
-      console.log('查询待办事项列表:', todosDatabaseId)
+      console.log('查询待办事项列表:', todosDatabaseId, 'scope:', options.scope)
 
       // 构建过滤条件：排除已完成和已取消的待办
       const filters = []
 
-      // 添加状态过滤
-      if (options.status) {
-        filters.push({
-          property: 'Status',
-          select: {
-            equals: options.status
-          }
-        })
-      } else {
-        // 默认只查询待办和进行中的
+      // 特殊处理：按筛选范围决定状态和日期过滤
+      if (options.scope === '进行中') {
+        // 查询所有未完成的待办（待办 + 进行中）
         filters.push({
           or: [
-            { property: 'Status', select: { equals: '待办' } },
-            { property: 'Status', select: { equals: '进行中' } }
+            {
+              property: 'Status',
+              select: {
+                equals: '进行中'
+              }
+            },
+            {
+              property: 'Status',
+              select: {
+                equals: '待办'
+              }
+            }
           ]
         })
-      }
+      } else if (options.scope === '跨天') {
+        // 查询进行中且Record Date < 今天的待办
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
 
-      // 添加范围过滤
-      if (options.scope) {
         filters.push({
-          property: 'Scope',
-          select: {
-            equals: options.scope
-          }
+          and: [
+            {
+              property: 'Status',
+              select: {
+                equals: '进行中'
+              }
+            },
+            {
+              property: 'Record Date',
+              date: {
+                before: today.toISOString().split('T')[0]
+              }
+            }
+          ]
         })
+      } else {
+        // 其他筛选：默认查询待办和进行中的
+        if (options.status) {
+          filters.push({
+            property: 'Status',
+            select: {
+              equals: options.status
+            }
+          })
+        } else {
+          filters.push({
+            or: [
+              { property: 'Status', select: { equals: '待办' } },
+              { property: 'Status', select: { equals: '进行中' } }
+            ]
+          })
+        }
+
+        // 添加范围过滤（今日、近期）
+        if (options.scope && options.scope !== 'all') {
+          filters.push({
+            property: 'Scope',
+            select: {
+              equals: options.scope
+            }
+          })
+        }
       }
 
       // 构建查询参数
@@ -2304,7 +2383,7 @@ class NotionApiService {
             direction: 'ascending'
           },
           {
-            property: 'Due Date',
+            property: 'Record Date',
             direction: 'ascending'
           }
         ],
@@ -2439,6 +2518,233 @@ class NotionApiService {
       return {
         success: false,
         error: error.message
+      }
+    }
+  }
+
+  /**
+   * 智能更新待办状态
+   * @param {string} apiKey - Notion API Key
+   * @param {string} todoPageId - 待办页面ID
+   * @param {number} newActualMinutes - 新的实际投入时间（累计）
+   * @param {number} estimatedMinutes - 预计时间
+   * @param {string} currentStatus - 当前状态
+   * @returns {Promise<{success: boolean, newStatus?: string, error?: string}>}
+   */
+  async smartUpdateTodoStatus(apiKey, todoPageId, newActualMinutes, estimatedMinutes, currentStatus) {
+    try {
+      let newStatus = currentStatus
+
+      // 状态转换逻辑
+      if (currentStatus === '待办' && newActualMinutes > 0) {
+        newStatus = '进行中'
+      } else if (newActualMinutes >= estimatedMinutes && estimatedMinutes > 0) {
+        // 达到预计时长，但不自动标记为完成（需要用户确认）
+        // 这里只是更新实际时长
+      }
+
+      const properties = {}
+
+      // 更新状态（如果有变化）
+      if (newStatus !== currentStatus) {
+        properties['Status'] = {
+          select: { name: newStatus }
+        }
+      }
+
+      // 注意：Actual Duration是Rollup字段，由关联的Activity自动汇总
+      // 这里不需要手动更新，只需要创建Activity关联即可
+
+      if (Object.keys(properties).length > 0) {
+        const result = await this.updatePageGeneric(todoPageId, properties, apiKey)
+        return {
+          success: result.success,
+          newStatus: newStatus,
+          error: result.error
+        }
+      }
+
+      return {
+        success: true,
+        newStatus: currentStatus
+      }
+    } catch (error) {
+      console.error('智能更新待办状态失败:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * 更新待办页面
+   * @param {string} apiKey - Notion API Key
+   * @param {string} todoPageId - 待办页面ID
+   * @param {object} updates - 更新内容 {status?: string, ...}
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async updateTodoPage(apiKey, todoPageId, updates) {
+    try {
+      const properties = {}
+
+      if (updates.status) {
+        properties['Status'] = {
+          select: { name: updates.status }
+        }
+      }
+
+      if (updates.completionProgress !== undefined) {
+        properties['Completion Progress'] = {
+          number: updates.completionProgress
+        }
+      }
+
+      const result = await this.updatePageGeneric(todoPageId, properties, apiKey)
+      return result
+    } catch (error) {
+      console.error('更新待办页面失败:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * 查询目标列表
+   * @param {string} apiKey - Notion API Key
+   * @param {string} goalsDatabaseId - 目标库数据库ID
+   * @param {object} options - 查询选项 {status: '进行中'|'已完成'|null}
+   * @returns {Promise<{success: boolean, goals: Array, total: number, error?: string}>}
+   */
+  async queryGoals(apiKey, goalsDatabaseId, options = {}) {
+    try {
+      console.log('查询目标列表:', goalsDatabaseId, 'status:', options.status)
+
+      // 构建过滤条件
+      const filters = []
+
+      // 按状态过滤
+      if (options.status && options.status !== 'all') {
+        // 指定状态查询
+        filters.push({
+          property: 'Status',
+          select: {
+            equals: options.status
+          }
+        })
+      } else if (!options.status) {
+        // 默认查询进行中的目标
+        filters.push({
+          property: 'Status',
+          select: {
+            equals: '进行中'
+          }
+        })
+      }
+      // 如果 options.status === 'all'，不添加状态过滤，查询所有目标
+
+      // 构建查询参数
+      const queryData = {
+        sorts: [
+          {
+            property: 'Priority',
+            direction: 'ascending'
+          },
+          {
+            property: 'Start Date',
+            direction: 'descending'
+          }
+        ],
+        page_size: options.limit || 100
+      }
+
+      // 只有在有过滤条件时才添加filter
+      if (filters.length > 0) {
+        queryData.filter = filters.length > 1 ? { and: filters } : filters[0]
+      }
+
+      const result = await this.queryDatabase(apiKey, goalsDatabaseId, queryData)
+
+      if (!result.success) {
+        throw new Error(result.error || '查询目标失败')
+      }
+
+      // 解析结果
+      const goals = result.data.results.map(page => {
+        const props = page.properties
+        return {
+          id: page.id,
+          title: props['Goal Name']?.title?.[0]?.text?.content || '未命名目标',
+          description: props['Description']?.rich_text?.[0]?.text?.content || '',
+          category: props['Category']?.select?.name || '月度目标',
+          type: props['Type']?.select?.name || '事业',
+          status: props['Status']?.select?.name || '进行中',
+          progress: props['Progress']?.number || 0,
+          priority: props['Priority']?.select?.name || '中',
+          startDate: props['Start Date']?.date?.start || '',
+          targetDate: props['Target Date']?.date?.start || '',
+          tags: props['Tags']?.multi_select?.map(tag => tag.name) || []
+        }
+      })
+
+      console.log(`查询到 ${goals.length} 个目标`)
+
+      return {
+        success: true,
+        goals: goals,
+        total: result.data.results.length
+      }
+    } catch (error) {
+      console.error('查询目标异常:', error)
+      return {
+        success: false,
+        goals: [],
+        total: 0,
+        error: '查询目标失败: ' + error.message
+      }
+    }
+  }
+
+  /**
+   * 更新Notion页面属性
+   * @param {string} apiKey - Notion API Key
+   * @param {string} pageId - 页面ID
+   * @param {object} properties - 要更新的属性对象
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async updatePageProperties(apiKey, pageId, properties) {
+    try {
+      console.log('更新页面属性:', pageId)
+      console.log('更新的属性:', JSON.stringify(properties, null, 2))
+
+      const result = await this.callApi(`/pages/${pageId}`, {
+        method: 'PATCH',
+        apiKey: apiKey,
+        data: {
+          properties: properties
+        }
+      })
+
+      if (result.success) {
+        console.log('✅ 页面属性更新成功')
+        return {
+          success: true,
+          data: result.data
+        }
+      } else {
+        console.error('❌ 页面属性更新失败:', result.error)
+        return {
+          success: false,
+          error: result.error
+        }
+      }
+    } catch (error) {
+      console.error('更新页面属性异常:', error)
+      return {
+        success: false,
+        error: '更新页面属性失败: ' + error.message
       }
     }
   }

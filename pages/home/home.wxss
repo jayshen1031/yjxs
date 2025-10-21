@@ -1224,3 +1224,84 @@
   color: #94a3b8;
   margin-top: 12rpx;
 }
+
+/* 进行中待办样式 ⭐ */
+.in-progress-todos {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.todo-item-home {
+  padding: 20rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+  border-radius: 16rpx;
+  border-left: 4rpx solid #f59e0b;
+  transition: all 0.3s ease;
+}
+
+.todo-item-home:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.todo-header-home {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.todo-title-home {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #92400e;
+  flex: 1;
+}
+
+.todo-type-badge {
+  font-size: 22rpx;
+  color: #d97706;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.todo-progress-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.progress-text {
+  font-size: 24rpx;
+  color: #92400e;
+}
+
+.progress-percentage {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #f59e0b;
+  margin-left: auto;
+}
+
+.progress-bar-home {
+  height: 8rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.progress-fill-home {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4rpx;
+}
+
+.empty-tip {
+  text-align: center;
+  padding: 40rpx;
+  font-size: 26rpx;
+  color: #94a3b8;
+}

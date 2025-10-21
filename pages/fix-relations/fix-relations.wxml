@@ -1,0 +1,87 @@
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="page-title">🔧 修复活动关联</view>
+    <view class="page-desc">修复历史活动明细与主记录的关联关系</view>
+  </view>
+
+  <!-- 用户配置信息 -->
+  <view class="config-card">
+    <view class="config-title">📋 当前配置</view>
+    <view class="config-item">
+      <text class="config-label">用户邮箱:</text>
+      <text class="config-value">{{ userEmail || '未登录' }}</text>
+    </view>
+    <view class="config-item">
+      <text class="config-label">主记录表ID:</text>
+      <text class="config-value">{{ mainRecordsDatabaseId ? '已配置 ✅' : '未配置 ❌' }}</text>
+    </view>
+    <view class="config-item">
+      <text class="config-label">活动明细表ID:</text>
+      <text class="config-value">{{ activityDetailsDatabaseId ? '已配置 ✅' : '未配置 ❌' }}</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button
+      class="btn btn-primary"
+      bindtap="startFix"
+      disabled="{{ isFixing || !canFix }}"
+      loading="{{ isFixing }}"
+    >
+      {{ isFixing ? '修复中...' : '开始修复' }}
+    </button>
+  </view>
+
+  <!-- 进度显示 -->
+  <view class="progress-card" wx:if="{{ showProgress }}">
+    <view class="progress-title">⏳ 修复进度</view>
+    <view class="log-container">
+      <view class="log-item" wx:for="{{ logs }}" wx:key="index">
+        <text>{{ item }}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 结果显示 -->
+  <view class="result-card" wx:if="{{ result }}">
+    <view class="result-title">{{ result.success ? '✅ 修复完成' : '❌ 修复失败' }}</view>
+
+    <view wx:if="{{ result.success }}" class="result-stats">
+      <view class="stat-item success">
+        <text class="stat-number">{{ result.fixed }}</text>
+        <text class="stat-label">成功修复</text>
+      </view>
+      <view class="stat-item skipped">
+        <text class="stat-number">{{ result.skipped }}</text>
+        <text class="stat-label">已跳过</text>
+      </view>
+      <view class="stat-item error">
+        <text class="stat-number">{{ result.errors }}</text>
+        <text class="stat-label">失败</text>
+      </view>
+      <view class="stat-item total">
+        <text class="stat-number">{{ result.total }}</text>
+        <text class="stat-label">总计</text>
+      </view>
+    </view>
+
+    <view wx:else class="error-message">
+      <text>{{ result.error }}</text>
+    </view>
+
+    <button class="btn btn-secondary" bindtap="reset">重新修复</button>
+  </view>
+
+  <!-- 说明 -->
+  <view class="info-card">
+    <view class="info-title">ℹ️ 说明</view>
+    <view class="info-content">
+      <text>• 此工具用于修复旧数据的关联关系\n</text>
+      <text>• 根据日期自动匹配主记录和活动明细\n</text>
+      <text>• 已有关联的活动会自动跳过\n</text>
+      <text>• 修复完成后请刷新历史页面查看效果</text>
+    </view>
+  </view>
+</view>

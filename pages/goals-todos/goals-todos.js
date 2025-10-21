@@ -59,6 +59,7 @@ Page({
     filteredTodos: [],
     todoSearchKeyword: '',
     selectedTodoType: '',
+    showCompletedTodos: false, // 默认不显示已完成的待办
 
     // 可用目标列表（供待办选择）
     availableGoals: [],
@@ -100,16 +101,18 @@ Page({
       description: '',
       type: '临时待办 (Ad-hoc)',
       priority: '重要不紧急',
+      status: '待办',
       dueDate: '',
       estimatedMinutes: '',
       relatedGoalId: '',
       tags: []
     },
     todoTypeOptions: [
-      { value: '目标导向 (Goal-oriented)', label: '目标导向' },
-      { value: '临时待办 (Ad-hoc)', label: '临时待办' },
-      { value: '习惯养成 (Habit)', label: '习惯养成' },
-      { value: '紧急处理 (Urgent)', label: '紧急处理' }
+      { value: '目标导向 (Goal-oriented)', label: '🎯 目标导向' },
+      { value: '临时待办 (Ad-hoc)', label: '📝 临时待办' },
+      { value: '习惯养成 (Habit)', label: '💪 习惯养成' },
+      { value: '紧急处理 (Urgent)', label: '🚨 紧急处理' },
+      { value: '明日规划 (Planning)', label: '📅 明日规划' }
     ],
     todoTypeIndex: 1,
     todoPriorityOptions: [
@@ -119,6 +122,13 @@ Page({
       { value: '不紧急不重要', label: '⚪ 不紧急不重要' }
     ],
     todoPriorityIndex: 1,
+    todoStatusOptions: [
+      { value: '待办', label: '⏳ 待办' },
+      { value: '进行中', label: '▶️ 进行中' },
+      { value: '已完成', label: '✅ 已完成' },
+      { value: '已取消', label: '❌ 已取消' }
+    ],
+    todoStatusIndex: 0,
     todoDueDate: '',
     todoGoalIndex: -1,
     todoTagsInput: '',
@@ -227,27 +237,66 @@ Page({
           priority: props.Priority?.select?.name || '中',
           status: props.Status?.select?.name || '未开始',
           progress: props.Progress?.number || 0,
+          startDate: props['Start Date']?.date?.start || '',
           targetDate: props['Target Date']?.date?.start || '',
+          estimatedHours: props['Estimated Hours']?.number || 0,
+          importance: props.Importance?.select?.name || '',
+          totalTimeInvestment: props['Total Time Invested']?.rollup?.number || 0,
           tags: props.Tags?.multi_select?.map(t => t.name) || []
         }
       })
 
       const processedGoals = goals.map(goal => {
+        // 格式化起始时间
+        let startDateText = ''
+        if (goal.startDate) {
+          const date = new Date(goal.startDate)
+          startDateText = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+        }
+
+        // 格式化结束时间
         let targetDateText = ''
         if (goal.targetDate) {
           const date = new Date(goal.targetDate)
-          targetDateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          targetDateText = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+        }
+
+        // 计算实际投入时间（分钟）- 从Notion的Total Time Invested字段获取，单位是分钟
+        const actualTimeMinutes = goal.totalTimeInvestment || 0
+
+        // 计算占比预计总投入时间的百分比
+        const estimatedHours = goal.estimatedHours || 0
+        const estimatedMinutes = estimatedHours * 60
+        const timePercentage = estimatedMinutes > 0 ? Math.round((actualTimeMinutes / estimatedMinutes) * 100) : 0
+
+        // 重要性文本映射
+        const importanceTextMap = {
+          '核心': '🔥 核心',
+          '重要': '⭐ 重要',
+          '辅助': '📌 辅助'
+        }
+
+        // 重要性CSS类名映射
+        const importanceClassMap = {
+          '核心': 'core',
+          '重要': 'important',
+          '辅助': 'auxiliary'
         }
 
         return {
           ...goal,
+          startDateText,
           targetDateText,
+          actualTimeMinutes,
+          timePercentage,
+          importanceText: importanceTextMap[goal.importance] || goal.importance,
           statusText: this.getGoalStatusText(goal.status),
           priorityText: goal.priority || '中',
           timeInvestmentDisplay: this.formatTime(goal.totalTimeInvestment || 0),
           // CSS类名
           status: statusClassMap[goal.status] || statusClassMap['未开始'],
-          priority: priorityClassMap[goal.priority] || priorityClassMap['中']
+          priority: priorityClassMap[goal.priority] || priorityClassMap['中'],
+          importance: importanceClassMap[goal.importance] || 'auxiliary'
         }
       })
 
@@ -388,11 +437,71 @@ Page({
     })
   },
 
-  editGoal(e) {
+  async editGoal(e) {
     const goalId = e.currentTarget.dataset.id
-    const goal = this.data.goals.find(g => g.id === goalId)
+    console.log('🎯 开始编辑目标，ID:', goalId)
 
-    if (goal) {
+    // 先从Notion重新查询最新数据
+    wx.showLoading({ title: '加载中...' })
+
+    try {
+      const currentUser = userManager.getCurrentUser()
+      const notionConfig = currentUser.notionConfig
+
+      console.log('🔑 使用API Key:', notionConfig.apiKey ? '已配置' : '未配置')
+
+      // 查询单个目标的最新数据
+      const notionApiService = require('../../utils/notionApiService.js')
+      console.log('📡 调用getPage，goalId:', goalId)
+
+      const pageResult = await notionApiService.getPage(notionConfig.apiKey, goalId)
+      console.log('📦 getPage返回结果:', pageResult)
+
+      wx.hideLoading()
+
+      if (!pageResult.success) {
+        console.error('❌ getPage失败:', pageResult.error)
+        wx.showToast({
+          title: '加载失败: ' + pageResult.error,
+          icon: 'none'
+        })
+        return
+      }
+
+      // 解析Notion页面数据
+      const page = pageResult.data
+      const props = page.properties
+
+      console.log('🔍 Notion返回的原始properties:', props)
+      console.log('🔍 所有字段名:', Object.keys(props))
+      console.log('🔍 Name字段:', props.Name)
+      console.log('🔍 Goal Name字段:', props['Goal Name'])
+      console.log('🔍 Start Date字段:', props['Start Date'])
+      console.log('🔍 Estimated Hours字段:', props['Estimated Hours'])
+
+      const goal = {
+        id: page.id,
+        title: this.getTitleValue(props['Goal Name']),
+        description: this.getRichTextValue(props.Description),
+        category: this.getSelectValue(props.Category),
+        priority: this.getSelectValue(props.Priority),
+        status: this.getSelectValue(props.Status),
+        startDate: this.getDateValue(props['Start Date']),
+        targetDate: this.getDateValue(props['Target Date']),
+        estimatedHours: this.getNumberValue(props['Estimated Hours']),
+        tags: this.getMultiSelectValue(props.Tags)
+      }
+
+      console.log('📝 从Notion加载的最新目标数据:', goal)
+
+      // 更新本地数据
+      const goalIndex = this.data.goals.findIndex(g => g.id === goalId)
+      if (goalIndex >= 0) {
+        this.data.goals[goalIndex] = goal
+        this.setData({ goals: this.data.goals })
+      }
+
+      // 填充编辑表单
       const categoryIndex = this.data.goalCategoryOptions.findIndex(c => c === goal.category)
       const priorityIndex = this.data.priorityOptions.findIndex(p => p.value === goal.priority)
 
@@ -415,6 +524,13 @@ Page({
         goalTagsInput: (goal.tags || []).join(' '),
         editingGoal: goal,
         showGoalModal: true
+      })
+    } catch (error) {
+      wx.hideLoading()
+      console.error('❌ 加载目标详情失败:', error)
+      wx.showToast({
+        title: '加载失败',
+        icon: 'error'
       })
     }
   },
@@ -544,9 +660,6 @@ Page({
             throw new Error(result.error || '更新失败')
           }
 
-          // 同步更新本地存储
-          app.updateGoal(this.data.editingGoal.id, this.data.goalFormData)
-
           wx.showToast({ title: '目标更新成功', icon: 'success' })
         } else {
           // 前端直接创建目标到Notion
@@ -647,6 +760,82 @@ Page({
         currentProgressGoalId: goalId,
         progressValue: goal.progress || 0,
         showProgressModal: true
+      })
+    }
+  },
+
+  // 删除目标
+  deleteGoal(e) {
+    const goalId = e.currentTarget.dataset.id
+    const goalTitle = e.currentTarget.dataset.title
+
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除目标"${goalTitle}"吗？\n\n此操作将同时删除Notion中的记录，且无法恢复。`,
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          await this.performDeleteGoal(goalId)
+        }
+      }
+    })
+  },
+
+  // 执行删除目标操作
+  async performDeleteGoal(goalId) {
+    try {
+      wx.showLoading({ title: '删除中...' })
+
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.showToast({ title: '用户未登录', icon: 'none' })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+
+      // 如果配置了Notion，同步删除Notion记录
+      if (notionConfig && notionConfig.apiKey) {
+        const goalsDatabaseId = notionConfig.databases?.goals || notionConfig.goalsDatabaseId
+
+        if (goalsDatabaseId) {
+          console.log('🗑️ 从Notion删除目标:', goalId)
+
+          // Notion使用归档而不是直接删除
+          const result = await notionApiService.updatePageProperties(
+            notionConfig.apiKey,
+            goalId,
+            {
+              'Status': {
+                select: { name: '已删除' }
+              }
+            }
+          )
+
+          if (result.success) {
+            console.log('✅ Notion目标已标记为删除')
+          } else {
+            console.warn('⚠️ Notion删除失败，仅删除本地记录:', result.error)
+          }
+        }
+      }
+
+      wx.hideLoading()
+      wx.showToast({
+        title: '删除成功',
+        icon: 'success'
+      })
+
+      // 重新加载目标列表
+      await this.loadGoals()
+
+    } catch (error) {
+      console.error('❌ 删除目标失败:', error)
+      wx.hideLoading()
+      wx.showToast({
+        title: '删除失败：' + error.message,
+        icon: 'none'
       })
     }
   },
@@ -790,30 +979,46 @@ Page({
           type: props['Todo Type']?.select?.name || '',
           priority: props.Priority?.select?.name || '重要不紧急',
           status: props.Status?.select?.name || '待办',
-          isCompleted: props['Is Completed']?.checkbox || false,
-          dueDate: props['Due Date']?.date?.start || '',
-          estimatedMinutes: props['Estimated Minutes']?.number || 0,
+          isCompleted: props['Is Completed']?.checkbox || false, // 可选字段
+          dueDate: props['Record Date']?.date?.start || '',
+          estimatedMinutes: props['Estimated Duration']?.number || props['Estimated Minutes']?.number || 0, // 支持两种字段名
           tags: props.Tags?.multi_select?.map(t => t.name) || []
         }
       })
 
       const processedTodos = todos.map(todo => {
         let dueDateText = ''
+        let dueDateDisplay = ''
         let isOverdue = false
+
         if (todo.dueDate) {
           const dueDate = new Date(todo.dueDate)
           const now = new Date()
+          now.setHours(0, 0, 0, 0) // 重置到当天0点，方便比较
+          dueDate.setHours(0, 0, 0, 0)
+
           const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24))
 
+          // 格式化具体日期
+          const year = dueDate.getFullYear()
+          const month = String(dueDate.getMonth() + 1).padStart(2, '0')
+          const day = String(dueDate.getDate()).padStart(2, '0')
+          dueDateDisplay = `${year}/${month}/${day}`
+
+          // 相对时间描述（记录日期视角）
           if (diffDays < 0) {
-            dueDateText = `已过期 ${Math.abs(diffDays)} 天`
-            isOverdue = true
+            dueDateText = `${Math.abs(diffDays)}天前`
+            isOverdue = false // 过去的记录不算过期
           } else if (diffDays === 0) {
-            dueDateText = '今天截止'
+            dueDateText = '今天'
+          } else if (diffDays === 1) {
+            dueDateText = '明天'
+          } else if (diffDays === 2) {
+            dueDateText = '后天'
           } else if (diffDays <= 7) {
-            dueDateText = `${diffDays} 天后截止`
+            dueDateText = `${diffDays}天后`
           } else {
-            dueDateText = `${Math.ceil(diffDays / 7)} 周后截止`
+            dueDateText = `${Math.ceil(diffDays / 7)}周后`
           }
         }
 
@@ -826,6 +1031,7 @@ Page({
         return {
           ...todo,
           dueDateText,
+          dueDateDisplay,
           isOverdue,
           relatedGoalName,
           priorityLabel: this.getTodoPriorityLabel(todo.priority),
@@ -924,6 +1130,12 @@ Page({
     console.log('🔍 开始筛选Todos，原始数据条数:', this.data.todos.length)
     let filtered = [...this.data.todos]
 
+    // 默认不显示已完成的待办（除非用户开启了显示选项）
+    if (!this.data.showCompletedTodos) {
+      filtered = filtered.filter(todo => todo.status !== '已完成')
+      console.log('🚫 过滤已完成待办，剩余:', filtered.length)
+    }
+
     if (this.data.todoSearchKeyword) {
       const keyword = this.data.todoSearchKeyword.toLowerCase()
       filtered = filtered.filter(todo =>
@@ -942,6 +1154,14 @@ Page({
     this.setData({
       filteredTodos: filtered
     })
+  },
+
+  // 切换显示已完成的待办
+  toggleShowCompleted() {
+    this.setData({
+      showCompletedTodos: !this.data.showCompletedTodos
+    })
+    this.filterTodos()
   },
 
   onTodoSearchInput(e) {
@@ -969,6 +1189,7 @@ Page({
         description: '',
         type: '临时待办 (Ad-hoc)',
         priority: '重要不紧急',
+        status: '待办',
         dueDate: '',
         estimatedMinutes: '',
         relatedGoalId: '',
@@ -976,6 +1197,7 @@ Page({
       },
       todoTypeIndex: 1,
       todoPriorityIndex: 1,
+      todoStatusIndex: 0,
       todoGoalIndex: -1,
       todoDueDate: '',
       todoTagsInput: '',
@@ -984,13 +1206,90 @@ Page({
     })
   },
 
-  editTodo(e) {
-    const todoId = e.currentTarget.dataset.id
-    const todo = this.data.todos.find(t => t.id === todoId)
+  // 快速添加明日规划
+  addTomorrowPlanning() {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
-    if (todo) {
+    this.setData({
+      todoFormData: {
+        title: '',
+        description: '',
+        type: '明日规划 (Planning)',
+        priority: '重要不紧急',
+        status: '待办',
+        dueDate: tomorrowStr,
+        estimatedMinutes: '',
+        relatedGoalId: '',
+        tags: []
+      },
+      todoTypeIndex: 4, // 明日规划的索引
+      todoPriorityIndex: 1,
+      todoStatusIndex: 0,
+      todoGoalIndex: -1,
+      todoDueDate: tomorrowStr,
+      todoTagsInput: '',
+      editingTodo: null,
+      showTodoModal: true
+    })
+  },
+
+  async editTodo(e) {
+    const todoId = e.currentTarget.dataset.id
+
+    // 先从Notion重新查询最新数据
+    wx.showLoading({ title: '加载中...' })
+
+    try {
+      const currentUser = userManager.getCurrentUser()
+      const notionConfig = currentUser.notionConfig
+
+      // 查询单个待办的最新数据
+      const notionApiService = require('../../utils/notionApiService.js')
+      const pageResult = await notionApiService.getPage(notionConfig.apiKey, todoId)
+
+      wx.hideLoading()
+
+      if (!pageResult.success) {
+        wx.showToast({
+          title: '加载失败: ' + pageResult.error,
+          icon: 'none'
+        })
+        return
+      }
+
+      // 解析Notion页面数据
+      const page = pageResult.data
+      const props = page.properties
+
+      const todo = {
+        id: page.id,
+        title: this.getTitleValue(props['Todo Name']),
+        description: this.getRichTextValue(props.Description),
+        type: this.getSelectValue(props['Todo Type']),
+        priority: this.getSelectValue(props.Priority),
+        status: this.getSelectValue(props.Status),
+        dueDate: this.getDateValue(props['Record Date']),
+        estimatedMinutes: props['Estimated Duration'] ? this.getNumberValue(props['Estimated Duration']) : null,
+        relatedGoalId: this.getRelationValue(props['Related Goal']),
+        tags: this.getMultiSelectValue(props.Tags),
+        completed: props['Is Completed'] ? this.getCheckboxValue(props['Is Completed']) : false
+      }
+
+      console.log('📝 从Notion加载的最新待办数据:', todo)
+
+      // 更新本地数据
+      const todoIndex = this.data.todos.findIndex(t => t.id === todoId)
+      if (todoIndex >= 0) {
+        this.data.todos[todoIndex] = todo
+        this.setData({ todos: this.data.todos })
+      }
+
+      // 填充编辑表单
       const typeIndex = this.data.todoTypeOptions.findIndex(t => t.value === todo.type)
       const priorityIndex = this.data.todoPriorityOptions.findIndex(p => p.value === todo.priority)
+      const statusIndex = this.data.todoStatusOptions.findIndex(s => s.value === todo.status)
       const goalIndex = this.data.availableGoals.findIndex(g => g.id === todo.relatedGoalId)
 
       this.setData({
@@ -999,6 +1298,7 @@ Page({
           description: todo.description || '',
           type: todo.type,
           priority: todo.priority,
+          status: todo.status || '待办',
           dueDate: todo.dueDate || '',
           estimatedMinutes: todo.estimatedMinutes || '',
           relatedGoalId: todo.relatedGoalId || '',
@@ -1006,11 +1306,19 @@ Page({
         },
         todoTypeIndex: typeIndex >= 0 ? typeIndex : 1,
         todoPriorityIndex: priorityIndex >= 0 ? priorityIndex : 1,
+        todoStatusIndex: statusIndex >= 0 ? statusIndex : 0,
         todoGoalIndex: goalIndex >= 0 ? goalIndex : -1,
         todoDueDate: todo.dueDate || '',
         todoTagsInput: (todo.tags || []).join(' '),
         editingTodo: todo,
         showTodoModal: true
+      })
+    } catch (error) {
+      wx.hideLoading()
+      console.error('❌ 加载待办详情失败:', error)
+      wx.showToast({
+        title: '加载失败',
+        icon: 'error'
       })
     }
   },
@@ -1036,6 +1344,14 @@ Page({
     this.setData({
       todoPriorityIndex: index,
       'todoFormData.priority': this.data.todoPriorityOptions[index].value
+    })
+  },
+
+  onTodoStatusChange(e) {
+    const index = parseInt(e.detail.value)
+    this.setData({
+      todoStatusIndex: index,
+      'todoFormData.status': this.data.todoStatusOptions[index].value
     })
   },
 
@@ -1087,13 +1403,48 @@ Page({
 
       if (useCloud) {
         if (this.data.editingTodo) {
-          // 更新待办
-          const result = await apiService.updateTodo(
-            currentUser.email,
-            notionConfig.apiKey,
-            this.data.editingTodo.id,
-            this.data.todoFormData
-          )
+          // 前端直接更新待办到Notion
+          const notionPageId = this.data.editingTodo.id
+          const todoData = this.data.todoFormData
+
+          const properties = {
+            'Todo Name': {
+              title: [{ text: { content: todoData.title } }]
+            },
+            'Description': {
+              rich_text: [{ text: { content: todoData.description || '' } }]
+            },
+            'Todo Type': {
+              select: { name: todoData.type || '临时待办' }
+            },
+            'Priority': {
+              select: { name: todoData.priority || '重要不紧急' }
+            },
+            'Status': {
+              select: { name: todoData.status || '待办' }
+            }
+          }
+
+          if (todoData.dueDate) {
+            properties['Record Date'] = { date: { start: todoData.dueDate } }
+          }
+
+          // 预估时长字段 - 如果数据库有此字段才添加
+          // if (todoData.estimatedMinutes) {
+          //   properties['Estimated Duration'] = { number: Number(todoData.estimatedMinutes) }
+          // }
+
+          if (todoData.relatedGoalId) {
+            properties['Related Goal'] = { relation: [{ id: todoData.relatedGoalId }] }
+          }
+
+          if (todoData.tags && todoData.tags.length > 0) {
+            properties['Tags'] = {
+              multi_select: todoData.tags.map(tag => ({ name: tag }))
+            }
+          }
+
+          const result = await notionApiService.updatePageGeneric(notionPageId, properties, notionConfig.apiKey)
 
           if (!result.success) {
             throw new Error(result.error || '更新失败')
@@ -1101,25 +1452,56 @@ Page({
 
           wx.showToast({ title: '待办更新成功', icon: 'success' })
         } else {
-          // 创建待办
-          const result = await apiService.createTodo(
-            currentUser.email,
-            notionConfig.apiKey,
-            this.data.todoFormData
-          )
+          // 前端直接创建待办到Notion
+          const todoData = this.data.todoFormData
+          const pageData = {
+            parent: { database_id: notionConfig.todosDatabaseId },
+            properties: {
+              'Todo Name': {
+                title: [{ text: { content: todoData.title } }]
+              },
+              'Description': {
+                rich_text: [{ text: { content: todoData.description || '' } }]
+              },
+              'Todo Type': {
+                select: { name: todoData.type || '临时待办' }
+              },
+              'Priority': {
+                select: { name: todoData.priority || '重要不紧急' }
+              },
+              'Status': {
+                select: { name: todoData.status || '待办' }
+              }
+              // 'Is Completed' 字段已注释 - 如果数据库有此字段请取消注释
+              // 'Is Completed': {
+              //   checkbox: false
+              // }
+            }
+          }
+
+          if (todoData.dueDate) {
+            pageData.properties['Record Date'] = { date: { start: todoData.dueDate } }
+          }
+
+          // 预估时长字段 - 如果数据库有此字段才添加
+          // if (todoData.estimatedMinutes) {
+          //   pageData.properties['Estimated Duration'] = { number: Number(todoData.estimatedMinutes) }
+          // }
+
+          if (todoData.relatedGoalId) {
+            pageData.properties['Related Goal'] = { relation: [{ id: todoData.relatedGoalId }] }
+          }
+
+          if (todoData.tags && todoData.tags.length > 0) {
+            pageData.properties['Tags'] = {
+              multi_select: todoData.tags.map(tag => ({ name: tag }))
+            }
+          }
+
+          const result = await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
 
           if (!result.success) {
             throw new Error(result.error || '创建失败')
-          }
-
-          // 如果关联了目标，创建关联
-          if (this.data.todoFormData.relatedGoalId) {
-            await apiService.linkTodoToGoal(
-              currentUser.email,
-              notionConfig.apiKey,
-              result.pageId,
-              this.data.todoFormData.relatedGoalId
-            )
           }
 
           wx.showToast({ title: '待办创建成功', icon: 'success' })
@@ -1170,7 +1552,15 @@ Page({
     const todoId = e.currentTarget.dataset.id
     const todo = this.data.todos.find(t => t.id === todoId)
 
-    if (!todo) return
+    if (!todo) {
+      wx.showToast({ title: '待办不存在', icon: 'none' })
+      return
+    }
+
+    console.log('🔄 切换待办状态:', {
+      todoId,
+      currentStatus: todo.status
+    })
 
     try {
       const currentUser = userManager.getCurrentUser()
@@ -1185,20 +1575,36 @@ Page({
       const newStatus = todo.status === '已完成' ? '待办' : '已完成'
 
       if (useCloud) {
-        const result = await apiService.updateTodo(
-          currentUser.email,
+        console.log('🌐 更新待办到Notion:', newStatus)
+
+        // 前端直接调用Notion API更新
+        const properties = {
+          'Status': {
+            select: { name: newStatus }
+          }
+        }
+
+        // 如果状态改为已完成，添加完成时间（如果数据库有此字段）
+        // if (newStatus === '已完成') {
+        //   properties['Actual Completion Date'] = {
+        //     date: { start: new Date().toISOString().split('T')[0] }
+        //   }
+        // }
+
+        const notionApiService = require('../../utils/notionApiService.js')
+        const result = await notionApiService.updatePageProperties(
           notionConfig.apiKey,
           todoId,
-          {
-            status: newStatus,
-            completedTime: newStatus === '已完成' ? new Date().toISOString() : ''
-          }
+          properties
         )
 
         if (!result.success) {
           throw new Error(result.error || '更新失败')
         }
+
+        console.log('✅ Notion更新成功')
       } else {
+        console.log('💾 使用本地存储更新')
         // 降级到本地存储
         const todos = this.data.todos
         const index = todos.findIndex(t => t.id === todoId)
@@ -1214,16 +1620,22 @@ Page({
         }
       }
 
-      this.loadTodos()
+      // 重新加载待办列表
+      await this.loadTodos()
 
       wx.showToast({
-        title: newStatus === '已完成' ? '已完成' : '已恢复',
-        icon: 'success'
+        title: newStatus === '已完成' ? '✅ 已完成' : '🔄 已恢复',
+        icon: 'success',
+        duration: 1500
       })
 
     } catch (error) {
-      console.error('状态切换失败:', error)
-      wx.showToast({ title: '操作失败：' + error.message, icon: 'none' })
+      console.error('❌ 状态切换失败:', error)
+      wx.showToast({
+        title: '操作失败: ' + error.message,
+        icon: 'none',
+        duration: 3000
+      })
     }
   },
 
@@ -1243,18 +1655,20 @@ Page({
             }
 
             const notionConfig = currentUser.notionConfig
-            const useCloud = notionConfig && notionConfig.apiKey && notionConfig.todosDatabaseId
+            const useCloud = notionConfig && notionConfig.apiKey && notionConfig.databases?.todos
 
             if (useCloud) {
-              const result = await apiService.deleteTodo(
-                currentUser.email,
+              // 直接使用Notion API删除（设置Status为已删除）
+              await notionApiService.updatePageProperties(
                 notionConfig.apiKey,
-                todoId
+                todoId,
+                {
+                  'Status': {
+                    select: { name: '已删除' }
+                  }
+                }
               )
-
-              if (!result.success) {
-                throw new Error(result.error || '删除失败')
-              }
+              console.log('✅ 已在Notion中删除待办')
             } else {
               // 降级到本地存储
               let todos = this.data.todos.filter(t => t.id !== todoId)
@@ -1356,5 +1770,51 @@ Page({
       '不紧急不重要': '⚪ 不紧急不重要'
     }
     return labels[priority] || priority
+  },
+
+  // ========== Notion数据解析辅助方法 ==========
+
+  getTitleValue(prop) {
+    if (prop?.title && prop.title.length > 0) {
+      return prop.title[0].plain_text || ''
+    }
+    return ''
+  },
+
+  getRichTextValue(prop) {
+    if (prop?.rich_text && prop.rich_text.length > 0) {
+      return prop.rich_text.map(t => t.plain_text).join('')
+    }
+    return ''
+  },
+
+  getSelectValue(prop) {
+    return prop?.select?.name || ''
+  },
+
+  getMultiSelectValue(prop) {
+    if (prop?.multi_select && prop.multi_select.length > 0) {
+      return prop.multi_select.map(item => item.name)
+    }
+    return []
+  },
+
+  getDateValue(prop) {
+    return prop?.date?.start || ''
+  },
+
+  getNumberValue(prop) {
+    return prop?.number || 0
+  },
+
+  getCheckboxValue(prop) {
+    return prop?.checkbox || false
+  },
+
+  getRelationValue(prop) {
+    if (prop?.relation && prop.relation.length > 0) {
+      return prop.relation[0].id
+    }
+    return ''
   }
 })
