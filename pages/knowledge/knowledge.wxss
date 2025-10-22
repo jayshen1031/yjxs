@@ -1,0 +1,394 @@
+/* pages/knowledge/knowledge.wxss */
+.container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding-bottom: 140rpx;
+}
+
+/* 统计卡片 */
+.stats-card {
+  display: flex;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  margin: 20rpx;
+  padding: 30rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+}
+
+.stat-number {
+  font-size: 48rpx;
+  font-weight: bold;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+/* 搜索栏 */
+.search-bar {
+  margin: 20rpx;
+}
+
+.search-input {
+  background: white;
+  padding: 20rpx 30rpx;
+  border-radius: 50rpx;
+  font-size: 28rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 分类选项卡 */
+.category-tabs {
+  margin: 0 20rpx 20rpx;
+}
+
+.category-scroll {
+  white-space: nowrap;
+}
+
+.category-item {
+  display: inline-block;
+  padding: 16rpx 32rpx;
+  margin-right: 16rpx;
+  background: white;
+  border-radius: 50rpx;
+  font-size: 26rpx;
+  color: #64748b;
+  transition: all 0.3s;
+}
+
+.category-item.active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+}
+
+/* 知识列表 */
+.knowledge-list {
+  padding: 0 20rpx;
+}
+
+.loading-container,
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+  color: #94a3b8;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  margin-bottom: 12rpx;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #cbd5e1;
+}
+
+/* 知识卡片 */
+.knowledge-card {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20rpx;
+}
+
+.card-title {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1e293b;
+  line-height: 1.4;
+  margin-right: 20rpx;
+}
+
+.card-badges {
+  display: flex;
+  gap: 8rpx;
+}
+
+.badge {
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  white-space: nowrap;
+}
+
+.category-badge {
+  background: #e0e7ff;
+  color: #6366f1;
+}
+
+.importance-badge {
+  color: white;
+}
+
+.importance-core {
+  background: #ef4444;
+}
+
+.importance-important {
+  background: #f59e0b;
+}
+
+.importance-normal {
+  background: #94a3b8;
+}
+
+.card-content {
+  margin-bottom: 20rpx;
+}
+
+.card-preview {
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-meta {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+  flex-wrap: wrap;
+}
+
+.meta-item {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.tag {
+  padding: 6rpx 16rpx;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+}
+
+.card-actions {
+  display: flex;
+  gap: 12rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f1f5f9;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  border: none;
+}
+
+.view-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+}
+
+.favorite-btn {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.favorite-btn.active {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+}
+
+.delete-btn {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* 浮动添加按钮 */
+.fab {
+  position: fixed;
+  right: 30rpx;
+  bottom: 120rpx;
+  width: 100rpx;
+  height: 100rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  z-index: 100;
+}
+
+.fab-icon {
+  font-size: 60rpx;
+  color: white;
+  line-height: 1;
+}
+
+/* 弹窗 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 90%;
+  max-height: 85vh;
+  background: white;
+  border-radius: 20rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1e293b;
+}
+
+.modal-close {
+  font-size: 40rpx;
+  color: #94a3b8;
+  padding: 0 10rpx;
+}
+
+.modal-body {
+  padding: 30rpx;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.form-group {
+  margin-bottom: 30rpx;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+.form-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #475569;
+  margin-bottom: 12rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 80rpx;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx 24rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.picker {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 80rpx;
+  color: #1e293b;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.form-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 40rpx;
+}
+
+.cancel-btn,
+.save-btn {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.cancel-btn {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+}

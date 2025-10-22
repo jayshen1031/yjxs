@@ -517,15 +517,18 @@ Page({
           duration: 2000
         })
 
-        // 询问是否配置Notion
+        // 询问是否自动创建Notion数据库
         wx.showModal({
-          title: '配置Notion',
-          content: `欢迎 ${displayName}！是否现在配置Notion集成？建议使用相同邮箱 ${newUserEmail} 的Notion账户。`,
-          confirmText: '立即配置',
+          title: '初始化Notion',
+          content: `欢迎 ${displayName}！是否现在自动创建8个Notion数据库？只需提供API Key和父页面ID即可自动完成配置。`,
+          confirmText: '立即创建',
           cancelText: '稍后配置',
           success: (res) => {
             if (res.confirm) {
-              this.navigateToNotionConfig(localUser.id)
+              // 跳转到设置页面的自动创建区域
+              wx.switchTab({
+                url: '/pages/settings/settings'
+              })
             } else {
               // 直接进入首页
               wx.switchTab({

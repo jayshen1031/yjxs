@@ -64,18 +64,18 @@
                type="text"/>
       </view>
       <text class="input-hint">
-        从Notion数据库URL中复制的ID，任何格式都可以（可选，如果使用七数据库架构可以忽略）
+        从Notion数据库URL中复制的ID，任何格式都可以（可选，如果使用八数据库架构可以忽略）
       </text>
     </view>
 
-    <!-- 高级配置：七数据库架构 -->
+    <!-- 高级配置：八数据库架构 -->
     <view class="form-section">
       <view class="section-header" bindtap="toggleAdvanced">
-        <text class="section-title">🎯 七数据库配置（推荐）</text>
+        <text class="section-title">🎯 八数据库配置（推荐）</text>
         <text class="toggle-icon">{{showAdvanced ? '▼' : '▶'}}</text>
       </view>
       <text class="input-hint" style="margin-bottom: 12rpx;">
-        如果你已经手动创建了Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes七个数据库，请在这里配置它们的ID
+        如果你已经手动创建了Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes、Knowledge八个数据库，请在这里配置它们的ID
       </text>
 
       <view wx:if="{{showAdvanced}}" class="advanced-config">

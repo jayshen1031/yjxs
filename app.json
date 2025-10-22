@@ -5,6 +5,7 @@
     "pages/memo/memo",
     "pages/settings/settings",
     "pages/history/history",
+    "pages/knowledge/knowledge",
     "pages/notion-config/notion-config",
     "pages/quote-manager/quote-manager",
     "pages/happy-manager/happy-manager",
@@ -34,6 +35,10 @@
       {
         "pagePath": "pages/history/history",
         "text": "足迹"
+      },
+      {
+        "pagePath": "pages/knowledge/knowledge",
+        "text": "知识库"
       },
       {
         "pagePath": "pages/goals-todos/goals-todos",

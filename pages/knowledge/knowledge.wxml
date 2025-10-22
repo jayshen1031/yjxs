@@ -1,0 +1,208 @@
+<!--pages/knowledge/knowledge.wxml-->
+<view class="container">
+  <!-- 顶部统计卡片 -->
+  <view class="stats-card">
+    <view class="stat-item">
+      <text class="stat-number">{{stats.total}}</text>
+      <text class="stat-label">总计</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-number">{{stats.favoriteCount}}</text>
+      <text class="stat-label">收藏</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-number">{{filteredList.length}}</text>
+      <text class="stat-label">当前</text>
+    </view>
+  </view>
+
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input
+      class="search-input"
+      placeholder="搜索知识..."
+      value="{{searchKeyword}}"
+      bindinput="onSearch"
+    />
+  </view>
+
+  <!-- 分类选择 -->
+  <view class="category-tabs">
+    <scroll-view scroll-x class="category-scroll">
+      <view
+        wx:for="{{categories}}"
+        wx:key="index"
+        class="category-item {{selectedCategory === item ? 'active' : ''}}"
+        data-category="{{item}}"
+        bindtap="switchCategory"
+      >
+        {{item}}
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 知识列表 -->
+  <view class="knowledge-list">
+    <block wx:if="{{loading}}">
+      <view class="loading-container">
+        <text>加载中...</text>
+      </view>
+    </block>
+
+    <block wx:elif="{{filteredList.length === 0}}">
+      <view class="empty-container">
+        <text class="empty-icon">📚</text>
+        <text class="empty-text">暂无知识条目</text>
+        <text class="empty-hint">点击右下角添加按钮创建</text>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view
+        wx:for="{{filteredList}}"
+        wx:key="id"
+        class="knowledge-card"
+      >
+      <view class="card-header">
+        <text class="card-title">{{item.title}}</text>
+        <view class="card-badges">
+          <text class="badge category-badge">{{item.category}}</text>
+          <text class="badge importance-badge importance-{{item.importance === '核心' ? 'core' : item.importance === '重要' ? 'important' : 'normal'}}">{{item.importance}}</text>
+        </view>
+      </view>
+
+      <view class="card-content">
+        <text class="card-preview">{{item.preview || item.content || '暂无内容'}}</text>
+      </view>
+
+      <view class="card-meta">
+        <text class="meta-item">📖 {{item.readCount || 0}}次</text>
+        <text class="meta-item">📝 {{item.source}}</text>
+        <text class="meta-item">🕐 {{item.createdTime}}</text>
+      </view>
+
+      <view class="card-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+        <text
+          wx:for="{{item.tags}}"
+          wx:for-item="tag"
+          wx:key="tag"
+          class="tag"
+        >
+          #{{tag}}
+        </text>
+      </view>
+
+      <view class="card-actions">
+        <button
+          class="action-btn view-btn"
+          data-id="{{item.id}}"
+          bindtap="viewDetail"
+        >
+          查看
+        </button>
+        <button
+          class="action-btn favorite-btn {{item.isFavorite ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="toggleFavorite"
+        >
+          {{item.isFavorite ? '★' : '☆'}}
+        </button>
+        <button
+          class="action-btn delete-btn"
+          data-id="{{item.id}}"
+          bindtap="deleteKnowledge"
+        >
+          删除
+        </button>
+      </view>
+      </view>
+    </block>
+  </view>
+
+  <!-- 添加按钮 -->
+  <view class="fab" bindtap="showAddDialog">
+    <text class="fab-icon">+</text>
+  </view>
+
+  <!-- 添加/编辑弹窗 -->
+  <view class="modal" wx:if="{{showAddModal}}" bindtap="hideModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">{{editingId ? '编辑知识' : '添加知识'}}</text>
+        <text class="modal-close" bindtap="hideModal">✕</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">标题 *</text>
+          <input
+            class="form-input"
+            placeholder="请输入标题"
+            value="{{formData.title}}"
+            data-field="title"
+            bindinput="onFormInput"
+          />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">内容</text>
+          <textarea
+            class="form-textarea"
+            placeholder="请输入内容"
+            value="{{formData.content}}"
+            data-field="content"
+            bindinput="onFormInput"
+            maxlength="2000"
+          />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">分类</text>
+          <picker
+            mode="selector"
+            range="{{categories}}"
+            value="{{selectedCategory}}"
+            bindchange="onCategoryChange"
+          >
+            <view class="picker">
+              {{formData.category || '请选择'}}
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-row">
+          <view class="form-group half">
+            <text class="form-label">来源</text>
+            <picker
+              mode="selector"
+              range="['书籍', '文章', '视频', '课程', '实践', '交流', '其他']"
+              bindchange="onSourceChange"
+            >
+              <view class="picker">
+                {{formData.source || '请选择'}}
+              </view>
+            </picker>
+          </view>
+
+          <view class="form-group half">
+            <text class="form-label">重要性</text>
+            <picker
+              mode="selector"
+              range="['核心', '重要', '一般']"
+              bindchange="onImportanceChange"
+            >
+              <view class="picker">
+                {{formData.importance || '请选择'}}
+              </view>
+            </picker>
+          </view>
+        </view>
+
+        <view class="form-actions">
+          <button class="cancel-btn" bindtap="hideModal">取消</button>
+          <button class="save-btn" bindtap="saveKnowledge">保存</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
