@@ -113,12 +113,6 @@
               </view>
             </view>
           </view>
-
-          <!-- 折叠的记录详情 -->
-          <view class="memo-summary" wx:if="{{ memo.content }}">
-            <text class="summary-label">📝 当时记录：</text>
-            <text class="summary-text">{{ memo.content }}</text>
-          </view>
         </view>
 
         <!-- 无活动明细时显示原记录 -->
@@ -161,5 +155,10 @@
     <button class="btn btn-secondary" bindtap="loadMore" loading="{{ isLoading }}">
       <text>{{ isLoading ? '加载中...' : '加载更多' }}</text>
     </button>
+  </view>
+
+  <!-- 悬浮的新建记录按钮 -->
+  <view class="float-add-btn" bindtap="createNewRecord">
+    <text class="add-icon">✏️</text>
   </view>
 </view>

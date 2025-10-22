@@ -32,16 +32,12 @@
         "text": "首页"
       },
       {
-        "pagePath": "pages/memo/memo",
-        "text": "记录"
+        "pagePath": "pages/history/history",
+        "text": "足迹"
       },
       {
         "pagePath": "pages/goals-todos/goals-todos",
         "text": "目标·待办"
-      },
-      {
-        "pagePath": "pages/history/history",
-        "text": "足迹"
       },
       {
         "pagePath": "pages/settings/settings",

@@ -1700,5 +1700,12 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
       '心情': 'mood'
     }
     return colorMap[category] || 'default'
+  },
+
+  // 新建记录
+  createNewRecord: function() {
+    wx.navigateTo({
+      url: '/pages/memo/memo'
+    })
   }
 })
