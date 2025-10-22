@@ -1,6 +1,6 @@
 /**
- * Notion 七数据库创建器
- * 完整实现七数据库架构的创建
+ * Notion 八数据库创建器
+ * 完整实现八数据库架构的创建
  * 1. Goals（目标库）
  * 2. Todos（待办库）
  * 3. Main Records（主记录表）
@@ -8,6 +8,7 @@
  * 5. Daily Status（每日状态库）
  * 6. Happy Things（开心库）
  * 7. Quotes（箴言库）
+ * 8. Knowledge（知识库）
  */
 
 const notionApiService = require('./notionApiService.js')
@@ -20,31 +21,31 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
-   * 创建完整的七数据库架构
+   * 创建完整的八数据库架构
    */
   async createAll() {
     try {
       console.log('========================================')
-      console.log('开始创建Notion七数据库架构')
+      console.log('开始创建Notion八数据库架构')
       console.log('========================================')
 
       // Step 1: 创建目标库（Goals）
-      console.log('\n[1/7] 创建目标库...')
+      console.log('\n[1/8] 创建目标库...')
       const goalsDb = await this.createGoalsDatabase()
       console.log('✅ 目标库创建成功:', goalsDb.id)
 
       // Step 2: 创建待办库（Todos），关联目标库
-      console.log('\n[2/7] 创建待办库...')
+      console.log('\n[2/8] 创建待办库...')
       const todosDb = await this.createTodosDatabase(goalsDb.id)
       console.log('✅ 待办库创建成功:', todosDb.id)
 
       // Step 3: 创建主记录表（Main Records），关联待办库
-      console.log('\n[3/7] 创建主记录表...')
+      console.log('\n[3/8] 创建主记录表...')
       const mainDb = await this.createMainRecordsDatabase(todosDb.id)
       console.log('✅ 主记录表创建成功:', mainDb.id)
 
       // Step 4: 创建活动明细表（Activity Details），关联所有表
-      console.log('\n[4/7] 创建活动明细表...')
+      console.log('\n[4/8] 创建活动明细表...')
       const activityDb = await this.createActivityDetailsDatabase(
         goalsDb.id,
         todosDb.id,
@@ -53,32 +54,37 @@ class NotionQuadDatabaseCreator {
       console.log('✅ 活动明细表创建成功:', activityDb.id)
 
       // Step 5: 创建每日状态库（Daily Status）- 独立数据库
-      console.log('\n[5/7] 创建每日状态库...')
+      console.log('\n[5/8] 创建每日状态库...')
       const dailyStatusDb = await this.createDailyStatusDatabase()
       console.log('✅ 每日状态库创建成功:', dailyStatusDb.id)
 
       // Step 6: 创建开心库（Happy Things）- 独立数据库
-      console.log('\n[6/7] 创建开心库...')
+      console.log('\n[6/8] 创建开心库...')
       const happyThingsDb = await this.createHappyThingsDatabase()
       console.log('✅ 开心库创建成功:', happyThingsDb.id)
 
       // Step 7: 创建箴言库（Quotes）- 独立数据库
-      console.log('\n[7/7] 创建箴言库...')
+      console.log('\n[7/8] 创建箴言库...')
       const quotesDb = await this.createQuotesDatabase()
       console.log('✅ 箴言库创建成功:', quotesDb.id)
 
-      // Step 8: 更新目标库的自关联（Parent/Sub Goals）
-      console.log('\n[8/9] 更新目标库自关联关系...')
+      // Step 8: 创建知识库（Knowledge）- 关联目标库
+      console.log('\n[8/8] 创建知识库...')
+      const knowledgeDb = await this.createKnowledgeDatabase(goalsDb.id)
+      console.log('✅ 知识库创建成功:', knowledgeDb.id)
+
+      // Step 9: 更新目标库的自关联（Parent/Sub Goals）
+      console.log('\n[9/10] 更新目标库自关联关系...')
       await this.updateGoalsSelfRelation(goalsDb.id)
       console.log('✅ 自关联更新成功')
 
-      // Step 9: 更新待办库的自关联（Blocking/Blocked By）
-      console.log('\n[9/9] 更新待办库自关联关系...')
+      // Step 10: 更新待办库的自关联（Blocking/Blocked By）
+      console.log('\n[10/10] 更新待办库自关联关系...')
       await this.updateTodosSelfRelation(todosDb.id)
       console.log('✅ 自关联更新成功')
 
       console.log('\n========================================')
-      console.log('✅ 七数据库架构创建完成！')
+      console.log('✅ 八数据库架构创建完成！')
       console.log('========================================')
       console.log('目标库ID:', goalsDb.id)
       console.log('待办库ID:', todosDb.id)
@@ -87,6 +93,7 @@ class NotionQuadDatabaseCreator {
       console.log('每日状态库ID:', dailyStatusDb.id)
       console.log('开心库ID:', happyThingsDb.id)
       console.log('箴言库ID:', quotesDb.id)
+      console.log('知识库ID:', knowledgeDb.id)
 
       return {
         success: true,
@@ -97,7 +104,8 @@ class NotionQuadDatabaseCreator {
           activityDetails: activityDb.id,
           dailyStatus: dailyStatusDb.id,
           happyThings: happyThingsDb.id,
-          quotes: quotesDb.id
+          quotes: quotesDb.id,
+          knowledge: knowledgeDb.id
         }
       }
     } catch (error) {
@@ -644,10 +652,43 @@ class NotionQuadDatabaseCreator {
 
     return result.data
   }
+
+  /**
+   * 创建知识库（Knowledge Database）
+   */
+  async createKnowledgeDatabase(goalsDatabaseId) {
+    const { KnowledgeDatabaseSchema } = require('./notionDatabaseSetup.js')
+
+    // 复制schema并设置关联
+    const properties = JSON.parse(JSON.stringify(KnowledgeDatabaseSchema.properties))
+
+    // 设置目标库关联
+    if (goalsDatabaseId) {
+      properties['Related Goals'].relation.database_id = goalsDatabaseId
+    }
+
+    const schema = {
+      parent: { page_id: this.parentPageId },
+      title: [{ text: { content: KnowledgeDatabaseSchema.title } }],
+      properties: properties
+    }
+
+    const result = await this.service.callApi('/databases', {
+      apiKey: this.apiKey,
+      method: 'POST',
+      data: schema
+    })
+
+    if (!result.success) {
+      throw new Error('创建知识库失败: ' + result.error)
+    }
+
+    return result.data
+  }
 }
 
 /**
- * 快速创建七数据库（控制台调用）
+ * 快速创建八数据库（控制台调用）
  */
 async function createQuadDatabases(apiKey, parentPageId) {
   const creator = new NotionQuadDatabaseCreator(apiKey, parentPageId)

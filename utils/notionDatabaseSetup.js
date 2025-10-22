@@ -950,5 +950,131 @@ module.exports = {
   ActivityDetailsDatabaseSchema,
   DailyStatusDatabaseSchema,
   HappyThingsDatabaseSchema,
-  QuotesDatabaseSchema
+  QuotesDatabaseSchema,
+  KnowledgeDatabaseSchema
+}
+
+/**
+ * 知识库（Knowledge Database）数据库结构
+ */
+const KnowledgeDatabaseSchema = {
+  title: '📚 语寄心声 - 知识库 (Knowledge)',
+  description: '知识管理和学习笔记库',
+  properties: {
+    // === 基础信息 ===
+    'Title': {
+      title: {},
+    },
+    'Content': {
+      rich_text: {},
+    },
+    'Preview': {
+      rich_text: {},
+    },
+    'Markdown Content': {
+      rich_text: {},
+    },
+
+    // === 分类和组织 ===
+    'Category': {
+      select: {
+        options: [
+          { name: '技术', color: 'blue' },
+          { name: '产品', color: 'purple' },
+          { name: '管理', color: 'orange' },
+          { name: '生活', color: 'green' },
+          { name: '学习', color: 'yellow' },
+          { name: '思考', color: 'pink' },
+          { name: '其他', color: 'gray' }
+        ]
+      }
+    },
+    'Tags': {
+      multi_select: {
+        options: []
+      }
+    },
+    'Source': {
+      select: {
+        options: [
+          { name: '书籍', color: 'blue' },
+          { name: '文章', color: 'purple' },
+          { name: '视频', color: 'red' },
+          { name: '课程', color: 'orange' },
+          { name: '经验', color: 'green' },
+          { name: '对话', color: 'pink' },
+          { name: '其他', color: 'gray' }
+        ]
+      }
+    },
+
+    // === 重要程度和状态 ===
+    'Importance': {
+      select: {
+        options: [
+          { name: '高', color: 'red' },
+          { name: '中', color: 'yellow' },
+          { name: '低', color: 'gray' }
+        ]
+      }
+    },
+    'Status': {
+      select: {
+        options: [
+          { name: '草稿', color: 'gray' },
+          { name: '已发布', color: 'green' },
+          { name: '已归档', color: 'blue' }
+        ]
+      }
+    },
+
+    // === 链接和附件 ===
+    'URL': {
+      url: {},
+    },
+    'Source Title': {
+      rich_text: {},
+    },
+    'Source Author': {
+      rich_text: {},
+    },
+
+    // === 关联关系 ===
+    'Related Goals': {
+      relation: {
+        database_id: '', // 将在创建时填充
+        type: 'dual_property',
+        dual_property: {}
+      }
+    },
+
+    // === 元数据 ===
+    'Created Date': {
+      created_time: {},
+    },
+    'Last Edited': {
+      last_edited_time: {},
+    },
+    'User ID': {
+      rich_text: {},
+    },
+
+    // === 阅读和使用统计 ===
+    'Read Count': {
+      number: {
+        format: 'number'
+      }
+    },
+    'Last Read': {
+      date: {},
+    },
+
+    // === 标记 ===
+    'Is Favorite': {
+      checkbox: {},
+    },
+    'Is Public': {
+      checkbox: {},
+    }
+  }
 }

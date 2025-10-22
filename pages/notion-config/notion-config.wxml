@@ -151,6 +151,17 @@
                  type="text"/>
           <text class="input-hint">如果要使用每日箴言功能，此项必填</text>
         </view>
+
+        <!-- 知识库 -->
+        <view class="database-input-group">
+          <text class="db-label">📚 知识库 (Knowledge)</text>
+          <input class="input-field"
+                 placeholder="知识库数据库ID"
+                 value="{{notionConfig.databases.knowledge}}"
+                 bindinput="onKnowledgeDbInput"
+                 type="text"/>
+          <text class="input-hint">如果要使用知识库功能，此项必填</text>
+        </view>
       </view>
     </view>
 

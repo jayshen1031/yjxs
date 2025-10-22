@@ -264,6 +264,14 @@ Page({
     })
   },
 
+  onKnowledgeDbInput: function (e) {
+    this.setData({
+      'notionConfig.databases.knowledge': e.detail.value.trim()
+    }, () => {
+      this.checkCanSave()
+    })
+  },
+
   // 验证输入格式 - 简化版本
   validateInputs: function () {
     const { notionConfig } = this.data

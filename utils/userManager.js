@@ -94,14 +94,16 @@ class UserManager {
         databaseId: '',               // 兼容旧版：主数据库ID
         syncEnabled: true,
         autoSync: true,
-        // 六数据库架构（新版）
+        // 八数据库架构（新版）
         databases: {
           goals: '',                  // 目标库ID
           todos: '',                  // 待办库ID
           mainRecords: '',            // 主记录表ID
           activityDetails: '',        // 活动明细表ID
           dailyStatus: '',            // 每日状态库ID
-          happyThings: ''             // 开心库ID
+          happyThings: '',            // 开心库ID
+          quotes: '',                 // 箴言库ID
+          knowledge: ''               // 知识库ID
         },
         // 数据库初始化状态
         initialized: false,           // 是否已初始化数据库
