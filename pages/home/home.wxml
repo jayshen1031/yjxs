@@ -58,7 +58,7 @@ module.exports = {
   <!-- 今日价值统计 -->
   <view class="stat-card-single">
     <view class="stat-number">{{ todayValueMinutes }}</view>
-    <view class="stat-label">今日价值分钟</view>
+    <view class="stat-label">今日有价值投入</view>
   </view>
 
   <!-- 今日开心推荐 -->

@@ -2269,6 +2269,7 @@ class NotionApiService {
           activityType: props['Value Type']?.select?.name || '', // 使用Value Type字段
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
           userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
+          recordDate: props['Record Date']?.date?.start || '',  // ⭐ 添加Record Date字段（格式：YYYY-MM-DD）
           // 关联字段
           relatedMainRecordId: relatedMainRecord,
           relatedGoalId: relatedGoal,

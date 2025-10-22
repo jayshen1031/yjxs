@@ -116,6 +116,9 @@ Page({
 
     // 加载今日开心推荐
     this.loadTodayHappyThings()
+
+    // ⭐ 加载今日有价值投入
+    this.loadTodayValueMinutes()
   },
 
   // 加载当前箴言
@@ -1338,6 +1341,81 @@ Page({
   },
 
   // ========== 开心推荐相关方法 ==========
+
+  // ⭐ 加载今日有价值投入（从Notion）
+  loadTodayValueMinutes: async function() {
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser || !currentUser.notionConfig) {
+        console.log('⚠️ 未配置Notion，使用本地数据计算')
+        // 降级到本地数据
+        const app = getApp()
+        const memoList = app.getMemoList()
+        const todayStr = new Date().toDateString()
+        const todayValueMinutes = this.calculateTodayValueMinutes(memoList, todayStr)
+        this.setData({ todayValueMinutes })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      const activityDetailsDatabaseId = notionConfig.databases?.activityDetails || notionConfig.activityDetailsDatabaseId
+
+      if (!notionConfig.apiKey || !activityDetailsDatabaseId) {
+        console.log('⚠️ Notion配置不完整，跳过加载今日有价值投入')
+        return
+      }
+
+      // 查询今日的活动明细
+      const today = new Date()
+      const todayDate = this.formatDate(today)
+
+      console.log('📊 开始查询今日有价值投入:', todayDate)
+
+      const result = await notionApiService.queryActivities(
+        notionConfig.apiKey,
+        activityDetailsDatabaseId,
+        currentUser.email,
+        {}
+      )
+
+      if (!result.success || !result.activities) {
+        console.error('❌ 查询活动明细失败:', result.error)
+        return
+      }
+
+      console.log(`📊 查询到 ${result.activities.length} 条活动明细`)
+
+      // 筛选今日的有价值活动
+      const todayValueActivities = result.activities.filter(activity => {
+        // 检查日期（使用recordDate字段，格式：YYYY-MM-DD）
+        const activityDate = activity.recordDate || ''
+        const isToday = activityDate === todayDate
+
+        // 检查是否为有价值活动
+        const isValuable = activity.activityType && activity.activityType.includes('有价值')
+
+        if (isToday) {
+          console.log(`  📌 ${activity.name}: ${activity.activityType} - ${activity.duration}分钟 - 日期:${activityDate}`)
+        }
+
+        return isToday && isValuable
+      })
+
+      // 计算总分钟数
+      const totalMinutes = todayValueActivities.reduce((sum, activity) => {
+        return sum + (activity.duration || 0)
+      }, 0)
+
+      console.log(`✅ 今日有价值投入: ${totalMinutes} 分钟 (${todayValueActivities.length}个活动)`)
+
+      this.setData({
+        todayValueMinutes: totalMinutes
+      })
+
+    } catch (error) {
+      console.error('❌ 加载今日有价值投入失败:', error)
+    }
+  },
 
   // 加载今日开心推荐
   loadTodayHappyThings: function() {

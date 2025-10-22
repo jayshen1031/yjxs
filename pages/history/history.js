@@ -86,20 +86,33 @@ Page({
   },
 
   onLoad: function() {
-    // 检查登录状态
-    if (!this.checkLoginStatus()) {
-      return
+    console.log('📚 History页面加载')
+
+    try {
+      // 检查登录状态
+      if (!this.checkLoginStatus()) {
+        return
+      }
+
+      // 确保使用正确的默认值
+      this.setData({
+        sortBy: 'time_asc',   // 时间升序（最早的在前）
+        timeRange: 'today'    // 只显示今天
+      })
+
+      this.initData()
+      this.initAudioContext()
+      this.loadAllMemos()
+
+      console.log('🎉 History页面加载完成')
+    } catch (error) {
+      console.error('❌ History页面加载失败:', error)
+      wx.showToast({
+        title: '页面加载失败',
+        icon: 'none',
+        duration: 3000
+      })
     }
-
-    // 确保使用正确的默认值
-    this.setData({
-      sortBy: 'time_asc',   // 时间升序（最早的在前）
-      timeRange: 'today'    // 只显示今天
-    })
-
-    this.initData()
-    this.initAudioContext()
-    this.loadAllMemos()
   },
 
   onShow: function() {
@@ -194,35 +207,90 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
+      const mainDatabaseId = notionConfig?.databases?.mainRecords || notionConfig?.mainDatabaseId
+
       console.log('🔍 History - 用户Notion配置:', {
         hasConfig: !!notionConfig,
         hasApiKey: !!notionConfig?.apiKey,
-        mainDatabaseId: notionConfig?.mainDatabaseId,
+        mainDatabaseId: mainDatabaseId,
         email: currentUser.email
       })
 
-      if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainDatabaseId) {
+      if (!notionConfig || !notionConfig.apiKey || !mainDatabaseId) {
         console.log('Notion未配置，使用本地数据')
-        this.loadMemosFromLocal()
-        return
-      }
-
-      // 从云端加载Main Records（主记录表）
-      const mainDatabaseId = notionConfig.mainDatabaseId
-      if (!mainDatabaseId) {
-        console.error('未配置主记录表数据库ID')
         this.loadMemosFromLocal()
         return
       }
 
       console.log('🔍 准备查询Notion - 邮箱:', currentUser.email, '数据库ID:', mainDatabaseId)
 
-      const result = await notionApiService.queryMainRecords(
+      // 首先尝试使用邮箱过滤查询
+      let result = await notionApiService.queryMainRecords(
         notionConfig.apiKey,
         mainDatabaseId,
         currentUser.email,
         {} // 加载所有主记录
       )
+
+      // ⭐ 如果没有找到记录，尝试不过滤User ID（诊断用）
+      if (result.success && result.records.length === 0) {
+        console.log('⚠️ 使用邮箱过滤没有找到记录，尝试查询全部记录（不过滤User ID）')
+
+        // 直接查询数据库，不过滤User ID
+        const allRecordsResult = await notionApiService.queryDatabase(
+          notionConfig.apiKey,
+          mainDatabaseId,
+          {
+            sorts: [{ property: 'Record Date', direction: 'descending' }],
+            page_size: 100
+          }
+        )
+
+        if (allRecordsResult.success && allRecordsResult.data.results.length > 0) {
+          console.log('✅ 不过滤User ID查询到记录:', allRecordsResult.data.results.length)
+          console.log('🔍 数据库中的User ID值:')
+          allRecordsResult.data.results.slice(0, 5).forEach((page, i) => {
+            const userId = page.properties['User ID']?.rich_text?.[0]?.text?.content || '(空)'
+            const title = page.properties['Name']?.title?.[0]?.text?.content || '(无标题)'
+            console.log(`  ${i + 1}. User ID: "${userId}" | 标题: ${title}`)
+          })
+          console.log('🔍 当前用户邮箱:', `"${currentUser.email}"`)
+
+          // 手动解析所有记录（临时方案，帮助诊断问题）
+          const records = allRecordsResult.data.results.map(page => {
+            const props = page.properties
+            let recordType = '日常记录'
+            if (props['Type']?.select?.name) {
+              const typeValue = props['Type'].select.name
+              recordType = typeValue === 'planning' ? '明日规划' : '日常记录'
+            } else if (props['Record Type']?.select?.name) {
+              recordType = props['Record Type'].select.name
+            }
+
+            return {
+              id: page.id,
+              title: props['Name']?.title?.[0]?.text?.content || props['Title']?.title?.[0]?.text?.content || '',
+              content: props['Summary']?.rich_text?.[0]?.text?.content || props['Content']?.rich_text?.[0]?.text?.content || '',
+              date: props['Record Date']?.date?.start || props['Date']?.date?.start || '',
+              recordType: recordType,
+              timePeriod: props['Time Period']?.select?.name || '',
+              tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
+              userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
+              startTime: props['Start Time']?.rich_text?.[0]?.text?.content || '',
+              endTime: props['End Time']?.rich_text?.[0]?.text?.content || ''
+            }
+          })
+
+          // 使用解析后的记录覆盖result
+          result = {
+            success: true,
+            records: records,
+            total: records.length
+          }
+
+          console.log('✅ 临时使用全部记录（不过滤User ID），共', records.length, '条')
+        }
+      }
 
       if (!result.success) {
         console.error('❌ 加载Main Records失败:', result.error)
@@ -381,20 +449,28 @@ Page({
         let actualStartTime = null
         let actualEndTime = null
         if (record.startTime && record.endTime) {
-          // startTime 和 endTime 是 "HH:MM" 格式
-          const [startHour, startMin] = record.startTime.split(':').map(Number)
-          const [endHour, endMin] = record.endTime.split(':').map(Number)
-          actualStartTime = new Date(recordDate)
-          actualStartTime.setHours(startHour, startMin, 0, 0)
-          actualEndTime = new Date(recordDate)
-          actualEndTime.setHours(endHour, endMin, 0, 0)
-          console.log(`⏰ 主记录 ${record.title} 时间范围: ${record.startTime} - ${record.endTime}`)
+          // 检查是否为"睡眠"时间
+          if (record.startTime === '睡眠' || record.endTime === '睡眠') {
+            // 睡眠时间保持为字符串，不解析为Date对象
+            actualStartTime = '睡眠'
+            actualEndTime = '睡眠'
+            console.log(`😴 主记录 ${record.title} 时间范围: 睡眠`)
+          } else {
+            // startTime 和 endTime 是 "HH:MM" 格式
+            const [startHour, startMin] = record.startTime.split(':').map(Number)
+            const [endHour, endMin] = record.endTime.split(':').map(Number)
+            actualStartTime = new Date(recordDate)
+            actualStartTime.setHours(startHour, startMin, 0, 0)
+            actualEndTime = new Date(recordDate)
+            actualEndTime.setHours(endHour, endMin, 0, 0)
+            console.log(`⏰ 主记录 ${record.title} 时间范围: ${record.startTime} - ${record.endTime}`)
+          }
         }
 
         // 计算实际发生时间（用于排序）⭐
         let sortTimestamp = recordDate.getTime()
-        if (actualStartTime) {
-          // 优先使用主记录的实际开始时间
+        if (actualStartTime && actualStartTime !== '睡眠') {
+          // 优先使用主记录的实际开始时间（排除睡眠）
           sortTimestamp = actualStartTime.getTime()
         } else if (relatedActivities.length > 0) {
           // 否则查找最早的活动开始时间
@@ -425,7 +501,7 @@ Page({
           type: 'text',
           tags: record.tags || [],
           notionPageId: record.id,
-          timeStr: this.formatTime(actualStartTime || recordDate),
+          timeStr: actualStartTime === '睡眠' ? '睡眠' : this.formatTime(actualStartTime || recordDate),
           dateStr: this.formatDate(recordDate),
           timePeriod: timePeriod,
           timePeriodDisplay: this.formatMainRecordTimePeriodDisplay(
@@ -433,7 +509,7 @@ Page({
             actualStartTime || recordDate,
             timePeriod
           ),
-          periodColor: this.getTimePeriodColorFromTime(actualStartTime || recordDate),
+          periodColor: actualStartTime === '睡眠' ? '#8b5cf6' : this.getTimePeriodColorFromTime(actualStartTime || recordDate),
           category: this.getCategoryFromContent(record.content),
           categoryColor: this.getCategoryColorFromContent(record.content),
           isPlaying: false,
@@ -441,6 +517,9 @@ Page({
           // 主记录特有信息
           title: record.title,
           recordType: record.recordType,
+          // ⭐ 原始时间字段（用于编辑）
+          startTime: record.startTime,
+          endTime: record.endTime,
           // 关联的活动明细
           activities: relatedActivities
         }
@@ -555,7 +634,14 @@ Page({
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-    const memoDate = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
+
+    // recordDate可能是Date对象或字符串"睡眠"
+    let memoDate
+    if (recordDate === '睡眠') {
+      memoDate = today // 默认使用今天日期
+    } else {
+      memoDate = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
+    }
 
     let dateStr = ''
     if (memoDate.getTime() === today.getTime()) {
@@ -563,15 +649,24 @@ Page({
     } else if (memoDate.getTime() === yesterday.getTime()) {
       dateStr = '昨天'
     } else {
-      dateStr = `${recordDate.getMonth() + 1}月${recordDate.getDate()}日`
+      if (recordDate === '睡眠') {
+        dateStr = '今天'
+      } else {
+        dateStr = `${recordDate.getMonth() + 1}月${recordDate.getDate()}日`
+      }
+    }
+
+    // 检查是否为睡眠时间
+    if (record.startTime === '睡眠' || record.endTime === '睡眠') {
+      return `${dateStr} 😴 睡眠`
     }
 
     // 如果有具体的开始时间，使用之
     let startTime, endTime
-    if (record.startTime && record.endTime) {
+    if (record.startTime && record.endTime && typeof record.startTime.getHours === 'function') {
       startTime = `${record.startTime.getHours().toString().padStart(2, '0')}:${record.startTime.getMinutes().toString().padStart(2, '0')}`
       endTime = `${record.endTime.getHours().toString().padStart(2, '0')}:${record.endTime.getMinutes().toString().padStart(2, '0')}`
-    } else if (recordDate.getHours() > 0 || recordDate.getMinutes() > 0) {
+    } else if (recordDate !== '睡眠' && (recordDate.getHours() > 0 || recordDate.getMinutes() > 0)) {
       // 如果recordDate包含具体时间（不是00:00），使用它
       startTime = `${recordDate.getHours().toString().padStart(2, '0')}:${recordDate.getMinutes().toString().padStart(2, '0')}`
       const endDate = new Date(recordDate.getTime() + 60 * 60 * 1000)
