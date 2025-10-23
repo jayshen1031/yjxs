@@ -7,10 +7,14 @@
     "create-daily-status": "node scripts/createDailyStatusDatabase_interactive.js"
   },
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "towxml": "^3.0.6"
   },
-  "devDependencies": {},
-  "keywords": ["wechat", "miniprogram", "notion"],
+  "keywords": [
+    "wechat",
+    "miniprogram",
+    "notion"
+  ],
   "author": "",
   "license": "ISC"
 }

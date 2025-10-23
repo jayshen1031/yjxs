@@ -133,7 +133,7 @@
           />
         </view>
 
-        <view class="section-title">🎯 七数据库配置（推荐）</view>
+        <view class="section-title">🎯 八数据库配置（推荐）</view>
 
         <view class="input-group">
           <view class="input-label">🎯 目标库ID (Goals)</view>
@@ -206,6 +206,17 @@
             bindinput="onQuotesDatabaseIdInput"
           />
           <view class="input-hint">💡 如果要使用每日箴言功能，此项必填</view>
+        </view>
+
+        <view class="input-group">
+          <view class="input-label">📚 知识库ID (Knowledge) <text class="required-mark">*必填</text></view>
+          <input
+            class="notion-input"
+            placeholder="请输入知识库数据库ID"
+            value="{{ notionConfig.databases.knowledge }}"
+            bindinput="onKnowledgeDatabaseIdInput"
+          />
+          <view class="input-hint">💡 如果要使用知识库功能，此项必填</view>
         </view>
 
         <button class="btn btn-primary" bindtap="saveManualConfig">

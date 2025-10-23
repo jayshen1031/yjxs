@@ -1,7 +1,16 @@
 <!--pages/notion-config/notion-config.wxml-->
 <view class="container">
-  <!-- 头部 -->
-  <view class="header">
+  <!-- 页面已废弃提示 -->
+  <view class="deprecated-notice">
+    <view class="notice-icon">⚠️</view>
+    <view class="notice-content">
+      <text class="notice-title">页面跳转中...</text>
+      <text class="notice-desc">此页面功能已整合到"设置"页面，正在为您跳转...</text>
+    </view>
+  </view>
+
+  <!-- 原有头部（隐藏） -->
+  <view class="header" style="display: none;">
     <view class="header-icon">🔗</view>
     <view class="header-content">
       <text class="header-title">Notion集成配置</text>

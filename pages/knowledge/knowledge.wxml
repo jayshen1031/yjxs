@@ -205,4 +205,18 @@
       </view>
     </view>
   </view>
+
+  <!-- 详情弹窗 -->
+  <view class="modal detail-modal" wx:if="{{showDetailModal}}" bindtap="hideDetailModal">
+    <view class="modal-content detail-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">{{detailContent.title}}</text>
+        <text class="modal-close" bindtap="hideDetailModal">✕</text>
+      </view>
+
+      <scroll-view class="modal-body detail-body" scroll-y>
+        <towxml nodes="{{detailContent.markdownData}}" />
+      </scroll-view>
+    </view>
+  </view>
 </view>

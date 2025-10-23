@@ -1,4 +1,39 @@
 /* pages/notion-config/notion-config.wxss */
+
+/* 废弃页面提示 */
+.deprecated-notice {
+  margin: 100rpx auto;
+  padding: 60rpx 40rpx;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff 100%);
+  border: 2rpx solid #fb923c;
+  border-radius: 24rpx;
+  text-align: center;
+  max-width: 600rpx;
+}
+
+.notice-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.notice-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #ea580c;
+}
+
+.notice-desc {
+  font-size: 28rpx;
+  color: #9a3412;
+  line-height: 1.6;
+}
+
 .container {
   min-height: 100vh;
   background: #f8fafc;

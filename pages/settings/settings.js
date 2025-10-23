@@ -420,10 +420,24 @@ Page({
     this.setData({ notionConfig })
   },
 
+  // 知识库ID输入
+  onKnowledgeDatabaseIdInput: function(e) {
+    const knowledgeDatabaseId = e.detail.value
+    const notionConfig = {
+      ...this.data.notionConfig,
+      databases: {
+        ...this.data.notionConfig.databases,
+        knowledge: knowledgeDatabaseId
+      }
+    }
+    this.setData({ notionConfig })
+  },
+
   // 保存手动配置
   saveManualConfig: async function() {
     const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId, dailyStatusDatabaseId, happyThingsDatabaseId, databases } = this.data.notionConfig
     const quotesDatabaseId = databases?.quotes
+    const knowledgeDatabaseId = databases?.knowledge  // 🔧 添加知识库ID
 
     if (!apiKey) {
       toast.error('请输入API Key')
@@ -448,7 +462,8 @@ Page({
           activityDetails: activityDatabaseId,
           dailyStatus: dailyStatusDatabaseId || '',
           happyThings: happyThingsDatabaseId || '',
-          quotes: quotesDatabaseId || ''
+          quotes: quotesDatabaseId || '',
+          knowledge: knowledgeDatabaseId || ''  // 🔧 添加知识库字段
         },
         // 兼容字段（向后兼容）
         goalsDatabaseId: goalsDatabaseId,

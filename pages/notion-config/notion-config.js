@@ -18,7 +18,8 @@ Page({
         activityDetails: '',
         dailyStatus: '',
         happyThings: '',
-        quotes: ''  // 箴言库
+        quotes: '',  // 箴言库
+        knowledge: ''  // 知识库
       }
     },
     showApiKey: false,
@@ -38,6 +39,21 @@ Page({
   },
 
   onLoad: function (options) {
+    // 🔧 重定向到设置页面（Notion配置功能已整合到设置页面）
+    console.log('⚠️ notion-config页面已弃用，重定向到设置页面')
+    wx.redirectTo({
+      url: '/pages/settings/settings',
+      fail: () => {
+        // 如果重定向失败，尝试switchTab（如果settings是tab页面）
+        wx.switchTab({
+          url: '/pages/settings/settings'
+        })
+      }
+    })
+  },
+
+  // 原有的onLoad逻辑（已废弃）
+  _oldOnLoad: function (options) {
     const userId = options.userId
     if (userId) {
       this.setData({ userId })
@@ -120,7 +136,9 @@ Page({
         mainRecords: '',
         activityDetails: '',
         dailyStatus: '',
-        happyThings: ''
+        happyThings: '',
+        quotes: '',  // 箴言库
+        knowledge: ''  // 知识库
       }
     }
 
@@ -362,13 +380,36 @@ Page({
       
       console.log('连接测试成功，继续保存配置...')
 
+      // 🔧 确保notionConfig包含完整的databases对象
+      console.log('📝 保存前的notionConfig:', notionConfig)
+      console.log('📝 保存前的databases:', notionConfig.databases)
+      console.log('📝 保存前的databases.knowledge:', notionConfig.databases?.knowledge)
+
+      const completeNotionConfig = {
+        ...notionConfig,
+        databases: {
+          goals: notionConfig.databases?.goals || '',
+          todos: notionConfig.databases?.todos || '',
+          mainRecords: notionConfig.databases?.mainRecords || '',
+          activityDetails: notionConfig.databases?.activityDetails || '',
+          dailyStatus: notionConfig.databases?.dailyStatus || '',
+          happyThings: notionConfig.databases?.happyThings || '',
+          quotes: notionConfig.databases?.quotes || '',
+          knowledge: notionConfig.databases?.knowledge || ''
+        }
+      }
+
+      console.log('🔍 完整的notionConfig:', completeNotionConfig)
+      console.log('🔍 完整的databases:', completeNotionConfig.databases)
+      console.log('🔍 完整的databases.knowledge:', completeNotionConfig.databases.knowledge)
+
       // 保存配置 - 同时保存到本地和云数据库
-      const localSuccess = userManager.configureNotion(userId, notionConfig)
-      
+      const localSuccess = userManager.configureNotion(userId, completeNotionConfig)
+
       // 同步到云数据库 - 使用邮箱而不是userId
-      console.log('正在更新用户云数据库，userEmail:', this.data.userEmail, 'notionConfig:', notionConfig)
-      console.log('调用updateUserByEmail的完整参数:', { userEmail: this.data.userEmail, updates: { notionConfig } })
-      const cloudResult = await apiService.updateUserByEmail(this.data.userEmail, { notionConfig })
+      console.log('正在更新用户云数据库，userEmail:', this.data.userEmail, 'notionConfig:', completeNotionConfig)
+      console.log('调用updateUserByEmail的完整参数:', { userEmail: this.data.userEmail, updates: { notionConfig: completeNotionConfig } })
+      const cloudResult = await apiService.updateUserByEmail(this.data.userEmail, { notionConfig: completeNotionConfig })
       console.log('云数据库更新结果:', cloudResult)
       
       // 验证更新：重新查询用户数据
@@ -459,9 +500,9 @@ Page({
           '- 只配置一个主数据库ID即可',
           '- 适合简单使用场景',
           '',
-          '📋 方式二：七数据库架构（推荐）',
-          '- 需要配置Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes七个数据库',
-          '- 功能更强大，支持目标管理、待办事项、每日状态、开心事管理、每日箴言等',
+          '📋 方式二：八数据库架构（推荐）',
+          '- 需要配置Goals、Todos、Main Records、Activity Details、Daily Status、Happy Things、Quotes、Knowledge八个数据库',
+          '- 功能更强大，支持目标管理、待办事项、每日状态、开心事管理、每日箴言、知识库等',
           '',
           '🔧 如何获取数据库ID：',
           '1. 打开Notion数据库页面',

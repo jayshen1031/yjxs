@@ -12,7 +12,14 @@ console.log('[App.js] quoteService已加载')
 const { getCurrentEnv } = require('./envList.js')
 console.log('[App.js] envList已加载')
 
+// 引入towxml
+const Towxml = require('/towxml/index')
+console.log('[App.js] Towxml已加载')
+
 App({
+  // towxml转换函数
+  towxml: Towxml,
+
   globalData: {
     userInfo: null,
     memoList: [],

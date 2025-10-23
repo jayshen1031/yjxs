@@ -4,5 +4,8 @@
   "navigationBarTextStyle": "white",
   "backgroundColor": "#f8fafc",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "towxml": "/towxml/towxml"
+  }
 }

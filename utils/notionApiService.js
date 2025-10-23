@@ -910,6 +910,29 @@ class NotionApiService {
     }
   }
 
+  // 获取页面的blocks（内容）
+  async getPageBlocks(apiKey, pageId) {
+    const endpoint = `/blocks/${pageId}/children`
+
+    const result = await this.callApi(endpoint, {
+      apiKey: apiKey,
+      method: 'GET'
+    })
+
+    if (result.success) {
+      return {
+        success: true,
+        blocks: result.data.results,
+        data: result.data
+      }
+    } else {
+      return {
+        success: false,
+        error: result.error
+      }
+    }
+  }
+
   // 查询数据库
   async queryDatabase(apiKey, databaseId, filter = {}) {
     const endpoint = `/databases/${databaseId}/query`
