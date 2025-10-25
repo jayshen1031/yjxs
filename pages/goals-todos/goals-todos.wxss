@@ -145,6 +145,15 @@
   display: inline-flex;
   gap: 12rpx;
   padding: 8rpx 0;
+  align-items: center;
+}
+
+.label-text {
+  font-size: 24rpx;
+  color: #64748b;
+  font-weight: 500;
+  margin-right: 8rpx;
+  white-space: nowrap;
 }
 
 .chip {
@@ -206,7 +215,128 @@
   font-size: 24rpx;
 }
 
-/* 目标卡片 */
+/* 目标卡片（紧凑版） */
+.goal-card-compact {
+  background: white;
+  margin: 0 24rpx 16rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.goal-title-area {
+  flex: 1;
+  margin-right: 16rpx;
+}
+
+.goal-card-compact .goal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.goal-category {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.goal-actions-compact {
+  display: flex;
+  gap: 16rpx;
+}
+
+.action-icon {
+  font-size: 36rpx;
+  padding: 8rpx;
+}
+
+.action-icon.danger {
+  opacity: 0.6;
+}
+
+/* 紧凑进度条 */
+.progress-compact {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.progress-bar-compact {
+  flex: 1;
+  height: 12rpx;
+  background: #e2e8f0;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.progress-fill-compact {
+  height: 100%;
+  border-radius: 6rpx;
+  transition: width 0.3s ease;
+}
+
+.progress-fill-compact.status-in-progress {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.progress-fill-compact.status-completed {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+.progress-fill-compact.status-not-started {
+  background: linear-gradient(90deg, #94a3b8 0%, #64748b 100%);
+}
+
+.progress-percent {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #6366f1;
+  min-width: 80rpx;
+  text-align: right;
+}
+
+/* 目标元信息 */
+.goal-meta {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+
+.meta-item {
+  font-size: 24rpx;
+  color: #64748b;
+  padding: 6rpx 12rpx;
+  background: #f1f5f9;
+  border-radius: 8rpx;
+}
+
+.meta-item.status-completed {
+  color: #059669;
+  background: #d1fae5;
+}
+
+.meta-item.status-in-progress {
+  color: #6366f1;
+  background: #e0e7ff;
+}
+
+/* 目标卡片（旧版，保留兼容） */
 .goal-card {
   background: white;
   margin-bottom: 16rpx;

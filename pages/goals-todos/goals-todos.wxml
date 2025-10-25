@@ -71,54 +71,32 @@
         <text class="empty-hint">点击右上角"新建"创建目标</text>
       </view>
 
-      <view wx:for="{{ filteredGoals }}" wx:key="id" class="goal-card">
-        <!-- 目标标题行 -->
-        <view class="goal-title-row">
-          <text class="goal-title">{{ item.title }}</text>
-          <text wx:if="{{ item.importance }}" class="goal-importance importance-{{ item.importance }}">{{ item.importanceText }}</text>
-        </view>
-
-        <!-- 时间和投入信息表格 -->
-        <view class="goal-info-table">
-          <view class="info-row">
-            <view class="info-cell">
-              <text class="info-label">起始时间</text>
-              <text class="info-value">{{ item.startDateText || '-' }}</text>
-            </view>
-            <view class="info-cell">
-              <text class="info-label">结束时间</text>
-              <text class="info-value">{{ item.targetDateText || '-' }}</text>
-            </view>
+      <view wx:for="{{ filteredGoals }}" wx:key="id" class="goal-card-compact">
+        <!-- 顶部：标题和操作 -->
+        <view class="goal-header">
+          <view class="goal-title-area">
+            <text class="goal-title">{{ item.title }}</text>
+            <text class="goal-category">{{ item.categoryText }}</text>
           </view>
-          <view class="info-row">
-            <view class="info-cell">
-              <text class="info-label">实际投入</text>
-              <text class="info-value highlight">{{ item.actualTimeMinutes || 0 }}分钟</text>
-            </view>
-            <view class="info-cell">
-              <text class="info-label">占比预计</text>
-              <text class="info-value {{ item.timePercentage >= 100 ? 'warning' : '' }}">{{ item.timePercentage || 0 }}%</text>
-            </view>
+          <view class="goal-actions-compact">
+            <text class="action-icon" bindtap="editGoal" data-id="{{ item.id }}">✏️</text>
+            <text class="action-icon danger" bindtap="deleteGoal" data-id="{{ item.id }}" data-title="{{ item.title }}">🗑️</text>
           </view>
         </view>
 
-        <!-- 进度条 -->
-        <view class="progress-section">
-          <view class="progress-info">
-            <text class="progress-label">完成进度</text>
-            <text class="progress-value">{{ item.progress || 0 }}%</text>
+        <!-- 进度条（带百分比） -->
+        <view class="progress-compact">
+          <view class="progress-bar-compact">
+            <view class="progress-fill-compact status-{{ item.statusClass }}" style="width: {{ item.progress || 0 }}%"></view>
           </view>
-          <view class="progress-bar">
-            <view class="progress-fill" style="width: {{ item.progress || 0 }}%"></view>
-          </view>
+          <text class="progress-percent">{{ item.progress || 0 }}%</text>
         </view>
 
-        <!-- 操作按钮 -->
-        <view class="goal-actions">
-          <text class="action-btn-small" bindtap="editGoal" data-id="{{ item.id }}">✏️ 编辑</text>
-          <text class="action-btn-small" bindtap="updateProgress" data-id="{{ item.id }}">📊 更新进度</text>
-          <text class="action-btn-small" bindtap="viewRelatedTodos" data-id="{{ item.id }}">📝 查看待办</text>
-          <text class="action-btn-small delete" bindtap="deleteGoal" data-id="{{ item.id }}" data-title="{{ item.title }}">🗑️ 删除</text>
+        <!-- 底部：关键信息 -->
+        <view class="goal-meta">
+          <text class="meta-item" wx:if="{{ item.targetDateText }}">📅 {{ item.targetDateText }}</text>
+          <text class="meta-item" wx:if="{{ item.actualTimeMinutes }}">⏱️ {{ item.actualTimeHours }}h</text>
+          <text class="meta-item status-{{ item.statusClass }}">{{ item.statusText }}</text>
         </view>
       </view>
     </scroll-view>
@@ -164,14 +142,27 @@
         />
       </view>
 
+      <!-- 状态筛选 -->
       <scroll-view class="filter-chips" scroll-x>
         <view class="chip-group">
+          <text class="label-text">状态：</text>
+          <text class="chip {{ selectedTodoStatus === '' ? 'active' : '' }}" bindtap="filterTodoByStatus" data-status="">全部</text>
+          <text class="chip {{ selectedTodoStatus === '待办' ? 'active' : '' }}" bindtap="filterTodoByStatus" data-status="待办">⏳ 待办</text>
+          <text class="chip {{ selectedTodoStatus === '进行中' ? 'active' : '' }}" bindtap="filterTodoByStatus" data-status="进行中">▶️ 进行中</text>
+          <text class="chip {{ selectedTodoStatus === '已完成' ? 'active' : '' }}" bindtap="filterTodoByStatus" data-status="已完成">✅ 已完成</text>
+          <text class="chip {{ selectedTodoStatus === '已取消' ? 'active' : '' }}" bindtap="filterTodoByStatus" data-status="已取消">❌ 已取消</text>
+        </view>
+      </scroll-view>
+
+      <!-- 类型筛选 -->
+      <scroll-view class="filter-chips" scroll-x>
+        <view class="chip-group">
+          <text class="label-text">类型：</text>
           <text class="chip {{ selectedTodoType === '' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="">全部</text>
-          <text class="chip {{ selectedTodoType === '目标导向' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="目标导向">目标导向</text>
-          <text class="chip {{ selectedTodoType === '临时待办' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="临时待办">临时待办</text>
-          <text class="chip {{ selectedTodoType === '习惯养成' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="习惯养成">习惯养成</text>
-          <text class="chip {{ selectedTodoType === '紧急处理' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="紧急处理">紧急处理</text>
-          <text class="chip toggle-completed {{ showCompletedTodos ? 'active' : '' }}" bindtap="toggleShowCompleted">{{ showCompletedTodos ? '隐藏已完成' : '显示已完成' }}</text>
+          <text class="chip {{ selectedTodoType === '目标导向' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="目标导向">🎯 目标导向</text>
+          <text class="chip {{ selectedTodoType === '临时待办' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="临时待办">📝 临时待办</text>
+          <text class="chip {{ selectedTodoType === '习惯养成' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="习惯养成">💪 习惯养成</text>
+          <text class="chip {{ selectedTodoType === '紧急处理' ? 'active' : '' }}" bindtap="filterTodoByType" data-type="紧急处理">🚨 紧急处理</text>
         </view>
       </scroll-view>
     </view>

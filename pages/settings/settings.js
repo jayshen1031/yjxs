@@ -20,9 +20,7 @@ Page({
     },
     configMode: 'auto', // 'auto' 自动创建 | 'manual' 手动配置
     preferences: {
-      autoSync: true,
-      reminderEnabled: true,
-      reminderInterval: 60
+      autoSync: true
     },
     syncStatus: {
       isConnected: false,
@@ -917,25 +915,6 @@ Page({
     toast.success(autoSync ? '自动同步已启用' : '自动同步已关闭')
   },
 
-  // 切换提醒
-  toggleReminder: function(e) {
-    const reminderEnabled = e.detail.value
-    const preferences = { ...this.data.preferences, reminderEnabled }
-    
-    userManager.updateUserPreferences(preferences)
-    this.setData({ preferences })
-    
-    toast.success(reminderEnabled ? '提醒已启用' : '提醒已关闭')
-  },
-
-  // 提醒间隔改变
-  onReminderIntervalChange: function(e) {
-    const reminderInterval = e.detail.value
-    const preferences = { ...this.data.preferences, reminderInterval }
-    
-    userManager.updateUserPreferences(preferences)
-    this.setData({ preferences })
-  },
 
   // 导出数据
   exportData: function() {

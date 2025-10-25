@@ -59,6 +59,7 @@ Page({
     filteredTodos: [],
     todoSearchKeyword: '',
     selectedTodoType: '',
+    selectedTodoStatus: '', // 状态筛选：''全部 | '待办' | '进行中' | '已完成'
     showCompletedTodos: false, // 默认不显示已完成的待办
 
     // 可用目标列表（供待办选择）
@@ -258,11 +259,22 @@ Page({
         let targetDateText = ''
         if (goal.targetDate) {
           const date = new Date(goal.targetDate)
-          targetDateText = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+          targetDateText = `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
         }
 
         // 计算实际投入时间（分钟）- 从Notion的Total Time Invested字段获取，单位是分钟
         const actualTimeMinutes = goal.totalTimeInvestment || 0
+        const actualTimeHours = (actualTimeMinutes / 60).toFixed(1)
+
+        // 简化类别文本
+        const categoryTextMap = {
+          '人生目标 (Life Goal)': '人生',
+          '年度目标 (Yearly Goal)': '年度',
+          '季度目标 (Quarterly Goal)': '季度',
+          '月度目标 (Monthly Goal)': '月度',
+          '周目标 (Weekly Goal)': '周'
+        }
+        const categoryText = categoryTextMap[goal.category] || goal.category
 
         // 计算占比预计总投入时间的百分比
         const estimatedHours = goal.estimatedHours || 0
@@ -288,13 +300,15 @@ Page({
           startDateText,
           targetDateText,
           actualTimeMinutes,
+          actualTimeHours,
+          categoryText,
           timePercentage,
           importanceText: importanceTextMap[goal.importance] || goal.importance,
           statusText: this.getGoalStatusText(goal.status),
           priorityText: goal.priority || '中',
           timeInvestmentDisplay: this.formatTime(goal.totalTimeInvestment || 0),
           // CSS类名
-          status: statusClassMap[goal.status] || statusClassMap['未开始'],
+          statusClass: statusClassMap[goal.status] || statusClassMap['未开始'],
           priority: priorityClassMap[goal.priority] || priorityClassMap['中'],
           importance: importanceClassMap[goal.importance] || 'auxiliary'
         }
@@ -329,17 +343,33 @@ Page({
       let targetDateText = ''
       if (goal.targetDate) {
         const date = new Date(goal.targetDate)
-        targetDateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        targetDateText = `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
       }
+
+      const actualTimeMinutes = goal.totalTimeInvestment || 0
+      const actualTimeHours = (actualTimeMinutes / 60).toFixed(1)
+
+      // 简化类别文本
+      const categoryTextMap = {
+        '人生目标 (Life Goal)': '人生',
+        '年度目标 (Yearly Goal)': '年度',
+        '季度目标 (Quarterly Goal)': '季度',
+        '月度目标 (Monthly Goal)': '月度',
+        '周目标 (Weekly Goal)': '周'
+      }
+      const categoryText = categoryTextMap[goal.category] || goal.category
 
       return {
         ...goal,
         targetDateText,
+        actualTimeMinutes,
+        actualTimeHours,
+        categoryText,
         statusText: this.getGoalStatusText(goal.status),
         priorityText: goal.priority || '中',
         timeInvestmentDisplay: this.formatTime(goal.totalTimeInvestment || 0),
         // CSS类名
-        status: statusClassMap[goal.status] || statusClassMap['未开始'],
+        statusClass: statusClassMap[goal.status] || statusClassMap['未开始'],
         priority: priorityClassMap[goal.priority] || priorityClassMap['中']
       }
     })
@@ -1130,21 +1160,31 @@ Page({
     console.log('🔍 开始筛选Todos，原始数据条数:', this.data.todos.length)
     let filtered = [...this.data.todos]
 
-    // 默认不显示已完成的待办（除非用户开启了显示选项）
-    if (!this.data.showCompletedTodos) {
-      filtered = filtered.filter(todo => todo.status !== '已完成')
-      console.log('🚫 过滤已完成待办，剩余:', filtered.length)
-    }
+    const hasSearchKeyword = this.data.todoSearchKeyword && this.data.todoSearchKeyword.trim().length > 0
 
-    if (this.data.todoSearchKeyword) {
+    // 如果有搜索关键词，搜索所有待办（包括已完成）
+    if (hasSearchKeyword) {
       const keyword = this.data.todoSearchKeyword.toLowerCase()
       filtered = filtered.filter(todo =>
         todo.title.toLowerCase().includes(keyword) ||
         (todo.description && todo.description.toLowerCase().includes(keyword))
       )
-      console.log('📝 搜索关键词:', this.data.todoSearchKeyword, ', 筛选后:', filtered.length)
+      console.log('🔍 搜索模式 - 关键词:', this.data.todoSearchKeyword, ', 筛选后:', filtered.length, '条（包含已完成）')
+    } else if (!this.data.selectedTodoStatus) {
+      // 没有搜索且没有选择状态时，默认不显示已完成的待办（除非用户开启了显示选项）
+      if (!this.data.showCompletedTodos) {
+        filtered = filtered.filter(todo => todo.status !== '已完成')
+        console.log('🚫 默认模式 - 过滤已完成待办，剩余:', filtered.length)
+      }
     }
 
+    // 状态筛选（优先级高于showCompletedTodos）
+    if (this.data.selectedTodoStatus) {
+      filtered = filtered.filter(todo => todo.status === this.data.selectedTodoStatus)
+      console.log('📊 筛选状态:', this.data.selectedTodoStatus, ', 筛选后:', filtered.length)
+    }
+
+    // 类型筛选（适用于搜索和默认模式）
     if (this.data.selectedTodoType) {
       filtered = filtered.filter(todo => todo.type === this.data.selectedTodoType)
       console.log('🏷️ 筛选类型:', this.data.selectedTodoType, ', 筛选后:', filtered.length)
@@ -1178,6 +1218,16 @@ Page({
     const type = e.currentTarget.dataset.type
     this.setData({
       selectedTodoType: type
+    })
+    this.filterTodos()
+  },
+
+  filterTodoByStatus(e) {
+    const status = e.currentTarget.dataset.status
+    this.setData({
+      selectedTodoStatus: status,
+      // 如果选择了具体状态，清空showCompletedTodos的影响
+      showCompletedTodos: status === '已完成' ? true : this.data.showCompletedTodos
     })
     this.filterTodos()
   },

@@ -9,8 +9,6 @@ Page({
     todayMemoCount: 0,
     totalMemoCount: 0,
     recentMemos: [],
-    reminderEnabled: true,
-    reminderInterval: 60,
     todayPlanning: null,
     planningDate: '',
     todayValueMinutes: 0, // 今日价值分钟总数
@@ -92,9 +90,6 @@ Page({
 
     // 获取最近记录
     this.loadRecentMemos()
-
-    // 获取提醒设置
-    this.loadReminderSettings()
 
     // 获取今日规划
     this.loadTodayPlanning()
@@ -521,21 +516,6 @@ Page({
     }
   },
 
-  // 加载提醒设置
-  loadReminderSettings: function() {
-    const settings = app.globalData.reminderSettings
-    this.setData({
-      reminderEnabled: settings.enabled,
-      reminderInterval: settings.interval
-    })
-    
-    // 如果提醒已启用，自动开始提醒
-    if (settings.enabled) {
-      console.log('自动启动定时提醒，间隔:', settings.interval, '分钟')
-      this.startReminder()
-    }
-  },
-
   // 格式化相对时间
   formatRelativeTime: function(date) {
     const now = new Date()
@@ -577,189 +557,6 @@ Page({
     wx.switchTab({
       url: '/pages/timeline/timeline'
     })
-  },
-
-  // 切换提醒开关
-  toggleReminder: function(e) {
-    const enabled = e.detail.value
-    this.setData({
-      reminderEnabled: enabled
-    })
-
-    app.updateReminderSettings({ enabled: enabled })
-
-    if (enabled) {
-      this.startReminder()
-      wx.showToast({
-        title: '已开启定时提醒',
-        icon: 'success'
-      })
-    } else {
-      this.stopReminder()
-      wx.showToast({
-        title: '已关闭定时提醒',
-        icon: 'success'
-      })
-    }
-  },
-
-  // 提醒间隔改变
-  onReminderIntervalChange: function(e) {
-    const interval = e.detail.value
-    this.setData({
-      reminderInterval: interval
-    })
-
-    app.updateReminderSettings({ interval: interval })
-
-    // 重新设置提醒
-    if (this.data.reminderEnabled) {
-      this.startReminder()
-    }
-  },
-
-  // 开启准点提醒
-  startReminder: function() {
-    // 清除已有提醒
-    this.stopReminder()
-
-    // 设置准点提醒（7:00-22:00每小时）
-    this.scheduleNextHourlyReminder()
-    console.log('已启动准点提醒系统（7:00-22:00每小时）')
-  },
-
-  // 安排下一次准点提醒
-  scheduleNextHourlyReminder: function() {
-    const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentSecond = now.getSeconds()
-
-    // 计算下一个提醒时间
-    let nextHour = currentHour
-    
-    // 如果当前时间超过了整点，则下一小时提醒
-    if (currentMinute > 0 || currentSecond > 0) {
-      nextHour = currentHour + 1
-    }
-
-    // 如果超过22点或早于7点，则安排到明天7点
-    if (nextHour > 22 || nextHour < 7) {
-      const tomorrow = new Date(now)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      tomorrow.setHours(7, 0, 0, 0)
-      
-      const timeUntilTomorrow = tomorrow.getTime() - now.getTime()
-      this.reminderTimer = setTimeout(() => {
-        this.triggerHourlyReminder()
-      }, timeUntilTomorrow)
-      
-      console.log(`下次提醒时间：明天7:00（${Math.round(timeUntilTomorrow/1000/60)}分钟后）`)
-      return
-    }
-
-    // 计算到下一个整点的毫秒数
-    const nextReminderTime = new Date(now)
-    nextReminderTime.setHours(nextHour, 0, 0, 0)
-    
-    const timeUntilNext = nextReminderTime.getTime() - now.getTime()
-    
-    this.reminderTimer = setTimeout(() => {
-      this.triggerHourlyReminder()
-    }, timeUntilNext)
-
-    console.log(`下次提醒时间：${nextHour}:00（${Math.round(timeUntilNext/1000/60)}分钟后）`)
-  },
-
-  // 触发准点提醒
-  triggerHourlyReminder: function() {
-    const now = new Date()
-    const currentHour = now.getHours()
-    
-    // 只在生活时间段（7-22点）提醒
-    if (currentHour >= 7 && currentHour <= 22) {
-      this.showReminderNotification()
-    }
-    
-    // 安排下一次提醒
-    this.scheduleNextHourlyReminder()
-  },
-
-  // 停止提醒
-  stopReminder: function() {
-    if (this.reminderTimer) {
-      clearInterval(this.reminderTimer)
-      this.reminderTimer = null
-    }
-  },
-
-  // 显示提醒通知
-  showReminderNotification: function() {
-    const now = new Date()
-    const hour = now.getHours()
-    
-    // 晚上21-22点提醒记录明日规划
-    if (hour >= 21) {
-      wx.showModal({
-        title: '规划明天',
-        content: `${hour}:00 整点提醒\n今天就要结束了，不如规划一下明天的重要事项？`,
-        confirmText: '去规划',
-        cancelText: '稍后',
-        success: (res) => {
-          if (res.confirm) {
-            wx.switchTab({
-              url: '/pages/memo/memo',
-              success: function() {
-                const pages = getCurrentPages()
-                const memoPage = pages[pages.length - 1]
-                if (memoPage && memoPage.route === 'pages/memo/memo') {
-                  memoPage.setData({ 
-                    recordMode: 'planning',
-                    inputType: 'text'
-                  })
-                  memoPage.updateCurrentTemplates()
-                }
-              }
-            })
-          }
-        }
-      })
-    } else {
-      // 根据时间段显示不同的提醒内容
-      let timeText = ''
-      let content = ''
-      
-      if (hour >= 7 && hour < 9) {
-        timeText = '早晨'
-        content = '美好的一天开始了，记录一下早晨的想法和计划吧～'
-      } else if (hour >= 9 && hour < 12) {
-        timeText = '上午'
-        content = '上午时光，记录一下过去一小时的工作或学习情况～'
-      } else if (hour >= 12 && hour < 14) {
-        timeText = '中午'
-        content = '午休时间，记录一下上午的收获和下午的计划～'
-      } else if (hour >= 14 && hour < 18) {
-        timeText = '下午'
-        content = '下午时光，记录一下过去一小时的进展和想法～'
-      } else if (hour >= 18 && hour < 21) {
-        timeText = '傍晚'
-        content = '一天即将结束，记录一下这一小时的生活点滴～'
-      }
-      
-      wx.showModal({
-        title: `${timeText}记录提醒`,
-        content: `${hour}:00 整点提醒\n${content}`,
-        confirmText: '去记录',
-        cancelText: '稍后',
-        success: (res) => {
-          if (res.confirm) {
-            wx.switchTab({
-              url: '/pages/memo/memo'
-            })
-          }
-        }
-      })
-    }
   },
 
   // 根据时间和类型获取时间段
@@ -1439,13 +1236,4 @@ Page({
     })
   },
 
-  onHide: function() {
-    // 页面隐藏时停止提醒（避免在其他页面弹出提醒）
-    this.stopReminder()
-  },
-
-  onUnload: function() {
-    // 页面卸载时清除定时器
-    this.stopReminder()
-  }
 })

@@ -27,10 +27,6 @@ App({
     currentQuote: null,
     happyThings: [], // 开心库
     todayHappyThings: [], // 今日推荐的开心事项
-    reminderSettings: {
-      enabled: true,
-      interval: 60 // 默认1小时提醒一次
-    },
     quoteSettings: {
       refreshInterval: 'daily', // 默认每日刷新
       autoRefresh: true
@@ -158,10 +154,6 @@ App({
         this.globalData.memoList = memoList
       }
       
-      const reminderSettings = wx.getStorageSync('reminderSettings')
-      if (reminderSettings) {
-        this.globalData.reminderSettings = reminderSettings
-      }
     } catch (e) {
       console.error('加载本地数据失败:', e)
     }
@@ -512,11 +504,6 @@ App({
     }
   },
 
-  // 更新提醒设置
-  updateReminderSettings: function(settings) {
-    this.globalData.reminderSettings = { ...this.globalData.reminderSettings, ...settings }
-    wx.setStorageSync('reminderSettings', this.globalData.reminderSettings)
-  },
 
   // 保存箴言设置
   saveQuoteSettings: function() {
