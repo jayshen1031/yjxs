@@ -164,19 +164,7 @@
   background: #94a3b8;
 }
 
-.card-content {
-  margin-bottom: 20rpx;
-}
-
-.card-preview {
-  font-size: 28rpx;
-  color: #475569;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+/* 移除预览区域样式 */
 
 .card-meta {
   display: flex;
@@ -418,12 +406,80 @@
   height: 100vh;
 }
 
-.detail-body {
+/* 详情弹窗内容区域 - 清除padding，由内层控制 */
+.detail-modal .detail-body {
   flex: 1;
-  padding: 40rpx;
-  padding-bottom: 60rpx;
+  padding: 0 !important;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Markdown包装器 - 真正控制内边距 */
+.markdown-wrapper {
+  padding: 40rpx 40rpx 60rpx 40rpx;
+  box-sizing: border-box;
+}
+
+/* 确保towxml内容不超出边界 */
+.detail-body towxml {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 覆盖towxml的默认margin - 关键修复！ */
+.detail-body .h2w {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.detail-body .h2w__main {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 覆盖所有towxml常见元素的左右margin */
+.detail-body .h2w__p,
+.detail-body .h2w__h1,
+.detail-body .h2w__h2,
+.detail-body .h2w__h3,
+.detail-body .h2w__h4,
+.detail-body .h2w__h5,
+.detail-body .h2w__h6,
+.detail-body .h2w__ul,
+.detail-body .h2w__ol,
+.detail-body .h2w__li,
+.detail-body .h2w__blockquote,
+.detail-body .h2w__pre,
+.detail-body .h2w__table,
+.detail-body .h2w__tableParent {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* 覆盖towxml内部元素样式 */
+.detail-body towxml view {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 表格特殊处理 */
+.detail-body towxml .h_table {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* 段落和标题 */
+.detail-body towxml .h_p,
+.detail-body towxml .h_h1,
+.detail-body towxml .h_h2,
+.detail-body towxml .h_h3,
+.detail-body towxml .h_h4 {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
 }
 
 .detail-text {

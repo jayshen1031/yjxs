@@ -71,10 +71,6 @@
         </view>
       </view>
 
-      <view class="card-content">
-        <text class="card-preview">{{item.preview || item.content || '暂无内容'}}</text>
-      </view>
-
       <view class="card-meta">
         <text class="meta-item">📖 {{item.readCount || 0}}次</text>
         <text class="meta-item">📝 {{item.source}}</text>
@@ -215,7 +211,9 @@
       </view>
 
       <scroll-view class="modal-body detail-body" scroll-y>
-        <towxml nodes="{{detailContent.markdownData}}" />
+        <view class="markdown-wrapper">
+          <towxml nodes="{{detailContent.markdownData}}" />
+        </view>
       </scroll-view>
     </view>
   </view>
