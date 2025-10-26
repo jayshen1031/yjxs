@@ -194,7 +194,7 @@ class NotionApiService {
           type: 'rich_text',
           rich_text: {}
         },
-        'Record Date': {
+        'Date': {  // ✅ 修正：Record Date → Date
           type: 'date',
           date: {}
         },
@@ -549,13 +549,13 @@ class NotionApiService {
         }
       ],
       properties: {
-        'Name': {
+        'Title': {  // ✅ 修正：Name → Title
           title: {}
         },
         'User ID': {
           rich_text: {}
         },
-        'Record Date': {
+        'Date': {  // ✅ 修正：Record Date → Date
           date: {}
         },
         'Start Time': {
@@ -564,18 +564,18 @@ class NotionApiService {
         'End Time': {
           rich_text: {}
         },
-        'Type': {
+        'Record Type': {  // ✅ 修正：Type → Record Type
           select: {
             options: [
-              { name: 'normal', color: 'blue' },
-              { name: 'planning', color: 'orange' }
+              { name: '日常记录', color: 'blue' },  // ✅ 修正：中文值
+              { name: '明日规划', color: 'orange' }
             ]
           }
         },
         'Is Planning': {
           checkbox: {}
         },
-        'Summary': {
+        'Content': {  // ✅ 修正：Summary → Content
           rich_text: {}
         },
         'Tags': {
@@ -608,40 +608,57 @@ class NotionApiService {
   // 创建活动明细表
   async createActivityDetailsDatabase(apiKey, parentPageId, mainDatabaseId, goalsDatabaseId = null, todosDatabaseId = null) {
     const properties = {
-      'Activity Name': {
+      'Name': {  // ✅ 修正：Activity Name → Name
         title: {}
       },
-      'Minutes': {
+      'Description': {
+        rich_text: {}
+      },
+      'Duration': {  // ✅ 修正：Minutes → Duration
         number: {
           format: 'number'
         }
       },
-      'Value Type': {
+      'Activity Type': {  // 活动类型
         select: {
           options: [
-            { name: '有价值', color: 'green' },
-            { name: '中性', color: 'gray' },
-            { name: '低效', color: 'red' }
+            { name: '工作', color: 'blue' },
+            { name: '学习', color: 'purple' },
+            { name: '运动', color: 'red' },
+            { name: '休息', color: 'green' },
+            { name: '社交', color: 'pink' },
+            { name: '娱乐', color: 'yellow' },
+            { name: '杂事', color: 'gray' }
           ]
         }
       },
-      'Record': {
+      'Value Rating': {  // ✅ 修正：Value Type → Value Rating
+        select: {
+          options: [
+            { name: '高价值', color: 'green' },   // ✅ 修正：有价值 → 高价值
+            { name: '中等价值', color: 'yellow' }, // ✅ 修正：中性 → 中等价值
+            { name: '低价值', color: 'red' }      // ✅ 修正：低效 → 低价值
+          ]
+        }
+      },
+      'Related Main Record': {  // ✅ 修正：Record → Related Main Record
         relation: {
           database_id: mainDatabaseId,
           type: 'dual_property',
           dual_property: {
-            synced_property_name: 'Activities'
+            synced_property_name: 'Related Activities'
           }
         }
       },
       'User ID': {
         rich_text: {}
       },
-      'Record Date': {
-        date: {}
+      // ✅ 删除 Record Date 字段（Activity Details不应该有日期字段，只有Start Time和End Time）
+      'Start Time': {
+        rich_text: {}  // 文本格式的时间
       },
-      'Description': {
-        rich_text: {}
+      'End Time': {
+        rich_text: {}  // 文本格式的时间
       },
       'Tags': {
         multi_select: {
@@ -673,10 +690,10 @@ class NotionApiService {
       properties['Contribution Type'] = {
         select: {
           options: [
-            { name: '直接推进', color: 'green' },
-            { name: '间接支持', color: 'blue' },
-            { name: '学习准备', color: 'purple' },
-            { name: '无关', color: 'gray' }
+            { name: '完成待办', color: 'green' },
+            { name: '推进目标', color: 'blue' },
+            { name: '学习提升', color: 'purple' },
+            { name: '休息恢复', color: 'yellow' }
           ]
         }
       }
@@ -990,7 +1007,7 @@ class NotionApiService {
           database_id: mainDatabaseId
         },
         properties: {
-          'Name': {
+          'Title': {  // ✅ 修正：Name → Title
             title: [{
               text: { content: memo.id || `memo_${Date.now()}` }
             }]
@@ -1000,7 +1017,7 @@ class NotionApiService {
               text: { content: memo.userId || 'default_user' }
             }]
           },
-          'Record Date': {
+          'Date': {  // ✅ 修正：Record Date → Date
             date: {
               start: new Date(memo.timestamp).toISOString().split('T')[0]
             }
@@ -1123,18 +1140,18 @@ class NotionApiService {
             database_id: activityDatabaseId
           },
           properties: {
-            'Activity Name': {
+            'Name': {  // ✅ 修正：Activity Name → Name
               title: [{
                 text: { content: activity.activityName }
               }]
             },
-            'Minutes': {
+            'Duration': {  // ✅ 修正：Minutes → Duration
               number: activity.minutes
             },
-            'Value Type': {
+            'Value Rating': {  // ✅ 修正：Value Type → Value Rating
               select: { name: activity.valueType }
             },
-            'Record': {
+            'Related Main Record': {  // ✅ 修正：Record → Related Main Record
               relation: [{
                 id: mainRecordId
               }]
@@ -1143,12 +1160,8 @@ class NotionApiService {
               rich_text: [{
                 text: { content: memo.userId || 'default_user' }
               }]
-            },
-            'Record Date': {
-              date: {
-                start: new Date(memo.timestamp).toISOString().split('T')[0]
-              }
             }
+            // ✅ 删除 Record Date 字段（Activity Details不应该有日期字段）
           }
         }
 
@@ -1266,7 +1279,7 @@ class NotionApiService {
           database_id: databaseId
         },
         properties: {
-          'Name': {
+          'Title': {  // ✅ 修正：Name → Title
             title: [
               {
                 text: {
@@ -1284,14 +1297,14 @@ class NotionApiService {
               }
             ]
           },
-          'Record Date': {
+          'Date': {  // ✅ 修正：Record Date → Date
             date: {
               start: new Date(memo.timestamp).toISOString().split('T')[0]
             }
           },
-          'Type': {
+          'Record Type': {  // ✅ 修正：Type → Record Type
             select: {
-              name: memo.recordMode || (memo.isPlanning ? 'planning' : 'normal')
+              name: memo.recordMode || (memo.isPlanning ? '明日规划' : '日常记录')  // ✅ 修正：值改为中文
             }
           },
           'Is Planning': {
@@ -1479,7 +1492,7 @@ class NotionApiService {
       const result = await this.queryDatabase(apiKey, databaseId, {
         sorts: [
           {
-            property: 'Record Date',
+            property: 'Date',  // ✅ 修正：Record Date → Date
             direction: 'descending'
           }
         ]
@@ -2136,7 +2149,7 @@ class NotionApiService {
         filter: filter,
         sorts: [
           {
-            property: 'Record Date',
+            property: 'Date',  // ✅ 修正：Record Date → Date
             direction: 'descending'
           }
         ]
@@ -2196,7 +2209,7 @@ class NotionApiService {
       if (records.length === 0) {
         console.log('⚠️ 未找到匹配的记录，执行诊断查询...')
         const diagnosticQuery = {
-          sorts: [{ property: 'Record Date', direction: 'descending' }],
+          sorts: [{ property: 'Date', direction: 'descending' }],  // ✅ 修正：Record Date → Date
           page_size: 5
         }
         const diagnosticResult = await this.queryDatabase(apiKey, databaseId, diagnosticQuery)
@@ -2240,25 +2253,58 @@ class NotionApiService {
    */
   async queryActivities(apiKey, databaseId, userEmail, options = {}) {
     try {
-      console.log('前端直接查询活动明细表:', databaseId, '用户邮箱:', userEmail)
+      console.log('前端直接查询活动明细表:', databaseId, '用户邮箱:', userEmail, 'options:', options)
 
       // 构建过滤条件
-      const filter = {
-        property: 'User ID',
-        rich_text: {
-          equals: userEmail
-        }
+      const filters = []
+
+      // ⚠️ 临时测试：如果指定了skipUserFilter，则跳过User ID过滤
+      if (!options.skipUserFilter) {
+        // 必须条件：用户邮箱
+        filters.push({
+          property: 'User ID',
+          rich_text: {
+            equals: userEmail
+          }
+        })
       }
+
+      // 可选条件：关联目标
+      if (options.relatedGoalId) {
+        filters.push({
+          property: 'Related Goal',
+          relation: {
+            contains: options.relatedGoalId
+          }
+        })
+      }
+
+      // 可选条件：关联待办
+      if (options.relatedTodoId) {
+        filters.push({
+          property: 'Related Todo',
+          relation: {
+            contains: options.relatedTodoId
+          }
+        })
+      }
+
+      // 组合过滤条件
+      const filter = filters.length > 1 ? { and: filters } : (filters.length === 1 ? filters[0] : undefined)
 
       // 构建查询参数
       const queryData = {
-        filter: filter,
         sorts: [
           {
-            property: 'Record Date',  // 使用实际存在的字段
+            timestamp: 'created_time',  // 使用系统创建时间排序（Activity Details没有日期字段）
             direction: 'descending'
           }
         ]
+      }
+
+      // 只有当filter存在时才添加
+      if (filter) {
+        queryData.filter = filter
       }
 
       // 添加分页限制
@@ -2272,6 +2318,9 @@ class NotionApiService {
         throw new Error(result.error || '查询活动明细表失败')
       }
 
+      console.log('📊 查询结果总数:', result.data.results.length)
+      console.log('🔍 查询条件:', JSON.stringify(queryData, null, 2))
+
       // 解析结果（使用实际的字段名）
       const activities = result.data.results.map(page => {
         const props = page.properties
@@ -2282,17 +2331,28 @@ class NotionApiService {
         const relatedGoal = props['Related Goal']?.relation?.[0]?.id || null
         const relatedTodo = props['Related Todo']?.relation?.[0]?.id || null
 
+        // 调试日志：输出关联信息
+        if (options.relatedGoalId || options.relatedTodoId) {
+          console.log('📋 活动记录:', {
+            name: props['Name']?.title?.[0]?.text?.content || '无名称',
+            relatedGoalId: relatedGoal,
+            relatedTodoId: relatedTodo,
+            searchGoalId: options.relatedGoalId,
+            searchTodoId: options.relatedTodoId
+          })
+        }
+
         return {
           id: page.id,
-          name: props['Activity Name']?.title?.[0]?.text?.content || '',
+          name: props['Name']?.title?.[0]?.text?.content || '',  // 修正：使用'Name'而非'Activity Name'
           description: props['Description']?.rich_text?.[0]?.text?.content || '',
-          startTime: props['Start Time']?.rich_text?.[0]?.text?.content || props['Record Date']?.date?.start || '',
-          endTime: props['End Time']?.rich_text?.[0]?.text?.content || props['Record Date']?.date?.start || '',
-          duration: props['Minutes']?.number || 0,              // 使用Minutes字段
-          activityType: props['Value Type']?.select?.name || '', // 使用Value Type字段
+          startTime: props['Start Time']?.rich_text?.[0]?.text?.content || '',
+          endTime: props['End Time']?.rich_text?.[0]?.text?.content || '',
+          duration: props['Duration']?.number || 0,              // 修正：使用'Duration'而非'Minutes'
+          activityType: props['Activity Type']?.select?.name || '', // 修正：使用'Activity Type'而非'Value Type'
+          valueRating: props['Value Rating']?.select?.name || '', // 添加价值评估
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
           userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
-          recordDate: props['Record Date']?.date?.start || '',  // ⭐ 添加Record Date字段（格式：YYYY-MM-DD）
           // 关联字段
           relatedMainRecordId: relatedMainRecord,
           relatedGoalId: relatedGoal,
@@ -2300,7 +2360,7 @@ class NotionApiService {
         }
       })
 
-      console.log(`查询到 ${activities.length} 条活动明细`)
+      console.log(`✅ 查询到 ${activities.length} 条活动明细`)
 
       return {
         success: true,
@@ -2349,7 +2409,7 @@ class NotionApiService {
           ]
         })
       } else if (options.scope === '跨天') {
-        // 查询进行中且Record Date < 今天的待办
+        // 查询进行中且Due Date < 今天的待办
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
@@ -2362,7 +2422,7 @@ class NotionApiService {
               }
             },
             {
-              property: 'Record Date',
+              property: 'Due Date',  // ✅ 修正：Record Date → Due Date（待办使用截止日期）
               date: {
                 before: today.toISOString().split('T')[0]
               }
@@ -2407,7 +2467,7 @@ class NotionApiService {
             direction: 'ascending'
           },
           {
-            property: 'Record Date',
+            property: 'Due Date',  // 使用Due Date而非Record Date
             direction: 'ascending'
           }
         ],

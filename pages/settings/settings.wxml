@@ -261,127 +261,29 @@
                 loading="{{ diagnosing }}">
           <text>{{ diagnosing ? '诊断中...' : '🔍 诊断数据库' }}</text>
         </button>
-        <button class="btn btn-warning" bindtap="fixActivityRelations"
+        <button class="btn btn-warning" bindtap="fixMainRecords"
                 wx:if="{{ notionConfig.enabled }}">
-          <text>🔧 修复活动关联</text>
+          <text>🔧 修复主记录表</text>
         </button>
       </view>
     </view>
   </view>
 
-  <!-- 偏好设置 -->
+  <!-- 箴言设置 -->
   <view class="card">
     <view class="card-content">
-      <view class="title">⚙️ 偏好设置</view>
-      
+      <view class="title">💫 箴言设置</view>
+
       <view class="setting-item">
         <view class="setting-info">
-          <view class="setting-name">自动同步</view>
-          <view class="setting-desc">保存记录时自动同步到Notion</view>
+          <view class="setting-name">只显示我的箴言</view>
+          <view class="setting-desc">首页箴言只从我添加的箴言中随机显示</view>
         </view>
-        <switch 
-          checked="{{ preferences.autoSync }}" 
-          bindchange="toggleAutoSync" 
-          color="#6366f1"
-          disabled="{{ !notionConfig.enabled }}"
-        />
-      </view>
-      
-      <view class="setting-item">
-        <view class="setting-info">
-          <view class="setting-name">提醒通知</view>
-          <view class="setting-desc">开启定时记录提醒</view>
-        </view>
-        <switch 
-          checked="{{ preferences.reminderEnabled }}" 
-          bindchange="toggleReminder" 
+        <switch
+          checked="{{ quoteSettings.onlyMyQuotes }}"
+          bindchange="toggleOnlyMyQuotes"
           color="#6366f1"
         />
-      </view>
-      
-      <view class="setting-item">
-        <view class="setting-info">
-          <view class="setting-name">提醒间隔</view>
-          <view class="setting-desc">{{ preferences.reminderInterval }}分钟</view>
-        </view>
-        <slider 
-          value="{{ preferences.reminderInterval }}" 
-          min="30" 
-          max="480" 
-          step="30"
-          bindchange="onReminderIntervalChange"
-          activeColor="#6366f1"
-          backgroundColor="#e5e7eb"
-          disabled="{{ !preferences.reminderEnabled }}"
-        />
-      </view>
-    </view>
-  </view>
-
-  <!-- 箴言力量库 -->
-  <view class="card">
-    <view class="card-content">
-      <view class="title">💫 箴言力量库</view>
-      
-      <view class="quote-summary">
-        <view class="quote-stats">
-          <view class="stat-item">
-            <text class="stat-number">{{ quoteStats.total }}</text>
-            <text class="stat-label">总箴言</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-number">{{ quoteStats.favorites }}</text>
-            <text class="stat-label">已收藏</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-number">{{ quoteStats.user }}</text>
-            <text class="stat-label">自定义</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-number">{{ quoteStats.categories }}</text>
-            <text class="stat-label">分类</text>
-          </view>
-        </view>
-        
-        <view class="current-quote-preview" wx:if="{{ currentQuotePreview }}">
-          <view class="quote-text">{{ currentQuotePreview.content }}</view>
-          <view class="quote-category">{{ currentQuotePreview.category }}</view>
-        </view>
-      </view>
-      
-      <view class="quote-actions">
-        <button class="btn btn-primary" bindtap="goToQuoteManager">
-          <text>⚙️ 管理箴言库</text>
-        </button>
-        <button class="btn btn-secondary" bindtap="refreshQuote">
-          <text>🎲 随机箴言</text>
-        </button>
-      </view>
-    </view>
-  </view>
-
-  <!-- 数据管理 -->
-  <view class="card">
-    <view class="card-content">
-      <view class="title">📊 数据管理</view>
-      
-      <view class="data-actions">
-        <button class="btn btn-secondary" bindtap="exportData">
-          <text>📤 导出数据</text>
-        </button>
-        <button class="btn btn-secondary" bindtap="importData">
-          <text>📥 导入数据</text>
-        </button>
-      </view>
-      
-      <view class="danger-zone">
-        <view class="danger-title">⚠️ 危险操作</view>
-        <button class="btn btn-danger" bindtap="clearAllData">
-          <text>🗑️ 清除所有数据</text>
-        </button>
-        <button class="btn btn-danger" bindtap="deleteCurrentUser">
-          <text>👤 删除当前用户</text>
-        </button>
       </view>
     </view>
   </view>

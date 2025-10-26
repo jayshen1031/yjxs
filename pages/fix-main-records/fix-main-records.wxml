@@ -1,0 +1,54 @@
+<view class="container">
+  <view class="header">
+    <view class="title">🔧 修复主记录表</view>
+    <view class="subtitle">为现有数据库添加缺失字段</view>
+  </view>
+
+  <view class="info-card">
+    <view class="info-row">
+      <view class="label">用户邮箱：</view>
+      <view class="value">{{userEmail}}</view>
+    </view>
+    <view class="info-row">
+      <view class="label">数据库ID：</view>
+      <view class="value small">{{mainRecordsDatabaseId}}</view>
+    </view>
+  </view>
+
+  <view class="description">
+    <view class="desc-title">📋 修复说明</view>
+    <view class="desc-content">
+      此工具将为您的 Main Records 数据库添加以下字段：
+
+      • Start Time（开始时间）
+      • End Time（结束时间）
+
+      这些字段是保存记录所必需的。
+    </view>
+  </view>
+
+  <view class="action-section">
+    <button
+      class="fix-btn"
+      wx:if="{{canFix && !result}}"
+      disabled="{{isFixing}}"
+      bindtap="startFix">
+      {{isFixing ? '修复中...' : '开始修复'}}
+    </button>
+
+    <view class="result-box success" wx:if="{{result && result.success}}">
+      <text>{{result.message}}</text>
+    </view>
+
+    <view class="result-box error" wx:if="{{result && !result.success}}">
+      <text>{{result.message}}</text>
+    </view>
+
+    <button
+      class="reset-btn"
+      wx:if="{{result}}"
+      bindtap="reset">
+      重置
+    </button>
+  </view>
+</view>

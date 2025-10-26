@@ -41,7 +41,11 @@ Page({
       user: 0,
       categories: 0
     },
-    currentQuotePreview: null
+    currentQuotePreview: null,
+    // 箴言设置
+    quoteSettings: {
+      onlyMyQuotes: false
+    }
   },
 
   onLoad: function() {
@@ -54,6 +58,7 @@ Page({
     this.loadUserData()
     this.loadSyncStatus()
     this.loadQuoteData()
+    this.loadQuoteSettings()
   },
 
   // 加载用户数据
@@ -904,6 +909,13 @@ Page({
     })
   },
 
+  // 修复主记录表（添加缺失字段）
+  fixMainRecords: function() {
+    wx.navigateTo({
+      url: '/pages/fix-main-records/fix-main-records'
+    })
+  },
+
   // 切换自动同步
   toggleAutoSync: function(e) {
     const autoSync = e.detail.value
@@ -1088,6 +1100,52 @@ Page({
       return `${days}天前`
     } else {
       return `${date.getMonth() + 1}月${date.getDate()}日`
+    }
+  },
+
+  // 加载箴言设置
+  loadQuoteSettings: function() {
+    const app = getApp()
+    const settings = app.globalData.quoteSettings || {}
+    this.setData({
+      quoteSettings: {
+        onlyMyQuotes: settings.onlyMyQuotes || false
+      }
+    })
+  },
+
+  // 切换"只显示我的箴言"
+  toggleOnlyMyQuotes: function(e) {
+    const app = getApp()
+    const value = e.detail.value
+
+    // 更新本地状态
+    this.setData({
+      'quoteSettings.onlyMyQuotes': value
+    })
+
+    // 更新全局设置
+    app.globalData.quoteSettings.onlyMyQuotes = value
+
+    // 保存到缓存
+    app.saveQuoteSettings()
+
+    // 刷新箴言
+    const newQuote = app.refreshQuote()
+
+    // 提示用户
+    if (value) {
+      wx.showToast({
+        title: '已开启：只显示我的箴言',
+        icon: 'success',
+        duration: 2000
+      })
+    } else {
+      wx.showToast({
+        title: '已关闭：显示全部箴言',
+        icon: 'success',
+        duration: 2000
+      })
     }
   }
 })

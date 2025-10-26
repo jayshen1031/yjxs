@@ -1,0 +1,428 @@
+<view class="container">
+  <!-- 步骤指示器 -->
+  <view class="steps-indicator">
+    <view class="step-item {{currentStep >= 1 ? 'active' : ''}} {{currentStep > 1 ? 'completed' : ''}}">
+      <view class="step-number">1</view>
+      <text class="step-label">基本信息</text>
+    </view>
+    <view class="step-line {{currentStep > 1 ? 'completed' : ''}}"></view>
+    <view class="step-item {{currentStep >= 2 ? 'active' : ''}} {{currentStep > 2 ? 'completed' : ''}}">
+      <view class="step-number">2</view>
+      <text class="step-label">Notion准备</text>
+    </view>
+    <view class="step-line {{currentStep > 2 ? 'completed' : ''}}"></view>
+    <view class="step-item {{currentStep >= 3 ? 'active' : ''}} {{currentStep > 3 ? 'completed' : ''}}">
+      <view class="step-number">3</view>
+      <text class="step-label">API配置</text>
+    </view>
+    <view class="step-line {{currentStep > 3 ? 'completed' : ''}}"></view>
+    <view class="step-item {{currentStep >= 4 ? 'active' : ''}} {{currentStep > 4 ? 'completed' : ''}}">
+      <view class="step-number">4</view>
+      <text class="step-label">数据库</text>
+    </view>
+    <view class="step-line {{currentStep > 4 ? 'completed' : ''}}"></view>
+    <view class="step-item {{currentStep >= 5 ? 'active' : ''}}">
+      <view class="step-number">5</view>
+      <text class="step-label">完成</text>
+    </view>
+  </view>
+
+  <!-- 步骤1：基本信息 -->
+  <view class="step-content" wx:if="{{currentStep === 1}}">
+    <view class="step-header">
+      <text class="step-title">📝 创建账户</text>
+      <text class="step-desc">请填写您的基本信息</text>
+    </view>
+
+    <view class="form-section">
+      <view class="form-item">
+        <text class="form-label">邮箱地址 *</text>
+        <input
+          class="form-input"
+          placeholder="请输入邮箱地址"
+          value="{{email}}"
+          bindinput="onEmailInput"
+          type="email"/>
+        <text class="form-hint {{emailError ? 'error' : ''}}">
+          {{emailError || '建议使用Notion注册邮箱，方便后续配置'}}
+        </text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">设置密码 *</text>
+        <view class="password-wrapper">
+          <input
+            class="form-input password-input"
+            placeholder="至少6位字符"
+            value="{{password}}"
+            bindinput="onPasswordInput"
+            password="{{!showPassword}}"
+            type="text"/>
+          <text class="password-toggle" bindtap="togglePassword">{{showPassword ? '👁️' : '🙈'}}</text>
+        </view>
+        <text class="form-hint {{passwordError ? 'error' : ''}}">
+          {{passwordError || '密码用于保护您的账户安全'}}
+        </text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">确认密码 *</text>
+        <view class="password-wrapper">
+          <input
+            class="form-input password-input"
+            placeholder="请再次输入密码"
+            value="{{passwordConfirm}}"
+            bindinput="onPasswordConfirmInput"
+            password="{{!showPasswordConfirm}}"
+            type="text"/>
+          <text class="password-toggle" bindtap="togglePasswordConfirm">{{showPasswordConfirm ? '👁️' : '🙈'}}</text>
+        </view>
+        <text class="form-hint {{passwordConfirmError ? 'error' : ''}}">
+          {{passwordConfirmError || '请确认您的密码'}}
+        </text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">显示名称</text>
+        <input
+          class="form-input"
+          placeholder="昵称（可选）"
+          value="{{displayName}}"
+          bindinput="onDisplayNameInput"/>
+        <text class="form-hint">不填写将使用邮箱前缀</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤2：Notion账户准备 -->
+  <view class="step-content" wx:if="{{currentStep === 2}}">
+    <view class="step-header">
+      <text class="step-title">📚 Notion账户准备</text>
+      <text class="step-desc">语寄心声需要Notion账户来存储您的数据</text>
+    </view>
+
+    <view class="account-check-section">
+      <view class="check-card">
+        <text class="check-question">您是否已有Notion账户？</text>
+
+        <view class="option-buttons">
+          <view
+            class="option-btn {{hasNotionAccount === true ? 'selected' : ''}}"
+            bindtap="selectHasAccount"
+            data-value="true">
+            <text class="option-icon">✅</text>
+            <text class="option-text">是，我已有账户</text>
+          </view>
+
+          <view
+            class="option-btn {{hasNotionAccount === false ? 'selected' : ''}}"
+            bindtap="selectHasAccount"
+            data-value="false">
+            <text class="option-icon">📝</text>
+            <text class="option-text">否，需要注册</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 如果没有账户，显示注册引导 -->
+      <view class="signup-guide" wx:if="{{hasNotionAccount === false}}">
+        <view class="guide-card highlight">
+          <text class="guide-title">🎯 Notion注册指南</text>
+
+          <view class="guide-steps">
+            <view class="guide-step">
+              <text class="step-num">1</text>
+              <view class="step-content-text">
+                <text class="step-title-text">访问Notion注册页</text>
+                <text class="step-link" bindtap="copyNotionSignupUrl">https://www.notion.so/signup</text>
+                <text class="step-hint">点击链接自动复制，粘贴到浏览器打开</text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">2</text>
+              <view class="step-content-text">
+                <text class="step-title-text">推荐使用相同邮箱</text>
+                <text class="step-desc-text">建议使用：<text class="highlight-email">{{email}}</text></text>
+                <text class="step-hint">使用相同邮箱便于后续管理</text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">3</text>
+              <view class="step-content-text">
+                <text class="step-title-text">完成注册</text>
+                <text class="step-desc-text">• 验证邮箱</text>
+                <text class="step-desc-text">• 设置密码</text>
+                <text class="step-desc-text">• 选择使用场景（可随意选择）</text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">4</text>
+              <view class="step-content-text">
+                <text class="step-title-text">注册完成后</text>
+                <text class="step-desc-text">返回此处，选择"是，我已有账户"继续</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="tip-box">
+            <text class="tip-icon">💡</text>
+            <text class="tip-text">Notion是免费的，个人使用完全够用！</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 如果已有账户，显示确认信息 -->
+      <view class="account-ready" wx:if="{{hasNotionAccount === true}}">
+        <view class="ready-card">
+          <text class="ready-icon">🎉</text>
+          <text class="ready-title">太好了！</text>
+          <text class="ready-desc">您已准备好Notion账户，点击"下一步"继续配置API密钥</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤3：Notion API Key配置 -->
+  <view class="step-content" wx:if="{{currentStep === 3}}">
+    <view class="step-header">
+      <text class="step-title">🔐 配置Notion API</text>
+      <text class="step-desc">连接您的Notion账户</text>
+    </view>
+
+    <view class="guide-section">
+      <view class="guide-card">
+        <text class="guide-title">如何获取Notion API Key？</text>
+        <view class="guide-steps">
+          <view class="guide-step">
+            <text class="step-num">1</text>
+            <view class="step-content-text">
+              <text class="step-title-text">访问Notion Integrations</text>
+              <text class="step-desc-text">打开浏览器访问：</text>
+              <text class="step-link" bindtap="copyNotionUrl">https://www.notion.so/my-integrations</text>
+            </view>
+          </view>
+
+          <view class="guide-step">
+            <text class="step-num">2</text>
+            <view class="step-content-text">
+              <text class="step-title-text">创建新集成</text>
+              <text class="step-desc-text">点击"+ New integration"按钮</text>
+            </view>
+          </view>
+
+          <view class="guide-step">
+            <text class="step-num">3</text>
+            <view class="step-content-text">
+              <text class="step-title-text">配置集成信息</text>
+              <text class="step-desc-text">• 名称：语寄心声（或任意名称）</text>
+              <text class="step-desc-text">• 类型：Internal integration</text>
+              <text class="step-desc-text">• 权限：选择需要的权限</text>
+            </view>
+          </view>
+
+          <view class="guide-step">
+            <text class="step-num">4</text>
+            <view class="step-content-text">
+              <text class="step-title-text">复制API Key</text>
+              <text class="step-desc-text">点击"Show"按钮，复制显示的Token</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">Notion API Key *</text>
+        <textarea
+          class="form-textarea"
+          placeholder="请粘贴您从Notion获取的API Key"
+          value="{{notionApiKey}}"
+          bindinput="onNotionApiKeyInput"
+          maxlength="500"/>
+        <text class="form-hint">
+          粘贴后请点击"测试连接"验证
+        </text>
+      </view>
+
+      <button class="test-btn" bindtap="testNotionConnection" disabled="{{!notionApiKey || testing}}">
+        {{testing ? '测试连接中...' : '✓ 测试连接'}}
+      </button>
+      <text class="test-result {{testSuccess ? 'success' : 'error'}}" wx:if="{{testResult}}">
+        {{testResult}}
+      </text>
+
+      <!-- API Key测试成功后显示父页面配置 -->
+      <view class="parent-page-section" wx:if="{{testSuccess}}">
+        <view class="guide-card highlight">
+          <text class="guide-title">📄 创建父页面</text>
+          <text class="guide-desc">数据库需要在一个页面下创建，请先在Notion中创建父页面</text>
+
+          <view class="guide-steps">
+            <view class="guide-step">
+              <text class="step-num">1</text>
+              <view class="step-content-text">
+                <text class="step-title-text">在Notion中创建新页面</text>
+                <text class="step-desc-text">点击左侧"+ 新页面"或"Add a page"</text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">2</text>
+              <view class="step-content-text">
+                <text class="step-title-text">设置页面标题</text>
+                <text class="step-desc-text">输入标题：<text class="highlight-text">语寄心声 - 数据中心</text></text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">3</text>
+              <view class="step-content-text">
+                <text class="step-title-text">共享页面给集成</text>
+                <text class="step-desc-text">• 点击右上角"共享"或"Share"按钮</text>
+                <text class="step-desc-text">• 搜索并添加您创建的集成</text>
+              </view>
+            </view>
+
+            <view class="guide-step">
+              <text class="step-num">4</text>
+              <view class="step-content-text">
+                <text class="step-title-text">复制页面链接</text>
+                <text class="step-desc-text">• 点击右上角"..."菜单</text>
+                <text class="step-desc-text">• 选择"复制链接"</text>
+                <text class="step-desc-text">• 粘贴到下方输入框</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="tip-box">
+            <text class="tip-icon">💡</text>
+            <text class="tip-text">也可以直接输入32位页面ID</text>
+          </view>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">父页面URL或ID *</text>
+          <textarea
+            class="form-textarea"
+            placeholder="粘贴Notion页面链接或32位页面ID"
+            value="{{parentPageId}}"
+            bindinput="onParentPageIdInput"
+            maxlength="500"/>
+          <text class="form-hint">
+            例如：https://www.notion.so/xxx-28774e5ad9378137bb2edc914308f718
+          </text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤4：创建Notion数据库 -->
+  <view class="step-content" wx:if="{{currentStep === 4}}">
+    <view class="step-header">
+      <text class="step-title">🗄️ 初始化数据库</text>
+      <text class="step-desc">自动创建8个Notion数据库</text>
+    </view>
+
+    <view class="database-section">
+      <view class="database-info">
+        <text class="info-title">将创建以下数据库：</text>
+        <view class="database-list">
+          <view class="database-item {{item.created ? 'created' : ''}}" wx:for="{{databases}}" wx:key="name">
+            <text class="db-icon">{{item.icon}}</text>
+            <view class="db-info">
+              <text class="db-name">{{item.name}}</text>
+              <text class="db-desc">{{item.desc}}</text>
+            </view>
+            <text class="db-status" wx:if="{{item.creating}}">创建中...</text>
+            <text class="db-status success" wx:if="{{item.created}}">✓ 已创建</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="creation-progress" wx:if="{{creatingDatabases}}">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{creationProgress}}%"></view>
+        </view>
+        <text class="progress-text">{{creationProgress}}% - {{creationStatus}}</text>
+      </view>
+
+      <button
+        class="create-btn"
+        bindtap="createNotionDatabases"
+        disabled="{{creatingDatabases || databasesCreated}}"
+        wx:if="{{!databasesCreated}}">
+        {{creatingDatabases ? '创建中...' : '开始创建'}}
+      </button>
+
+      <view class="success-message" wx:if="{{databasesCreated}}">
+        <text class="success-icon">✓</text>
+        <text class="success-text">数据库创建成功！</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤5：完成 -->
+  <view class="step-content" wx:if="{{currentStep === 5}}">
+    <view class="step-header">
+      <text class="step-title">🎉 注册完成</text>
+      <text class="step-desc">您已成功创建账户</text>
+    </view>
+
+    <view class="completion-section">
+      <view class="success-card">
+        <text class="success-icon-large">✓</text>
+        <text class="success-title">注册成功！</text>
+        <text class="success-desc">您的账户已创建，Notion数据库已配置完成</text>
+      </view>
+
+      <view class="next-steps">
+        <text class="next-title">接下来您可以：</text>
+        <view class="next-item" bindtap="goToMemo">
+          <text class="next-icon">📝</text>
+          <view class="next-info">
+            <text class="next-name">记录时间投入</text>
+            <text class="next-desc">开始记录您的日常活动</text>
+          </view>
+        </view>
+        <view class="next-item" bindtap="goToGoals">
+          <text class="next-icon">🎯</text>
+          <view class="next-info">
+            <text class="next-name">设置目标待办</text>
+            <text class="next-desc">创建您的第一个目标</text>
+          </view>
+        </view>
+        <view class="next-item" bindtap="goToQuotes">
+          <text class="next-icon">💬</text>
+          <view class="next-info">
+            <text class="next-name">管理箴言</text>
+            <text class="next-desc">添加激励您的箴言</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-actions">
+    <button class="btn-secondary" bindtap="prevStep" wx:if="{{currentStep > 1 && currentStep < 5}}">
+      上一步
+    </button>
+    <button
+      class="btn-primary"
+      bindtap="nextStep"
+      disabled="{{!canProceed}}"
+      wx:if="{{currentStep < 5}}">
+      {{currentStep === 4 && databasesCreated ? '完成注册' : '下一步'}}
+    </button>
+    <button class="btn-primary full-width" bindtap="completeRegistration" wx:if="{{currentStep === 5}}">
+      进入应用
+    </button>
+  </view>
+
+  <!-- 返回登录 -->
+  <view class="back-to-login" wx:if="{{currentStep === 1}}">
+    <text bindtap="backToLogin">已有账户？返回登录</text>
+  </view>
+</view>

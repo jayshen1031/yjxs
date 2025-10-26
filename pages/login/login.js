@@ -108,7 +108,20 @@ Page({
       if (result.success && result.users) {
         console.log('云端返回的用户列表:', result.users)
         users = result.users.map(user => {
-          const notionConfigured = user.notionConfig && user.notionConfig.enabled && user.notionConfig.apiKey && user.notionConfig.databaseId
+          // ✅ 更新判断逻辑：支持新旧两种配置方式
+          const hasApiKey = user.notionConfig && user.notionConfig.apiKey
+          const hasEnabled = user.notionConfig && user.notionConfig.enabled
+
+          // 检查是否有数据库配置（支持新旧两种方式）
+          const hasNewDatabases = user.notionConfig && user.notionConfig.databases && (
+            user.notionConfig.databases.goals ||
+            user.notionConfig.databases.mainRecords ||
+            user.notionConfig.databases.todos
+          )
+          const hasOldDatabase = user.notionConfig && user.notionConfig.databaseId
+
+          const notionConfigured = hasApiKey && hasEnabled && (hasNewDatabases || hasOldDatabase)
+
           console.log(`用户 ${user.email} 的notionConfig:`, user.notionConfig, 'configured:', notionConfigured)
           return {
             ...user,
@@ -791,6 +804,15 @@ Page({
           }
         }
       }
+    })
+  },
+
+  /**
+   * 跳转到完整注册页面
+   */
+  goToRegister() {
+    wx.navigateTo({
+      url: '/pages/register/register'
     })
   }
 })

@@ -1,0 +1,103 @@
+{
+  "name": "project-memory",
+  "version": "1.0.0",
+  "description": "项目记忆和文档管理技能",
+  "capabilities": [
+    {
+      "name": "understand_project_history",
+      "description": "理解项目发展历史和重要决策",
+      "key_documents": {
+        "main_memory": "CLAUDE.md",
+        "architecture_evolution": [
+          "NOTION_DUAL_DATABASE_SETUP.md - 双数据库架构（旧版）",
+          "NOTION_QUAD_DATABASE_SETUP.md - 四数据库架构（当前）",
+          "NOTION_DUAL_TABLE_DESIGN.md - 设计文档"
+        ],
+        "implementation_guides": [
+          "AUTO_CREATE_TEST_GUIDE.md",
+          "CLOUD_ENV_SETUP_CHECKLIST.md",
+          "CLOUD_FUNCTION_API_REFERENCE.md",
+          "NOTION_INIT_PROCESS.md"
+        ],
+        "migration_docs": [
+          "MIGRATION_GUIDE.md",
+          "MEMO_NOTION_SYNC_FIX.md"
+        ]
+      }
+    },
+    {
+      "name": "track_important_updates",
+      "description": "追踪重要更新记录",
+      "update_log": {
+        "2025-10-26": "Notion八数据库Schema一致性修复",
+        "2025-10-19": "箴言系统完整重构与Notion集成优化",
+        "2025-10-12": "六数据库配置界面实现、待办状态手动管理",
+        "2025-10-09": "用户标签系统与Notion API调用优化",
+        "2025-01-09": "Notion四数据库架构完整实现"
+      }
+    },
+    {
+      "name": "critical_principles",
+      "description": "核心工作铁律",
+      "principles": [
+        "🚨 禁止使用模拟数据 - 必须使用真实云数据库和API",
+        "🚨 禁止擅自修改用户方案 - 不得随意更改技术路线",
+        "🚨 必须征求用户意见 - 重大变更先说明并征求同意",
+        "✅ 使用生产schema为准 - notionDatabaseSetup.js是标准",
+        "✅ 完整记录变更 - 更新CLAUDE.md"
+      ]
+    },
+    {
+      "name": "known_issues_and_solutions",
+      "description": "已知问题和解决方案",
+      "issues": [
+        {
+          "problem": "Notion API字段名不一致",
+          "example": "Name vs Title vs Goal Name",
+          "solution": "始终参考notionDatabaseSetup.js生产schema"
+        },
+        {
+          "problem": "云函数无法访问Notion API",
+          "reason": "网络限制(ECONNREFUSED)",
+          "solution": "前端直接调用Notion API"
+        },
+        {
+          "problem": "关联字段和Rollup字段缺失",
+          "reason": "创建时依赖还不存在的数据库",
+          "solution": "使用PATCH方法后续添加"
+        },
+        {
+          "problem": "字段类型错误",
+          "example": "Start Time使用date而非rich_text",
+          "solution": "时间格式HH:MM使用rich_text类型"
+        }
+      ]
+    }
+  ],
+  "documentation_standards": {
+    "update_frequency": "每次重大变更后更新CLAUDE.md",
+    "commit_style": "语义化提交: feat/fix/docs/refactor",
+    "code_comments": "关键修复添加✅注释说明",
+    "error_logs": "详细记录错误信息和解决过程"
+  },
+  "reference_checklist": {
+    "before_database_changes": [
+      "检查notionDatabaseSetup.js的生产schema",
+      "对比notionQuadDatabaseCreator.js",
+      "确认字段名、类型、选项值完全一致",
+      "注意关联字段和Rollup字段的添加时机"
+    ],
+    "before_api_calls": [
+      "确认使用正确的字段名",
+      "检查数据类型匹配",
+      "添加详细的错误日志",
+      "提供用户友好的错误提示"
+    ],
+    "before_schema_updates": [
+      "备份现有配置",
+      "使用PATCH而非重建",
+      "逐步添加字段，避免一次性大改",
+      "验证每个步骤"
+    ]
+  }
+}

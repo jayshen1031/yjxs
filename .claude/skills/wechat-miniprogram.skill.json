@@ -1,0 +1,85 @@
+{
+  "name": "wechat-miniprogram-dev",
+  "version": "1.0.0",
+  "description": "微信小程序开发技能",
+  "project_info": {
+    "name": "语寄心声",
+    "type": "微信小程序",
+    "framework": "原生小程序",
+    "cloud": "微信云开发"
+  },
+  "capabilities": [
+    {
+      "name": "page_development",
+      "description": "小程序页面开发",
+      "file_structure": {
+        "required_files": [
+          "页面名.js (逻辑)",
+          "页面名.wxml (模板)",
+          "页面名.wxss (样式)",
+          "页面名.json (配置)"
+        ]
+      },
+      "registration": "必须在app.json的pages数组中注册"
+    },
+    {
+      "name": "data_binding",
+      "description": "数据绑定和状态管理",
+      "patterns": [
+        "使用setData更新视图",
+        "事件绑定：bind[event]或catch[event]",
+        "数据传递：data-属性"
+      ]
+    },
+    {
+      "name": "cloud_functions",
+      "description": "云函数开发",
+      "location": "cloudfunctions/",
+      "main_function": "memo-notion-sync",
+      "actions": [
+        "createQuadDatabases",
+        "createGoal",
+        "createTodo",
+        "createMainRecord",
+        "createActivity",
+        "getUserTags",
+        "syncUserTags"
+      ]
+    },
+    {
+      "name": "notion_integration",
+      "description": "Notion API集成",
+      "approach": "前端直接调用Notion API（绕过云函数网络限制）",
+      "service_file": "utils/notionApiService.js",
+      "key_methods": [
+        "createPageGeneric",
+        "updatePageProperties",
+        "queryGoals",
+        "queryTodos",
+        "queryMainRecords",
+        "queryActivities"
+      ]
+    }
+  ],
+  "common_patterns": {
+    "user_management": "utils/userManager.js - 本地存储管理",
+    "api_calls": "utils/apiService.js - 云函数调用封装",
+    "notion_calls": "utils/notionApiService.js - Notion API调用",
+    "navigation": {
+      "redirect": "wx.redirectTo",
+      "navigate": "wx.navigateTo",
+      "relaunch": "wx.reLaunch",
+      "switchTab": "wx.switchTab"
+    },
+    "storage": {
+      "sync": "wx.setStorageSync/getStorageSync",
+      "async": "wx.setStorage/getStorage"
+    }
+  },
+  "important_conventions": {
+    "field_names": "使用英文字段名，与Notion schema保持一致",
+    "error_handling": "始终使用try-catch，用户友好的错误提示",
+    "logging": "详细的console.log，便于调试",
+    "user_feedback": "wx.showToast/wx.showModal提供即时反馈"
+  }
+}

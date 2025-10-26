@@ -157,7 +157,7 @@ Page({
             notionConfig.apiKey,
             activity.id,
             {
-              'Record': {
+              'Related Main Record': {  // ✅ 修正：Record → Related Main Record
                 relation: [{ id: targetMainRecord.id }]
               }
             }

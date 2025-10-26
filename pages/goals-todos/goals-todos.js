@@ -70,6 +70,13 @@ Page({
     showTodoModal: false,
     showProgressModal: false,
     showTimeModal: false,
+    showActivitiesModal: false,
+
+    // 活动明细弹窗数据
+    activitiesModalTitle: '',
+    relatedActivities: [],
+    totalActivityMinutes: 0,
+    totalActivityHours: 0,
 
     // 目标表单
     goalFormData: {
@@ -1010,7 +1017,7 @@ Page({
           priority: props.Priority?.select?.name || '重要不紧急',
           status: props.Status?.select?.name || '待办',
           isCompleted: props['Is Completed']?.checkbox || false, // 可选字段
-          dueDate: props['Record Date']?.date?.start || '',
+          dueDate: props['Due Date']?.date?.start || '',  // ✅ 修正：Record Date → Due Date
           estimatedMinutes: props['Estimated Duration']?.number || props['Estimated Minutes']?.number || 0, // 支持两种字段名
           tags: props.Tags?.multi_select?.map(t => t.name) || []
         }
@@ -1320,7 +1327,7 @@ Page({
         type: this.getSelectValue(props['Todo Type']),
         priority: this.getSelectValue(props.Priority),
         status: this.getSelectValue(props.Status),
-        dueDate: this.getDateValue(props['Record Date']),
+        dueDate: this.getDateValue(props['Due Date']),  // ✅ 修正：Record Date → Due Date
         estimatedMinutes: props['Estimated Duration'] ? this.getNumberValue(props['Estimated Duration']) : null,
         relatedGoalId: this.getRelationValue(props['Related Goal']),
         tags: this.getMultiSelectValue(props.Tags),
@@ -1476,7 +1483,7 @@ Page({
           }
 
           if (todoData.dueDate) {
-            properties['Record Date'] = { date: { start: todoData.dueDate } }
+            properties['Due Date'] = { date: { start: todoData.dueDate } }  // ✅ 修正：Record Date → Due Date
           }
 
           // 预估时长字段 - 如果数据库有此字段才添加
@@ -1530,7 +1537,7 @@ Page({
           }
 
           if (todoData.dueDate) {
-            pageData.properties['Record Date'] = { date: { start: todoData.dueDate } }
+            pageData.properties['Due Date'] = { date: { start: todoData.dueDate } }  // ✅ 修正：Record Date → Due Date
           }
 
           // 预估时长字段 - 如果数据库有此字段才添加
@@ -1866,5 +1873,241 @@ Page({
       return prop.relation[0].id
     }
     return ''
+  },
+
+  /**
+   * 查看目标关联的活动明细
+   */
+  viewGoalActivities: async function(e) {
+    const goalId = e.currentTarget.dataset.id
+    const goalTitle = e.currentTarget.dataset.title
+
+    console.log('🎯 查看目标活动明细')
+    console.log('   目标ID:', goalId)
+    console.log('   目标标题:', goalTitle)
+    console.log('   ID长度:', goalId.length)
+    console.log('   ID格式:', goalId.includes('-') ? 'UUID格式' : '非UUID格式')
+
+    wx.showLoading({
+      title: '加载中...',
+      mask: true
+    })
+
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.hideLoading()
+        wx.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig?.apiKey || !notionConfig?.databases?.activityDetails) {
+        wx.hideLoading()
+        wx.showToast({
+          title: '请先配置Notion活动明细库',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
+
+      console.log('📧 当前用户邮箱:', currentUser.email)
+      console.log('🗄️ 活动明细库ID:', notionConfig.databases.activityDetails)
+
+      // 查询关联的活动明细（带User ID过滤）
+      console.log('🔍 第一次查询：使用User ID + Goal ID过滤')
+      const result = await notionApiService.queryActivities(
+        notionConfig.apiKey,
+        notionConfig.databases.activityDetails,
+        currentUser.email,
+        {
+          relatedGoalId: goalId
+        }
+      )
+
+      // 如果查询结果为0，尝试不过滤User ID再查一次
+      if (result.success && result.activities.length === 0) {
+        console.log('⚠️ 第一次查询结果为0，尝试不过滤User ID再查询一次')
+        const result2 = await notionApiService.queryActivities(
+          notionConfig.apiKey,
+          notionConfig.databases.activityDetails,
+          currentUser.email,
+          {
+            relatedGoalId: goalId,
+            skipUserFilter: true
+          }
+        )
+
+        if (result2.success && result2.activities.length > 0) {
+          console.log('🎉 去掉User ID过滤后查到了', result2.activities.length, '条记录')
+          console.log('💡 这说明问题出在User ID字段的值不匹配')
+          console.log('   检查活动明细表中User ID字段的值是否与当前邮箱一致:', currentUser.email)
+
+          // 显示第一条记录的User ID值
+          if (result2.activities[0]) {
+            console.log('   第一条记录的User ID值:', result2.activities[0].userId)
+          }
+        }
+      }
+
+      wx.hideLoading()
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.error || '查询失败',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
+
+      // 处理活动数据
+      const activities = result.activities.map(activity => {
+        return {
+          ...activity,
+          activityTypeClass: this.getActivityTypeClass(activity.activityType)
+        }
+      })
+
+      // 计算总时长
+      const totalMinutes = activities.reduce((sum, activity) => sum + activity.duration, 0)
+      const totalHours = (totalMinutes / 60).toFixed(1)
+
+      this.setData({
+        showActivitiesModal: true,
+        activitiesModalTitle: `目标：${goalTitle}`,
+        relatedActivities: activities,
+        totalActivityMinutes: totalMinutes,
+        totalActivityHours: totalHours
+      })
+
+    } catch (error) {
+      wx.hideLoading()
+      console.error('查询活动明细失败:', error)
+      wx.showToast({
+        title: '查询失败',
+        icon: 'none'
+      })
+    }
+  },
+
+  /**
+   * 查看待办关联的活动明细
+   */
+  viewTodoActivities: async function(e) {
+    const todoId = e.currentTarget.dataset.id
+    const todoTitle = e.currentTarget.dataset.title
+
+    console.log('查看待办活动明细:', todoId, todoTitle)
+
+    wx.showLoading({
+      title: '加载中...',
+      mask: true
+    })
+
+    try {
+      const currentUser = userManager.getCurrentUser()
+      if (!currentUser) {
+        wx.hideLoading()
+        wx.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
+      const notionConfig = currentUser.notionConfig
+      if (!notionConfig?.apiKey || !notionConfig?.databases?.activityDetails) {
+        wx.hideLoading()
+        wx.showToast({
+          title: '请先配置Notion活动明细库',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
+
+      // 查询关联的活动明细
+      const result = await notionApiService.queryActivities(
+        notionConfig.apiKey,
+        notionConfig.databases.activityDetails,
+        currentUser.email,
+        {
+          relatedTodoId: todoId
+        }
+      )
+
+      wx.hideLoading()
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.error || '查询失败',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
+
+      // 处理活动数据
+      const activities = result.activities.map(activity => {
+        return {
+          ...activity,
+          activityTypeClass: this.getActivityTypeClass(activity.activityType)
+        }
+      })
+
+      // 计算总时长
+      const totalMinutes = activities.reduce((sum, activity) => sum + activity.duration, 0)
+      const totalHours = (totalMinutes / 60).toFixed(1)
+
+      this.setData({
+        showActivitiesModal: true,
+        activitiesModalTitle: `待办：${todoTitle}`,
+        relatedActivities: activities,
+        totalActivityMinutes: totalMinutes,
+        totalActivityHours: totalHours
+      })
+
+    } catch (error) {
+      wx.hideLoading()
+      console.error('查询活动明细失败:', error)
+      wx.showToast({
+        title: '查询失败',
+        icon: 'none'
+      })
+    }
+  },
+
+  /**
+   * 关闭活动明细弹窗
+   */
+  closeActivitiesModal: function() {
+    this.setData({
+      showActivitiesModal: false,
+      activitiesModalTitle: '',
+      relatedActivities: [],
+      totalActivityMinutes: 0,
+      totalActivityHours: 0
+    })
+  },
+
+  /**
+   * 获取活动类型对应的CSS类名
+   */
+  getActivityTypeClass: function(activityType) {
+    // 活动类型映射：Value Type字段的值 -> CSS类名（英文）
+    const typeMap = {
+      '有价值': 'valuable',
+      '中性': 'neutral',
+      '低效': 'inefficient',
+      '有价值活动': 'valuable',
+      '中性活动': 'neutral',
+      '低效活动': 'inefficient'
+    }
+    return typeMap[activityType] || 'neutral'
   }
 })

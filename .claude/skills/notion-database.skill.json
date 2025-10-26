@@ -1,0 +1,60 @@
+{
+  "name": "notion-database-manager",
+  "version": "1.0.0",
+  "description": "Notion八数据库架构管理技能",
+  "capabilities": [
+    {
+      "name": "create_databases",
+      "description": "创建完整的八数据库架构",
+      "tools": [
+        "notionQuadDatabaseCreator.js"
+      ],
+      "context": {
+        "databases": [
+          "Goals（目标库）",
+          "Todos（待办库）",
+          "Main Records（主记录表）",
+          "Activity Details（活动明细表）",
+          "Daily Status（每日状态库）",
+          "Happy Things（开心库）",
+          "Quotes（箴言库）",
+          "Knowledge（知识库）"
+        ],
+        "reference_file": "utils/notionDatabaseSetup.js",
+        "creation_script": "utils/notionQuadDatabaseCreator.js"
+      }
+    },
+    {
+      "name": "fix_schema_inconsistencies",
+      "description": "修复数据库schema不一致问题",
+      "approach": "对比生产环境(notionDatabaseSetup.js)与创建脚本(notionQuadDatabaseCreator.js)",
+      "common_issues": [
+        "字段名不匹配（如Name vs Title vs Goal Name）",
+        "字段类型错误（如date vs rich_text）",
+        "缺失关联字段（Relations）",
+        "缺失汇总字段（Rollups）",
+        "选项值缺少英文标签"
+      ]
+    },
+    {
+      "name": "diagnose_databases",
+      "description": "诊断数据库结构问题",
+      "diagnostic_page": "pages/settings/settings.js:diagnoseDatabases",
+      "tools": [
+        "notionApiService.getDatabaseSchema"
+      ]
+    }
+  ],
+  "best_practices": [
+    "始终以生产环境schema（notionDatabaseSetup.js）为准",
+    "字段添加顺序：基础字段 → 关联字段 → Rollup字段",
+    "关联字段需要等目标数据库创建后再添加（使用PATCH更新）",
+    "Rollup字段依赖关联字段，必须最后添加"
+  ],
+  "important_files": {
+    "schema_source_of_truth": "utils/notionDatabaseSetup.js",
+    "creation_script": "utils/notionQuadDatabaseCreator.js",
+    "api_service": "utils/notionApiService.js",
+    "user_config": "utils/userManager.js"
+  }
+}

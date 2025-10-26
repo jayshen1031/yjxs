@@ -725,7 +725,7 @@ dailyStatus: ${currentUser.notionConfig?.databases?.dailyStatus || '未配置'}`
         date: data.fullDate ? { start: data.fullDate } : null
       },
       'Mood': {
-        multi_select: data.mood ? data.mood.map(m => ({ name: m })) : []
+        select: data.mood && data.mood.length > 0 ? { name: data.mood[0] } : null  // ✅ 修正：multi_select → select（单选）
       },
       'Energy Level': {
         select: data.energyLevel ? { name: data.energyLevel } : null

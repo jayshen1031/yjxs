@@ -95,11 +95,29 @@
   <view class="login-card">
     <view class="card-header">
       <text class="welcome-text">创建新账户</text>
-      <text class="welcome-desc">首次使用请创建账户</text>
+      <text class="welcome-desc">首次使用请创建账户并配置Notion</text>
     </view>
+
+    <!-- 推荐：完整注册流程 -->
+    <view class="recommended-register">
+      <button class="register-guide-btn" bindtap="goToRegister">
+        <view class="btn-content">
+          <text class="btn-icon">✨</text>
+          <view class="btn-text">
+            <text class="btn-title">完整注册（推荐）</text>
+            <text class="btn-desc">包含Notion配置向导</text>
+          </view>
+        </view>
+      </button>
+    </view>
+
+    <view class="divider">
+      <text class="divider-text">或快速创建</text>
+    </view>
+
     <view class="create-user-section">
       <view class="section-header" wx:if="{{users.length > 0}}" bindtap="toggleCreateUser">
-        <text class="section-title">注册信息</text>
+        <text class="section-title">快速注册信息</text>
         <text class="toggle-icon">{{showCreateUser ? '▼' : '▶'}}</text>
       </view>
       <view class="input-group" wx:if="{{showCreateUser || users.length === 0}}">

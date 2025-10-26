@@ -851,28 +851,113 @@ function verifyPassword(password, hashedPassword) {
 
 // 创建带密码的用户
 async function createUserWithPassword(data) {
-  const { email, password, name, displayName } = data
-  
+  const { email, password, name, displayName, notionConfig } = data
+
+  console.log('createUserWithPassword开始:', { email, name, hasNotionConfig: !!notionConfig })
+
   if (!email || !email.trim()) {
     throw new Error('邮箱地址是必需的')
   }
-  
+
   if (!password || password.length < 6) {
     throw new Error('密码至少需要6位字符')
   }
 
   // 检查邮箱是否已存在
   const usersCollection = db.collection('memo_users')
-  const existingUser = await usersCollection.where({
+  const existingUserResult = await usersCollection.where({
     email: email.toLowerCase()
   }).get()
-  
-  if (existingUser.data.length > 0) {
-    throw new Error('该邮箱已被注册')
+
+  // 如果用户已存在，验证密码并更新信息
+  if (existingUserResult.data.length > 0) {
+    const existingUser = existingUserResult.data[0]
+    console.log('邮箱已存在，准备验证密码...')
+
+    // 如果旧用户没有密码（旧数据），允许设置新密码
+    if (existingUser.passwordHash) {
+      // 验证密码
+      const isPasswordValid = verifyPassword(password, existingUser.passwordHash)
+      if (!isPasswordValid) {
+        throw new Error('该邮箱已被注册，密码不正确')
+      }
+      console.log('密码验证通过，准备更新用户信息...')
+    } else {
+      console.log('旧用户没有密码，允许设置新密码...')
+    }
+
+    // 密码正确或旧用户首次设置密码，更新用户信息
+    const updateData = {
+      name: name || existingUser.name,
+      displayName: displayName || existingUser.displayName,
+      passwordHash: hashPassword(password),  // 更新或设置密码
+      lastLoginAt: db.serverDate()
+    }
+
+    // 如果提供了notionConfig，也更新
+    if (notionConfig) {
+      const defaultNotionConfig = {
+        enabled: false,
+        apiKey: '',
+        databaseId: '',
+        syncEnabled: true,
+        databases: {
+          goals: '',
+          todos: '',
+          mainRecords: '',
+          activityDetails: '',
+          dailyStatus: '',
+          happyThings: '',
+          quotes: '',
+          knowledge: ''
+        }
+      }
+      updateData.notionConfig = { ...defaultNotionConfig, ...existingUser.notionConfig, ...notionConfig }
+    }
+
+    console.log('更新数据:', updateData)
+
+    // 执行更新
+    await usersCollection.doc(existingUser._id).update({
+      data: updateData
+    })
+
+    console.log('用户信息更新成功')
+
+    return {
+      success: true,
+      updated: true,
+      user: {
+        id: existingUser._id,
+        email: existingUser.email,
+        name: updateData.name,
+        displayName: updateData.displayName,
+        notionConfig: updateData.notionConfig || existingUser.notionConfig
+      }
+    }
   }
 
   // 创建新用户
   const emailPrefix = (email && email.includes('@')) ? email.split('@')[0] : 'user'
+
+  // 使用传入的notionConfig或默认配置
+  const defaultNotionConfig = {
+    enabled: false,
+    apiKey: '',
+    databaseId: '',
+    syncEnabled: true,
+    databases: {
+      goals: '',
+      todos: '',
+      mainRecords: '',
+      activityDetails: '',
+      dailyStatus: '',
+      happyThings: '',
+      quotes: '',
+      knowledge: ''
+    }
+  }
+
   const userData = {
     email: email.toLowerCase(),
     passwordHash: hashPassword(password),
@@ -880,12 +965,7 @@ async function createUserWithPassword(data) {
     displayName: displayName || name || emailPrefix,
     createdAt: db.serverDate(),
     lastLoginAt: db.serverDate(),
-    notionConfig: {
-      enabled: false,
-      apiKey: '',
-      databaseId: '',
-      syncEnabled: true
-    },
+    notionConfig: notionConfig ? { ...defaultNotionConfig, ...notionConfig } : defaultNotionConfig,
     preferences: {
       reminderEnabled: true,
       reminderInterval: 60,
@@ -893,6 +973,8 @@ async function createUserWithPassword(data) {
       autoSync: true
     }
   }
+
+  console.log('准备创建用户，notionConfig:', userData.notionConfig)
 
   try {
     const result = await usersCollection.add({

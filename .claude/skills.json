@@ -1,0 +1,92 @@
+{
+  "project": {
+    "name": "语寄心声 (YJXS)",
+    "description": "微信小程序 - 支持语音记录、时间管理、Notion同步的个人记录应用",
+    "version": "1.0.0",
+    "type": "WeChat MiniProgram",
+    "created": "2025-01",
+    "last_updated": "2025-10-26"
+  },
+  "skills": [
+    {
+      "file": "notion-database.skill.json",
+      "priority": "high",
+      "auto_load": true,
+      "description": "Notion八数据库架构管理"
+    },
+    {
+      "file": "wechat-miniprogram.skill.json",
+      "priority": "high",
+      "auto_load": true,
+      "description": "微信小程序开发规范"
+    },
+    {
+      "file": "project-memory.skill.json",
+      "priority": "critical",
+      "auto_load": true,
+      "description": "项目历史和重要决策记忆"
+    }
+  ],
+  "critical_files": {
+    "memory": "CLAUDE.md",
+    "schema_reference": "utils/notionDatabaseSetup.js",
+    "creation_script": "utils/notionQuadDatabaseCreator.js",
+    "api_service": "utils/notionApiService.js",
+    "user_manager": "utils/userManager.js"
+  },
+  "architecture": {
+    "pattern": "八数据库架构",
+    "databases": [
+      "Goals（目标库）- 人生/年度/季度/月度/周目标",
+      "Todos（待办库）- 目标导向和临时待办",
+      "Main Records（主记录表）- 每日记录汇总",
+      "Activity Details（活动明细表）- 时间投入明细",
+      "Daily Status（每日状态库）- 健康和生活习惯",
+      "Happy Things（开心库）- 感恩日记",
+      "Quotes（箴言库）- 激励名言",
+      "Knowledge（知识库）- 知识管理"
+    ],
+    "data_flow": {
+      "user_input": "小程序页面",
+      "processing": "前端 → Notion API（直接调用）",
+      "storage": "Notion数据库（云端）+ 本地缓存",
+      "sync": "实时同步"
+    }
+  },
+  "development_workflow": {
+    "schema_changes": [
+      "1. 检查notionDatabaseSetup.js（生产标准）",
+      "2. 更新notionQuadDatabaseCreator.js（创建脚本）",
+      "3. 测试自动创建流程",
+      "4. 更新CLAUDE.md记录变更"
+    ],
+    "new_features": [
+      "1. 设计页面结构（.wxml, .wxss）",
+      "2. 实现业务逻辑（.js）",
+      "3. 注册到app.json",
+      "4. 集成Notion API（如需要）",
+      "5. 测试并更新文档"
+    ],
+    "bug_fixes": [
+      "1. 复现问题，记录错误日志",
+      "2. 定位根本原因（schema不一致？API调用？）",
+      "3. 修复并添加注释",
+      "4. 验证修复效果",
+      "5. 更新相关文档"
+    ]
+  },
+  "quick_reference": {
+    "create_databases": "pages/settings/settings.js:autoCreateDatabases",
+    "diagnose_schema": "pages/settings/settings.js:diagnoseDatabases",
+    "fix_relations": "pages/fix-relations/fix-relations.js",
+    "fix_main_records": "pages/fix-main-records/fix-main-records.js",
+    "notion_config": "pages/notion-config/notion-config.js"
+  },
+  "common_tasks": {
+    "add_database_field": "在notionDatabaseSetup.js中添加 → 更新notionQuadDatabaseCreator.js",
+    "fix_schema_mismatch": "对比两个文件，以notionDatabaseSetup.js为准修复",
+    "add_new_page": "创建4个文件（.js/.wxml/.wxss/.json）→ 注册到app.json",
+    "update_notion_api": "修改utils/notionApiService.js对应方法",
+    "add_cloud_function": "在cloudfunctions/memo-notion-sync/index.js添加action"
+  }
+}

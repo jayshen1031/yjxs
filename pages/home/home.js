@@ -493,8 +493,8 @@ Page({
 
     if (todo) {
       // 跳转到memo页面，并通过URL参数传递待办ID
-      wx.switchTab({
-        url: '/pages/memo/memo',
+      wx.navigateTo({
+        url: '/pages/memo/memo?todoId=' + todoId,
         success: function() {
           // 获取memo页面实例
           const pages = getCurrentPages()
@@ -539,7 +539,7 @@ Page({
 
   // 跳转到文字记录
   goToTextMemo: function() {
-    wx.switchTab({
+    wx.navigateTo({
       url: '/pages/memo/memo'
     })
   },
@@ -554,7 +554,7 @@ Page({
 
   // 查看全部记录
   viewAllMemos: function() {
-    wx.switchTab({
+    wx.navigateTo({
       url: '/pages/timeline/timeline'
     })
   },

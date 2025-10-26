@@ -1,0 +1,7 @@
+# Claude Skills目录不需要忽略任何文件
+# 所有配置都应该提交到仓库供团队共享
+
+# 如果未来有敏感配置，可以添加到这里
+# 例如：
+# secrets.json
+# *.private.json

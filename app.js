@@ -29,7 +29,8 @@ App({
     todayHappyThings: [], // 今日推荐的开心事项
     quoteSettings: {
       refreshInterval: 'daily', // 默认每日刷新
-      autoRefresh: true
+      autoRefresh: true,
+      onlyMyQuotes: false // 只显示我的箴言
     },
     cloudReady: false,
     cloudEnvId: null
@@ -553,10 +554,35 @@ App({
 
   // 刷新箴言
   refreshQuote: function() {
-    const quotes = this.globalData.wisdomQuotes
+    let quotes = this.globalData.wisdomQuotes
     if (!quotes || quotes.length === 0) {
       console.warn('箴言库为空')
       return null
+    }
+
+    // ⭐ 根据设置筛选箴言
+    const onlyMyQuotes = this.globalData.quoteSettings?.onlyMyQuotes || false
+    if (onlyMyQuotes) {
+      // 只显示用户自己添加的箴言（source为"我的"或"用户自定义"）
+      quotes = quotes.filter(q => {
+        if (typeof q === 'object') {
+          const source = q.source || ''
+          return source === '我的' || source === '用户自定义' || source === '自定义'
+        }
+        return false
+      })
+
+      console.log(`📝 只显示我的箴言，筛选后数量: ${quotes.length}`)
+
+      if (quotes.length === 0) {
+        console.warn('⚠️ 没有找到我的箴言，请先在箴言管理中添加')
+        wx.showToast({
+          title: '还没有自己的箴言哦',
+          icon: 'none',
+          duration: 2000
+        })
+        return null
+      }
     }
 
     const randomIndex = Math.floor(Math.random() * quotes.length)

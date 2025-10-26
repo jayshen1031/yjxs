@@ -79,6 +79,7 @@
             <text class="goal-category">{{ item.categoryText }}</text>
           </view>
           <view class="goal-actions-compact">
+            <text class="action-icon" bindtap="viewGoalActivities" data-id="{{ item.id }}" data-title="{{ item.title }}">📋</text>
             <text class="action-icon" bindtap="editGoal" data-id="{{ item.id }}">✏️</text>
             <text class="action-icon danger" bindtap="deleteGoal" data-id="{{ item.id }}" data-title="{{ item.title }}">🗑️</text>
           </view>
@@ -203,6 +204,7 @@
           </view>
 
           <view class="todo-actions-compact">
+            <text class="action-icon" bindtap="viewTodoActivities" data-id="{{ item.id }}" data-title="{{ item.title }}">📋</text>
             <text class="action-icon" bindtap="editTodo" data-id="{{ item.id }}">✏️</text>
             <text class="action-icon danger" bindtap="deleteTodo" data-id="{{ item.id }}">🗑️</text>
           </view>
@@ -415,6 +417,65 @@
       <view class="modal-footer">
         <button class="modal-btn cancel" bindtap="closeTimeModal">取消</button>
         <button class="modal-btn confirm" bindtap="confirmRecordTime">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活动明细详情弹窗 -->
+  <view wx:if="{{ showActivitiesModal }}" class="modal-overlay fullscreen" bindtap="closeActivitiesModal">
+    <view class="modal-content large" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">📋 关联的活动明细</text>
+        <text class="close-btn" bindtap="closeActivitiesModal">×</text>
+      </view>
+
+      <view class="modal-subtitle">
+        <text class="subtitle-text">{{ activitiesModalTitle }}</text>
+      </view>
+
+      <view class="modal-body activities-list">
+        <!-- 统计信息 -->
+        <view class="activities-stats">
+          <view class="stat-item">
+            <text class="stat-label">总记录数</text>
+            <text class="stat-value">{{ relatedActivities.length }}</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-label">总时长</text>
+            <text class="stat-value">{{ totalActivityMinutes }} 分钟</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-label">总时长</text>
+            <text class="stat-value">{{ totalActivityHours }} 小时</text>
+          </view>
+        </view>
+
+        <!-- 活动列表 -->
+        <scroll-view class="activities-scroll" scroll-y>
+          <view wx:if="{{ relatedActivities.length === 0 }}" class="empty-state">
+            <text class="empty-icon">📝</text>
+            <text class="empty-text">暂无关联的活动记录</text>
+          </view>
+
+          <view wx:for="{{ relatedActivities }}" wx:key="id" class="activity-item">
+            <view class="activity-header">
+              <text class="activity-name">{{ item.name }}</text>
+              <text class="activity-type type-{{ item.activityTypeClass }}">{{ item.activityType }}</text>
+            </view>
+
+            <view wx:if="{{ item.description }}" class="activity-description">
+              {{ item.description }}
+            </view>
+
+            <view class="activity-meta">
+              <text class="meta-item">📅 {{ item.recordDate }}</text>
+              <text class="meta-item">⏱️ {{ item.duration }} 分钟</text>
+              <text wx:if="{{ item.tags && item.tags.length > 0 }}" class="meta-item">
+                🏷️ {{ item.tags.join(', ') }}
+              </text>
+            </view>
+          </view>
+        </scroll-view>
       </view>
     </view>
   </view>

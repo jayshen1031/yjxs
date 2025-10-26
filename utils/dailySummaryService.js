@@ -221,17 +221,17 @@ async function saveSummaryToNotion(summary) {
     const pageData = {
       parent: { database_id: mainDatabaseId },
       properties: {
-        'Name': {
+        'Title': {  // ✅ 修正：Name → Title
           title: [{ text: { content: `📊 今日总结 - ${new Date().toLocaleDateString()}` } }]
         },
-        'Summary': {
+        'Content': {  // ✅ 修正：Summary → Content
           rich_text: [{ text: { content: summary } }]
         },
-        'Record Date': {
+        'Date': {  // ✅ 修正：Record Date → Date
           date: { start: new Date().toISOString().split('T')[0] }
         },
         'Record Type': {
-          select: { name: '今日总结' }
+          select: { name: '每日总结' }  // ✅ 修正：今日总结 → 每日总结（与schema一致）
         },
         'User ID': {
           rich_text: [{ text: { content: currentUser.email } }]

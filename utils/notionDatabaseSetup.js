@@ -943,17 +943,6 @@ const QuotesDatabaseSchema = {
   }
 }
 
-module.exports = {
-  GoalsDatabaseSchema,
-  TodosDatabaseSchema,
-  MainRecordsDatabaseSchema,
-  ActivityDetailsDatabaseSchema,
-  DailyStatusDatabaseSchema,
-  HappyThingsDatabaseSchema,
-  QuotesDatabaseSchema,
-  KnowledgeDatabaseSchema
-}
-
 /**
  * 知识库（Knowledge Database）数据库结构
  */
@@ -1076,5 +1065,93 @@ const KnowledgeDatabaseSchema = {
     'Is Public': {
       checkbox: {},
     }
+  }
+}
+
+/**
+ * 导出方法：获取各数据库的Schema
+ */
+module.exports = {
+  // 直接导出Schema对象
+  GoalsDatabaseSchema,
+  TodosDatabaseSchema,
+  MainRecordsDatabaseSchema,
+  ActivityDetailsDatabaseSchema,
+  DailyStatusDatabaseSchema,
+  HappyThingsDatabaseSchema,
+  QuotesDatabaseSchema,
+  KnowledgeDatabaseSchema,
+
+  // 获取目标库Schema
+  getGoalsDatabaseSchema: function() {
+    return GoalsDatabaseSchema.properties
+  },
+
+  // 获取待办库Schema
+  getTodosDatabaseSchema: function() {
+    return TodosDatabaseSchema.properties
+  },
+
+  // 获取主记录表Schema
+  getMainRecordsDatabaseSchema: function() {
+    return MainRecordsDatabaseSchema.properties
+  },
+
+  // 获取活动明细表Schema
+  getActivityDetailsDatabaseSchema: function() {
+    return ActivityDetailsDatabaseSchema.properties
+  },
+
+  // 获取每日状态库Schema
+  getDailyStatusDatabaseSchema: function() {
+    return DailyStatusDatabaseSchema.properties
+  },
+
+  // 获取开心库Schema
+  getHappyThingsDatabaseSchema: function() {
+    return HappyThingsDatabaseSchema.properties
+  },
+
+  // 获取箴言库Schema
+  getQuotesDatabaseSchema: function() {
+    return QuotesDatabaseSchema.properties
+  },
+
+  // 获取知识库Schema
+  getKnowledgeDatabaseSchema: function() {
+    return KnowledgeDatabaseSchema.properties
+  },
+
+  // 获取完整的数据库定义（包含标题和描述）
+  getGoalsDatabase: function() {
+    return GoalsDatabaseSchema
+  },
+
+  getTodosDatabase: function() {
+    return TodosDatabaseSchema
+  },
+
+  getMainRecordsDatabase: function() {
+    return MainRecordsDatabaseSchema
+  },
+
+  getActivityDetailsDatabase: function() {
+    return ActivityDetailsDatabaseSchema
+  },
+
+  getDailyStatusDatabase: function() {
+    return DailyStatusDatabaseSchema
+  },
+
+  getHappyThingsDatabase: function() {
+    return HappyThingsDatabaseSchema
+  },
+
+  getQuotesDatabase: function() {
+    return QuotesDatabaseSchema
+  },
+
+  getKnowledgeDatabase: function() {
+    return KnowledgeDatabaseSchema
   }
 }

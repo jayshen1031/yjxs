@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/login/login",
+    "pages/register/register",
     "pages/home/home",
     "pages/memo/memo",
     "pages/settings/settings",
@@ -12,7 +13,8 @@
     "pages/goals-todos/goals-todos",
     "pages/daily-status/daily-status",
     "pages/update-notion/update-notion",
-    "pages/fix-relations/fix-relations"
+    "pages/fix-relations/fix-relations",
+    "pages/fix-main-records/fix-main-records"
   ],
   "window": {
     "backgroundTextStyle": "light",

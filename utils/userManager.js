@@ -69,11 +69,34 @@ class UserManager {
     }
 
     // 检查邮箱是否已存在
-    const existingUser = this.users.find(user => 
+    const existingUser = this.users.find(user =>
       user.email.toLowerCase() === userInfo.email.toLowerCase()
     )
     if (existingUser) {
-      throw new Error('该邮箱已被注册')
+      // 如果提供了密码，需要验证密码是否正确
+      if (userInfo.password) {
+        // 如果旧用户没有密码（旧数据），允许设置新密码
+        if (existingUser.password && existingUser.password !== userInfo.password) {
+          throw new Error('该邮箱已被注册，密码不正确')
+        }
+        // 密码正确或旧用户首次设置密码，更新用户信息
+        existingUser.name = userInfo.name || existingUser.name
+        existingUser.displayName = userInfo.displayName || existingUser.displayName
+        existingUser.avatar = userInfo.avatar || existingUser.avatar
+        existingUser.password = userInfo.password  // 更新或设置密码
+        existingUser.lastLoginAt = Date.now()
+        this.saveUsers()
+        console.log('📝 邮箱已存在，密码正确，已更新用户信息:', existingUser.id)
+        return existingUser
+      }
+      // 没有提供密码，直接更新
+      existingUser.name = userInfo.name || existingUser.name
+      existingUser.displayName = userInfo.displayName || existingUser.displayName
+      existingUser.avatar = userInfo.avatar || existingUser.avatar
+      existingUser.lastLoginAt = Date.now()
+      this.saveUsers()
+      console.log('📝 邮箱已存在，已更新用户信息:', existingUser.id)
+      return existingUser
     }
 
     const emailPrefix = (userInfo.email && userInfo.email.includes('@')) ? userInfo.email.split('@')[0] : 'user'
@@ -83,6 +106,7 @@ class UserManager {
       name: userInfo.name || emailPrefix,
       displayName: userInfo.displayName || userInfo.name || emailPrefix,
       avatar: userInfo.avatar || '',
+      password: userInfo.password || '',  // 保存密码用于后续验证
       createdAt: Date.now(),
       lastLoginAt: Date.now(),
       notionConfig: {
@@ -298,8 +322,20 @@ class UserManager {
   // 检查用户是否已配置Notion
   isNotionConfigured(userId = null) {
     const user = userId ? this.users.find(u => u.id === userId) : this.currentUser
-    return user && user.notionConfig && user.notionConfig.enabled && 
-           user.notionConfig.apiKey && user.notionConfig.databaseId
+    if (!user || !user.notionConfig) return false
+
+    const hasApiKey = user.notionConfig.apiKey
+    const hasEnabled = user.notionConfig.enabled
+
+    // ✅ 支持新旧两种配置方式
+    const hasNewDatabases = user.notionConfig.databases && (
+      user.notionConfig.databases.goals ||
+      user.notionConfig.databases.mainRecords ||
+      user.notionConfig.databases.todos
+    )
+    const hasOldDatabase = user.notionConfig.databaseId
+
+    return hasApiKey && hasEnabled && (hasNewDatabases || hasOldDatabase)
   }
 
   // 生成用户ID

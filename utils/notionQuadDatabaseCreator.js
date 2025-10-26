@@ -21,6 +21,33 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
+   * 创建父页面
+   */
+  async createParentPage() {
+    const pageData = {
+      parent: { workspace: true },
+      properties: {
+        title: {
+          title: [
+            {
+              text: { content: '📝 语寄心声 - 数据中心' }
+            }
+          ]
+        }
+      }
+    }
+
+    const result = await this.service.createPageGeneric(pageData, this.apiKey)
+
+    if (!result.success) {
+      throw new Error('创建父页面失败: ' + result.error)
+    }
+
+    console.log('✅ 父页面创建成功:', result.pageId)
+    return result.pageId
+  }
+
+  /**
    * 创建完整的八数据库架构
    */
   async createAll() {
@@ -28,6 +55,13 @@ class NotionQuadDatabaseCreator {
       console.log('========================================')
       console.log('开始创建Notion八数据库架构')
       console.log('========================================')
+
+      // 检查是否提供了父页面ID
+      if (!this.parentPageId) {
+        throw new Error('需要提供父页面ID。请先在Notion中创建一个页面，并将页面共享给集成，然后提供页面ID。')
+      }
+
+      console.log('使用父页面ID:', this.parentPageId)
 
       // Step 1: 创建目标库（Goals）
       console.log('\n[1/8] 创建目标库...')
@@ -53,6 +87,16 @@ class NotionQuadDatabaseCreator {
       )
       console.log('✅ 活动明细表创建成功:', activityDb.id)
 
+      // Step 4.5: 更新主记录表的关联字段（需要在Activity Details创建后）
+      console.log('\n[4.5/8] 更新主记录表关联关系...')
+      await this.updateMainRecordsRelations(mainDb.id, activityDb.id)
+      console.log('✅ 主记录表关联关系更新成功')
+
+      // Step 4.6: 更新待办库的关联字段（需要在Activity Details创建后）
+      console.log('\n[4.6/8] 更新待办库关联关系...')
+      await this.updateTodosRelations(todosDb.id, activityDb.id, mainDb.id)
+      console.log('✅ 待办库关联关系更新成功')
+
       // Step 5: 创建每日状态库（Daily Status）- 独立数据库
       console.log('\n[5/8] 创建每日状态库...')
       const dailyStatusDb = await this.createDailyStatusDatabase()
@@ -74,13 +118,8 @@ class NotionQuadDatabaseCreator {
       console.log('✅ 知识库创建成功:', knowledgeDb.id)
 
       // Step 9: 更新目标库的自关联（Parent/Sub Goals）
-      console.log('\n[9/10] 更新目标库自关联关系...')
+      console.log('\n[9/9] 更新目标库自关联关系...')
       await this.updateGoalsSelfRelation(goalsDb.id)
-      console.log('✅ 自关联更新成功')
-
-      // Step 10: 更新待办库的自关联（Blocking/Blocked By）
-      console.log('\n[10/10] 更新待办库自关联关系...')
-      await this.updateTodosSelfRelation(todosDb.id)
       console.log('✅ 自关联更新成功')
 
       console.log('\n========================================')
@@ -125,16 +164,16 @@ class NotionQuadDatabaseCreator {
       parent: { page_id: this.parentPageId },
       title: [{ text: { content: '🎯 Goals - 目标库' } }],
       properties: {
-        'Name': { title: {} },
+        'Goal Name': { title: {} },  // ✅ 修正：Name → Goal Name
         'Description': { rich_text: {} },
         'Category': {
           select: {
             options: [
-              { name: '人生目标', color: 'red' },
-              { name: '年度目标', color: 'orange' },
-              { name: '季度目标', color: 'yellow' },
-              { name: '月度目标', color: 'green' },
-              { name: '周目标', color: 'blue' }
+              { name: '人生目标 (Life Goal)', color: 'red' },
+              { name: '年度目标 (Yearly Goal)', color: 'orange' },
+              { name: '季度目标 (Quarterly Goal)', color: 'yellow' },
+              { name: '月度目标 (Monthly Goal)', color: 'green' },
+              { name: '周目标 (Weekly Goal)', color: 'blue' }
             ]
           }
         },
@@ -220,10 +259,10 @@ class NotionQuadDatabaseCreator {
         'Todo Type': {
           select: {
             options: [
-              { name: '目标导向', color: 'blue' },
-              { name: '临时待办', color: 'gray' },
-              { name: '习惯养成', color: 'green' },
-              { name: '紧急处理', color: 'red' }
+              { name: '目标导向 (Goal-oriented)', color: 'blue' },
+              { name: '临时待办 (Ad-hoc)', color: 'gray' },
+              { name: '习惯养成 (Habit)', color: 'green' },
+              { name: '紧急处理 (Urgent)', color: 'red' }
             ]
           }
         },
@@ -277,7 +316,10 @@ class NotionQuadDatabaseCreator {
         'Completion Progress': { number: { format: 'percent' } },
         'Related Goal': {
           relation: {
-            database_id: goalsDatabaseId
+            database_id: goalsDatabaseId,
+            dual_property: {
+              name: 'Related Todos'
+            }
           }
         },
         'Recurrence': {
@@ -359,11 +401,16 @@ class NotionQuadDatabaseCreator {
         'Value Score': { number: {} },
         'Related Todos': {
           relation: {
-            database_id: todosDatabaseId
+            database_id: todosDatabaseId,
+            dual_property: {
+              name: 'Related Main Records'
+            }
           }
         },
         'User ID': { rich_text: {} },
         'Tags': { multi_select: { options: [] } },
+        'Start Time': { rich_text: {} },  // ✅ 添加：记录开始时间
+        'End Time': { rich_text: {} },    // ✅ 添加：记录结束时间
         'Mood': {
           select: {
             options: [
@@ -401,8 +448,8 @@ class NotionQuadDatabaseCreator {
       properties: {
         'Name': { title: {} },
         'Description': { rich_text: {} },
-        'Start Time': { date: {} },
-        'End Time': { date: {} },
+        'Start Time': { rich_text: {} },  // ✅ 修正：date → rich_text（格式：HH:MM）
+        'End Time': { rich_text: {} },    // ✅ 修正：date → rich_text（格式：HH:MM）
         'Duration': { number: {} },
         'Activity Type': {
           select: {
@@ -420,10 +467,10 @@ class NotionQuadDatabaseCreator {
         'Contribution Type': {
           select: {
             options: [
-              { name: '完成待办', color: 'green' },
-              { name: '推进目标', color: 'blue' },
-              { name: '学习提升', color: 'purple' },
-              { name: '休息恢复', color: 'yellow' }
+              { name: '完成待办 (Complete Todo)', color: 'green' },
+              { name: '推进目标 (Advance Goal)', color: 'blue' },
+              { name: '学习提升 (Learning)', color: 'purple' },
+              { name: '休息恢复 (Rest)', color: 'yellow' }
             ]
           }
         },
@@ -438,17 +485,26 @@ class NotionQuadDatabaseCreator {
         },
         'Related Goal': {
           relation: {
-            database_id: goalsDatabaseId
+            database_id: goalsDatabaseId,
+            dual_property: {
+              name: 'Related Activities'
+            }
           }
         },
         'Related Todo': {
           relation: {
-            database_id: todosDatabaseId
+            database_id: todosDatabaseId,
+            dual_property: {
+              name: 'Related Activities'
+            }
           }
         },
         'Related Main Record': {
           relation: {
-            database_id: mainRecordsDatabaseId
+            database_id: mainRecordsDatabaseId,
+            dual_property: {
+              name: 'Related Activities'
+            }
           }
         },
         'User ID': { rich_text: {} },
@@ -484,7 +540,150 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
+   * 更新主记录表的关联关系（在所有数据库创建后）
+   */
+  async updateMainRecordsRelations(mainRecordsDatabaseId, activityDatabaseId) {
+    console.log('添加主记录表的关联关系...')
+
+    // 添加 Related Activities 关联字段
+    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Related Activities': {
+            relation: {
+              database_id: activityDatabaseId,
+              dual_property: {
+                name: 'Related Main Record'
+              }
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Related Activities 关联')
+
+    // 添加 Total Time rollup 字段（依赖 Related Activities）
+    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Total Time': {
+            rollup: {
+              relation_property_name: 'Related Activities',
+              rollup_property_name: 'Duration',
+              function: 'sum'
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Total Time rollup字段')
+
+    // 添加 Activity Count rollup 字段
+    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Activity Count': {
+            rollup: {
+              relation_property_name: 'Related Activities',
+              rollup_property_name: 'Name',
+              function: 'count'
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Activity Count rollup字段')
+
+    return true
+  }
+
+  /**
+   * 更新待办库的关联关系（在所有数据库创建后）
+   */
+  async updateTodosRelations(todosDatabaseId, activityDatabaseId, mainRecordsDatabaseId) {
+    console.log('添加待办库的关联关系...')
+
+    // 添加 Related Activities 关联字段
+    await this.service.callApi(`/databases/${todosDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Related Activities': {
+            relation: {
+              database_id: activityDatabaseId
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Related Activities 关联')
+
+    // 添加 Related Main Records 关联字段
+    await this.service.callApi(`/databases/${todosDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Related Main Records': {
+            relation: {
+              database_id: mainRecordsDatabaseId
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Related Main Records 关联')
+
+    // 添加 Actual Duration rollup 字段（依赖 Related Activities）
+    await this.service.callApi(`/databases/${todosDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Actual Duration': {
+            rollup: {
+              relation_property_name: 'Related Activities',
+              rollup_property_name: 'Duration',
+              function: 'sum'
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Actual Duration rollup字段')
+
+    // 添加自关联字段：Blocking Todos 和 Blocked By
+    await this.service.callApi(`/databases/${todosDatabaseId}`, {
+      apiKey: this.apiKey,
+      method: 'PATCH',
+      data: {
+        properties: {
+          'Blocking Todos': {
+            relation: {
+              database_id: todosDatabaseId,
+              dual_property: {
+                name: 'Blocked By'
+              }
+            }
+          }
+        }
+      }
+    })
+    console.log('✅ 已添加 Blocking Todos 和 Blocked By 自关联')
+
+    return true
+  }
+
+  /**
    * 更新待办库的自关联关系（Blocking Todos / Blocked By）
+   * @deprecated 已被 updateTodosRelations 替代
    */
   async updateTodosSelfRelation(todosDatabaseId) {
     console.log('⚠️ 注意：待办库的Blocking Todos和Blocked By需要在Notion界面手动创建')
@@ -514,7 +713,11 @@ class NotionQuadDatabaseCreator {
               { name: '😔 沮丧', color: 'brown' },
               { name: '😰 焦虑', color: 'orange' },
               { name: '😴 疲惫', color: 'yellow' },
-              { name: '😤 压力大', color: 'red' }
+              { name: '😤 压力大', color: 'red' },
+              { name: '😞 失落', color: 'purple' },
+              { name: '🤔 困惑', color: 'pink' },
+              { name: '😐 无聊', color: 'gray' },
+              { name: '🥰 感恩', color: 'green' }
             ]
           }
         },
@@ -565,7 +768,11 @@ class NotionQuadDatabaseCreator {
               { name: '🏊 游泳', color: 'purple' },
               { name: '🏋️ 力量训练', color: 'red' },
               { name: '🧘 瑜伽', color: 'pink' },
-              { name: '🚶 散步', color: 'default' }
+              { name: '🚶 散步', color: 'default' },
+              { name: '⚽ 球类运动', color: 'orange' },
+              { name: '🕺 舞蹈', color: 'yellow' },
+              { name: '🧗 攀岩', color: 'brown' },
+              { name: '🤸 其他', color: 'gray' }
             ]
           }
         },
@@ -586,7 +793,9 @@ class NotionQuadDatabaseCreator {
         'Reading Duration': { number: { format: 'number' } },
         'Notes': { rich_text: {} },
         'Highlights': { rich_text: {} },
-        'User ID': { rich_text: {} }
+        'User ID': { rich_text: {} },
+        'Created Time': { created_time: {} },
+        'Last Edited Time': { last_edited_time: {} }
       }
     }
 

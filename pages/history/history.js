@@ -241,7 +241,7 @@ Page({
           notionConfig.apiKey,
           mainDatabaseId,
           {
-            sorts: [{ property: 'Record Date', direction: 'descending' }],
+            sorts: [{ property: 'Date', direction: 'descending' }],  // ✅ 修正：Record Date → Date
             page_size: 100
           }
         )
@@ -1208,33 +1208,47 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
       })
     }
 
-    // 时间范围筛选
+    // ⭐ 日期筛选优先级判断
     const now = new Date()
-    switch (this.data.timeRange) {
-      case 'today':
-        const today = now.toDateString()
-        filteredMemos = filteredMemos.filter(memo => {
-          return new Date(memo.timestamp).toDateString() === today
-        })
-        break
-      case '3days':
-        const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
-        filteredMemos = filteredMemos.filter(memo => {
-          return new Date(memo.timestamp) >= threeDaysAgo
-        })
-        break
-      case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        filteredMemos = filteredMemos.filter(memo => {
-          return new Date(memo.timestamp) >= weekAgo
-        })
-        break
-      case 'month':
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        filteredMemos = filteredMemos.filter(memo => {
-          return new Date(memo.timestamp) >= monthAgo
-        })
-        break
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayStr = this.formatDate(today)
+    const selectedDate = this.data.selectedDate
+
+    // 如果用户选择了具体日期（且不是今天），优先使用日历选择的日期
+    if (selectedDate && selectedDate !== todayStr) {
+      console.log('📅 使用日历选择的日期筛选:', selectedDate)
+      filteredMemos = filteredMemos.filter(memo => {
+        return memo.dateStr === selectedDate
+      })
+    } else {
+      // 否则使用高级筛选的时间范围
+      console.log('⏰ 使用时间范围筛选:', this.data.timeRange)
+      switch (this.data.timeRange) {
+        case 'today':
+          const todayDateStr = today.toDateString()
+          filteredMemos = filteredMemos.filter(memo => {
+            return new Date(memo.timestamp).toDateString() === todayDateStr
+          })
+          break
+        case '3days':
+          const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+          filteredMemos = filteredMemos.filter(memo => {
+            return new Date(memo.timestamp) >= threeDaysAgo
+          })
+          break
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          filteredMemos = filteredMemos.filter(memo => {
+            return new Date(memo.timestamp) >= weekAgo
+          })
+          break
+        case 'month':
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          filteredMemos = filteredMemos.filter(memo => {
+            return new Date(memo.timestamp) >= monthAgo
+          })
+          break
+      }
     }
 
     // 排序 ⭐ 使用实际发生时间（sortTimestamp）而不是记录创建时间（timestamp）

@@ -1087,14 +1087,15 @@ await notionApiService.updatePageProperties(
 
 #### 数据库配置
 
-**七数据库架构**（已更新术语）：
+**八数据库架构**（已更新术语）：
 1. 🎯 目标库 (Goals)
 2. ✅ 待办库 (Todos)
 3. 📝 主记录表 (Main Records)
 4. ⏱️ 活动明细表 (Activity Details)
 5. 📊 每日状态库 (Daily Status)
 6. 😊 开心库 (Happy Things)
-7. 💬 箴言库 (Quotes) ⭐ 本次重点
+7. 💬 箴言库 (Quotes)
+8. 📚 知识库 (Knowledge) ⭐ 新增
 
 #### 下一步计划
 
@@ -1104,5 +1105,366 @@ await notionApiService.updatePageProperties(
 - [ ] 优化箴言搜索体验
 
 ---
+
+### 2025-10-26: 注册流程完整实现与八数据库自动创建 ⭐
+
+**核心成果**: 实现完整的5步注册流程，自动创建Notion八数据库架构
+
+## 流程概览
+
+```
+步骤1: 基本信息 → 步骤2: Notion准备 → 步骤3: API配置 → 步骤4: 数据库创建 → 步骤5: 完成
+```
+
+---
+
+### 步骤1: 📝 基本信息
+
+#### 功能
+收集用户账户信息
+
+#### 输入字段
+- **邮箱地址** (必填) - 用作用户唯一标识
+- **密码** (必填, ≥6位)
+- **确认密码** (必填, 需匹配)
+- **显示名称** (可选) - 不填则使用邮箱前缀
+
+#### 验证规则
+```javascript
+✓ 邮箱格式有效 (正则验证)
+✓ 密码长度 ≥ 6位
+✓ 两次密码一致
+```
+
+#### 用户体验
+- 实时输入验证，错误立即显示
+- 密码显示/隐藏切换 (👁️/🙈)
+- 提示文案友好 ("建议使用Notion注册邮箱，方便后续配置")
+
+---
+
+### 步骤2: 📚 Notion账户准备
+
+#### 功能
+确保用户有Notion账户，无账户则提供注册指引
+
+#### 用户选择
+- **✅ 是，我已有账户** - 直接进入下一步
+- **📝 否，需要注册** - 显示详细注册指南
+
+#### Notion注册指南（当用户选择"需要注册"）
+```
+┌─ 步骤1: 访问Notion注册页 ─────────────┐
+│ https://www.notion.so/signup         │
+│ [点击链接自动复制]                    │
+└──────────────────────────────────────┘
+
+┌─ 步骤2: 推荐使用相同邮箱 ────────────┐
+│ 建议使用：{用户在步骤1输入的邮箱}      │
+│ 使用相同邮箱便于后续管理              │
+└──────────────────────────────────────┘
+
+┌─ 步骤3: 完成注册 ────────────────────┐
+│ • 验证邮箱                            │
+│ • 设置密码                            │
+│ • 选择使用场景（可随意选择）           │
+└──────────────────────────────────────┘
+
+┌─ 步骤4: 注册完成后 ──────────────────┐
+│ 返回此处，选择"是，我已有账户"继续     │
+└──────────────────────────────────────┘
+
+💡 Notion是免费的，个人使用完全够用！
+```
+
+#### 验证规则
+```javascript
+✓ 必须选择其中一个选项才能继续
+```
+
+---
+
+### 步骤3: 🔐 API配置
+
+#### 功能
+配置Notion API Key并测试连接
+
+#### 获取API Key指南
+```
+┌─ 步骤1: 访问Notion Integrations ─────┐
+│ https://www.notion.so/my-integrations│
+│ [点击链接自动复制]                    │
+└──────────────────────────────────────┘
+
+┌─ 步骤2: 创建新集成 ──────────────────┐
+│ 点击"+ New integration"按钮          │
+└──────────────────────────────────────┘
+
+┌─ 步骤3: 配置集成信息 ────────────────┐
+│ • 名称：语寄心声（或任意名称）         │
+│ • 类型：Internal integration          │
+│ • 权限：选择需要的权限                │
+└──────────────────────────────────────┘
+
+┌─ 步骤4: 复制API Key ─────────────────┐
+│ 点击"Show"按钮，复制显示的Token       │
+└──────────────────────────────────────┘
+```
+
+#### 输入字段
+- **Notion API Key** (必填, 最长500字符)
+
+#### 验证流程
+1. 用户粘贴API Key
+2. 点击 "✓ 测试连接" 按钮
+3. 系统调用 `notionApiService.testConnection(apiKey)`
+4. 显示结果：
+   - ✅ 成功：`✓ 连接成功！API Key有效`
+   - ❌ 失败：`✗ 连接失败：{错误信息}`
+
+#### 验证规则
+```javascript
+✓ 测试连接必须成功 (testSuccess === true)
+```
+
+#### 重要说明
+- ⚠️ 已移除 `secret_` 前缀格式验证
+- 只要能连接成功即可，不限制格式
+
+---
+
+### 步骤4: 🗄️ 数据库创建
+
+#### 功能
+自动创建完整的8数据库架构
+
+#### 将创建的数据库
+```
+📝 语寄心声 - 数据中心 (父页面)
+  ├─ 🎯 目标库 (Goals)
+  ├─ ✅ 待办库 (Todos)
+  ├─ 📝 主记录表 (Main Records)
+  ├─ ⏱️ 活动明细表 (Activity Details)
+  ├─ 📊 每日状态库 (Daily Status)
+  ├─ 😊 开心库 (Happy Things)
+  ├─ 💬 箴言库 (Quotes)
+  └─ 📚 知识库 (Knowledge)
+```
+
+#### 创建流程
+```javascript
+点击"开始创建"
+    ↓
+显示进度: "准备创建数据库..."
+    ↓
+[0/8] 创建父页面 "📝 语寄心声 - 数据中心"
+[1/8] 创建目标库 (Goals)
+[2/8] 创建待办库 (Todos) - 关联目标库
+[3/8] 创建主记录表 (Main Records) - 关联待办库
+[4/8] 创建活动明细表 (Activity Details) - 三向关联
+[5/8] 创建每日状态库 (Daily Status) - 独立
+[6/8] 创建开心库 (Happy Things) - 独立
+[7/8] 创建箴言库 (Quotes) - 独立
+[8/8] 创建知识库 (Knowledge) - 独立
+[9/10] 更新目标库自关联 (Parent/Sub Goals)
+[10/10] 更新待办库自关联 (Blocking/Blocked By)
+    ↓
+显示: ✓ 所有数据库创建完成！
+```
+
+#### UI反馈
+- 每个数据库显示创建状态：
+  - 🔄 创建中...
+  - ✅ 已创建
+- 进度条显示：0% → 100%
+- 状态文本更新
+
+#### 技术实现
+```javascript
+const { createQuadDatabases } = require('../../utils/notionQuadDatabaseCreator.js')
+const result = await createQuadDatabases(notionApiKey, null)
+
+// 自动创建父页面（如果parentPageId为null）
+// 返回所有数据库ID
+result.databases = {
+  goals: 'db_id_1',
+  todos: 'db_id_2',
+  mainRecords: 'db_id_3',
+  activityDetails: 'db_id_4',
+  dailyStatus: 'db_id_5',
+  happyThings: 'db_id_6',
+  quotes: 'db_id_7',
+  knowledge: 'db_id_8'
+}
+```
+
+#### 验证规则
+```javascript
+✓ 所有数据库创建成功 (databasesCreated === true)
+```
+
+---
+
+### 步骤5: 🎉 注册完成
+
+#### 功能
+保存用户数据并引导开始使用
+
+#### 后台操作
+```javascript
+1. 创建本地用户
+   const userId = userManager.createUser(userName, email)
+
+2. 配置Notion
+   userManager.configureNotion(userId, {
+     apiKey: notionApiKey,
+     databases: createdDatabaseIds  // 8个数据库ID
+   })
+
+3. 保存密码（加密）
+   userManager.savePassword(email, password)
+
+4. 同步到云端（尝试）
+   await apiService.createUser(email, password, userName, notionConfig)
+   // 失败仅警告，不中断流程
+
+5. 设置为当前用户
+   userManager.setCurrentUser(userId)
+```
+
+#### 用户引导界面
+```
+┌─ 🎉 注册成功！ ──────────────────────┐
+│ ✓ 您的账户已创建                      │
+│ ✓ Notion数据库已配置完成              │
+└──────────────────────────────────────┘
+
+接下来您可以：
+
+📝 记录时间投入
+   开始记录您的日常活动
+   [点击跳转]
+
+🎯 设置目标待办
+   创建您的第一个目标
+   [点击跳转]
+
+💬 管理箴言
+   添加激励您的箴言
+   [点击跳转]
+
+[进入应用] ← 跳转到首页
+```
+
+---
+
+## 流程特色
+
+### 1. 渐进式引导
+- 每步只关注一个核心任务
+- 清晰的步骤指示器显示进度
+- 可回退到上一步修改
+
+### 2. 智能验证
+- 实时输入验证
+- 每步完成前必须通过验证
+- 友好的错误提示
+
+### 3. 自动化程度高
+- ✅ 自动创建父页面
+- ✅ 自动创建8个数据库
+- ✅ 自动配置数据库关联
+- ✅ 自动保存配置
+- ✅ 自动云端同步（可选）
+
+### 4. 容错设计
+- 云端同步失败不影响注册
+- 提供详细的错误信息
+- 支持重试机制
+
+### 5. 用户体验优化
+- 📋 一键复制链接
+- 👁️ 密码显示切换
+- 📊 实时进度反馈
+- 🎯 快捷操作引导
+
+---
+
+## 数据流向
+
+```
+用户输入
+    ↓
+本地存储 (localStorage)
+    ↓
+userManager (utils/userManager.js)
+    ↓
+├─ 本地用户数据 (memo_users)
+└─ Notion配置 (notionConfig)
+    ↓
+云数据库同步 (可选)
+    ↓
+设置为当前用户
+    ↓
+小程序全局数据 (app.globalData.currentUser)
+```
+
+---
+
+## 关键代码位置
+
+- **注册逻辑**: `pages/register/register.js` (457行)
+- **注册UI**: `pages/register/register.wxml` (366行)
+- **注册样式**: `pages/register/register.wxss`
+- **数据库创建**: `utils/notionQuadDatabaseCreator.js`
+- **数据库Schema**: `utils/notionDatabaseSetup.js`
+- **用户管理**: `utils/userManager.js`
+- **Notion API**: `utils/notionApiService.js`
+- **云服务**: `utils/apiService.js`
+
+---
+
+## 技术亮点
+
+1. **5步注册流程**: 从基本信息到完成，每步职责单一
+2. **自动父页面创建**: 检测到无parentPageId时自动创建
+3. **八数据库架构**: 完整的数据管理体系
+4. **关联关系自动配置**: 数据库间关联和自关联全自动
+5. **Notion账户引导**: 无账户用户提供详细注册指南
+6. **API Key测试验证**: 去除格式限制，只验证连接性
+7. **渐进式UI**: 步骤指示器、进度条、状态反馈
+8. **容错机制**: 云端同步失败不影响注册完成
+
+---
+
+## 已修复问题
+
+### 问题1: 缺少第8个数据库（Knowledge）
+- **修复**: 添加知识库到注册流程和所有相关文档
+
+### 问题2: "下一步"按钮无响应
+- **根因**: `computed_canProceed()` 仍使用4步逻辑
+- **修复**: 更新为5步验证逻辑，添加步骤2验证
+
+### 问题3: 数据库创建400错误
+- **根因**: 尝试用`{workspace: true}`创建数据库（不支持）
+- **修复**: 使用已验证的工具类，自动创建父页面
+
+### 问题4: API Key格式验证太严格
+- **修复**: 移除`secret_`前缀验证，仅测试连接
+
+---
+
+## 文档更新
+
+- ✅ `CLAUDE.md` - 更新为八数据库架构
+- ✅ `七数据库自动创建指南.md` → 更新为八数据库
+- ✅ `pages/register/register.js` - 完整5步流程
+- ✅ `pages/register/register.wxml` - 5步UI界面
+- ✅ `pages/register/register.wxss` - 步骤2样式
+- ✅ `utils/notionQuadDatabaseCreator.js` - 自动父页面创建
+
+---
+
 *开发完成日期：2025年1月*
-*最新更新：2025-10-19 (箴言系统完整重构与Notion集成优化)*
+*最新更新：2025-10-26 (注册流程完整实现与八数据库自动创建)*

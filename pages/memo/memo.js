@@ -726,17 +726,17 @@ Page({
         {
           parent: { database_id: mainRecordsDatabaseId },
           properties: {
-            'Name': { title: [{ text: { content: recordId } }] },
-            'Summary': { rich_text: [{ text: { content: content } }] },
-            'Record Date': { date: { start: baseDate.toISOString().split('T')[0] } },
-            'Type': { select: { name: 'normal' } },
+            'Title': { title: [{ text: { content: recordId } }] },  // ✅ 修正：Name → Title
+            'Content': { rich_text: [{ text: { content: content } }] },  // ✅ 修正：Summary → Content
+            'Date': { date: { start: baseDate.toISOString().split('T')[0] } },  // ✅ 修正：Record Date → Date
+            'Record Type': { select: { name: '日常记录' } },  // ✅ 修正：Type → Record Type
             'Start Time': {
               rich_text: [{ text: { content: startTimeStr } }]
             },
             'End Time': {
               rich_text: [{ text: { content: endTimeStr } }]
             },
-            'User ID': { rich_text: [{ text: { content: currentUser.email } }] }  // ⭐ 添加User ID字段
+            'User ID': { rich_text: [{ text: { content: currentUser.email } }] }
           }
         },
         apiKey
@@ -754,22 +754,22 @@ Page({
       console.log(`📝 准备创建 ${this.data.allActivities.length} 个活动明细，关联到主记录ID: ${mainRecordId}`)
 
       for (const activity of this.data.allActivities) {
-        const activityTypeMap = {
-          'valuable': '有价值',
-          'neutral': '中性',
-          'wasteful': '低效'
+        // ✅ 修正：映射到正确的Value Rating选项
+        const valueRatingMap = {
+          'valuable': '高价值',
+          'neutral': '中等价值',
+          'wasteful': '低价值'
         }
 
-        const valueType = activityTypeMap[activity.activityType] || '有价值'
+        const valueRating = valueRatingMap[activity.activityType] || '高价值'
 
         const properties = {
-          'Activity Name': { title: [{ text: { content: activity.activity } }] },
-          'Description': { rich_text: [{ text: { content: `${valueType}活动，投入${activity.minutes}分钟` } }] },
-          'Minutes': { number: activity.minutes },
-          'Value Type': { select: { name: valueType } },
-          'Record Date': { date: { start: baseDate.toISOString().split('T')[0] } },
+          'Name': { title: [{ text: { content: activity.activity } }] },  // ✅ 修正：Activity Name → Name
+          'Description': { rich_text: [{ text: { content: `${valueRating}活动，投入${activity.minutes}分钟` } }] },
+          'Duration': { number: activity.minutes },  // ✅ 修正：Minutes → Duration
+          'Value Rating': { select: { name: valueRating } },  // ✅ 修正：Value Type → Value Rating，使用正确的选项值
           'User ID': { rich_text: [{ text: { content: currentUser.email } }] },
-          'Record': { relation: [{ id: mainRecordId }] }
+          'Related Main Record': { relation: [{ id: mainRecordId }] }  // ✅ 修正：Record → Related Main Record
         }
 
         // 添加标签（持久化到Notion）
@@ -790,7 +790,7 @@ Page({
         }
 
         console.log(`🔗 创建活动明细 "${activity.activity}"，关联配置:`, {
-          'Record': properties['Record'],
+          'Related Main Record': properties['Related Main Record'],
           mainRecordId: mainRecordId
         })
 
