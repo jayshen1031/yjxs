@@ -543,26 +543,10 @@ class NotionQuadDatabaseCreator {
    * 更新主记录表的关联关系（在所有数据库创建后）
    */
   async updateMainRecordsRelations(mainRecordsDatabaseId, activityDatabaseId) {
-    console.log('添加主记录表的关联关系...')
+    console.log('添加主记录表的汇总字段...')
 
-    // 添加 Related Activities 关联字段
-    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
-      apiKey: this.apiKey,
-      method: 'PATCH',
-      data: {
-        properties: {
-          'Related Activities': {
-            relation: {
-              database_id: activityDatabaseId,
-              dual_property: {
-                name: 'Related Main Record'
-              }
-            }
-          }
-        }
-      }
-    })
-    console.log('✅ 已添加 Related Activities 关联')
+    // ⚠️ Related Activities 已经由 Activity Details 的 dual_property 自动创建，不需要再添加
+    console.log('ℹ️ Related Activities 已由Activity Details自动创建，跳过')
 
     // 添加 Total Time rollup 字段（依赖 Related Activities）
     await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
@@ -609,23 +593,10 @@ class NotionQuadDatabaseCreator {
   async updateTodosRelations(todosDatabaseId, activityDatabaseId, mainRecordsDatabaseId) {
     console.log('添加待办库的关联关系...')
 
-    // 添加 Related Activities 关联字段
-    await this.service.callApi(`/databases/${todosDatabaseId}`, {
-      apiKey: this.apiKey,
-      method: 'PATCH',
-      data: {
-        properties: {
-          'Related Activities': {
-            relation: {
-              database_id: activityDatabaseId
-            }
-          }
-        }
-      }
-    })
-    console.log('✅ 已添加 Related Activities 关联')
+    // ⚠️ Related Activities 已经由 Activity Details 的 dual_property 自动创建，不需要再添加
+    console.log('ℹ️ Related Activities 已由Activity Details自动创建，跳过')
 
-    // 添加 Related Main Records 关联字段
+    // 添加 Related Main Records 关联字段（单向关联）
     await this.service.callApi(`/databases/${todosDatabaseId}`, {
       apiKey: this.apiKey,
       method: 'PATCH',
@@ -633,7 +604,8 @@ class NotionQuadDatabaseCreator {
         properties: {
           'Related Main Records': {
             relation: {
-              database_id: mainRecordsDatabaseId
+              database_id: mainRecordsDatabaseId,
+              single_property: {}  // ✅ 单向关联
             }
           }
         }
