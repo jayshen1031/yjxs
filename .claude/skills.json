@@ -1,11 +1,13 @@
 {
+  "claude_skills_version": "1.0",
+  "auto_load": true,
   "project": {
     "name": "语寄心声 (YJXS)",
     "description": "微信小程序 - 支持语音记录、时间管理、Notion同步的个人记录应用",
     "version": "1.0.0",
     "type": "WeChat MiniProgram",
     "created": "2025-01",
-    "last_updated": "2025-10-26"
+    "last_updated": "2025-11-02"
   },
   "skills": [
     {

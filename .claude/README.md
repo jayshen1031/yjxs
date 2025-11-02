@@ -1,5 +1,18 @@
 # Claude Skills for 语寄心声项目
 
+## ⚡ 自动加载提示
+
+**✅ 本项目已配置Claude Skills，应在进入项目目录时自动加载。**
+
+如果未自动加载，请检查：
+1. `.claude/skills.json` 中 `auto_load: true` 已设置
+2. 三个skill文件存在于 `.claude/skills/` 目录
+3. Claude Code 已正确识别项目根目录
+
+**手动触发加载**: 如需手动加载，请阅读 `skills.json` 和对应的 `.skill.json` 文件。
+
+---
+
 ## 📁 目录结构
 
 ```
@@ -73,6 +86,7 @@
 - ✅ 保持文档更新
 
 **重要更新记录**:
+- 2025-11-02: 🚨 **数据库Schema版本差异发现** - 详见 `DATABASE_COMPARISON_REPORT.md`
 - 2025-10-26: Notion八数据库Schema一致性修复
 - 2025-10-19: 箴言系统重构
 - 2025-10-12: 六数据库配置界面

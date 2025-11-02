@@ -7,6 +7,7 @@
 - **README.md** - 完整文档，详细说明
 - **QUICK_START.md** - 快速开始指南（5分钟上手）
 - **INDEX.md** - 本文件，快速导航
+- **DATABASE_COMPARISON_REPORT.md** - 🆕 数据库结构对比报告（2025-11-02）
 
 ### 技能定义
 - **skills/notion-database.skill.json** - Notion数据库管理
