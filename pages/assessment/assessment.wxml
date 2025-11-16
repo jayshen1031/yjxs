@@ -1,0 +1,105 @@
+<view class="container">
+  <!-- 顶部进度条 -->
+  <view class="progress-section">
+    <view class="progress-header">
+      <view class="quadrant-name">
+        <view class="quadrant-icon">{{currentQuadrantInfo.icon}}</view>
+        <view class="quadrant-text">{{currentQuadrantInfo.name}}</view>
+      </view>
+      <view class="progress-count">{{questionCount}}/{{estimatedTotal}}</view>
+    </view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{overallProgress}}%"></view>
+    </view>
+    <view class="progress-label">总体进度 {{overallProgress}}%</view>
+  </view>
+
+  <!-- 对话区域 -->
+  <scroll-view class="chat-area" scroll-y scroll-into-view="{{scrollToView}}" scroll-with-animation>
+    <!-- 对话消息列表 -->
+    <view class="messages-list">
+      <block wx:for="{{messages}}" wx:key="index">
+        <!-- AI消息 -->
+        <view class="message-item message-ai" wx:if="{{item.role === 'assistant'}}" id="msg-{{index}}">
+          <view class="message-avatar">🤖</view>
+          <view class="message-bubble bubble-ai">
+            <text class="message-text">{{item.content}}</text>
+          </view>
+        </view>
+
+        <!-- 用户消息 -->
+        <view class="message-item message-user" wx:if="{{item.role === 'user'}}" id="msg-{{index}}">
+          <view class="message-bubble bubble-user">
+            <text class="message-text">{{item.content}}</text>
+          </view>
+          <view class="message-avatar">👤</view>
+        </view>
+      </block>
+
+      <!-- 加载中提示 -->
+      <view class="message-item message-ai" wx:if="{{isLoading}}">
+        <view class="message-avatar">🤖</view>
+        <view class="message-bubble bubble-ai">
+          <view class="loading-dots">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区域 -->
+  <view class="input-section">
+    <!-- 提示文本 -->
+    <view class="input-hint" wx:if="{{!userInput}}">
+      💡 请详细回答，避免简单的"是"或"否"
+    </view>
+
+    <!-- 输入框 -->
+    <view class="input-container">
+      <textarea
+        class="input-box"
+        placeholder="输入你的回答..."
+        value="{{userInput}}"
+        bindinput="onInput"
+        auto-height
+        maxlength="1000"
+        show-confirm-bar="{{false}}"
+      />
+      <view class="input-actions">
+        <view class="char-count">{{userInput.length}}/1000</view>
+        <button class="btn-voice" bindtap="startVoiceInput" wx:if="{{!isRecording}}">
+          🎤
+        </button>
+        <button class="btn-voice recording" bindtap="stopVoiceInput" wx:if="{{isRecording}}">
+          ⏹️
+        </button>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="button-row">
+      <button class="btn btn-save" bindtap="saveProgress">💾 暂停保存</button>
+      <button class="btn btn-submit" bindtap="submitAnswer" disabled="{{!userInput || isLoading}}">
+        ➡️ 提交答案
+      </button>
+    </view>
+
+    <!-- 提前生成报告按钮（测试用，问题数>=4时显示） -->
+    <view class="button-row" wx:if="{{questionCount >= 4 && questionCount < 10}}">
+      <button class="btn btn-test-report" bindtap="generateReport">
+        🧪 提前生成报告（测试）
+      </button>
+      <view class="test-hint">⚠️ 正常需要回答{{estimatedTotal}}个问题</view>
+    </view>
+
+    <!-- 查看报告按钮（问题数>=10时显示） -->
+    <view class="button-row" wx:if="{{questionCount >= 10}}">
+      <button class="btn btn-report" bindtap="generateReport">
+        📊 查看当前评估报告
+      </button>
+    </view>
+  </view>
+</view>

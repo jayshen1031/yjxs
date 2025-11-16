@@ -1,0 +1,278 @@
+/* 评估历史页面样式 */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24rpx;
+  padding-bottom: 40rpx;
+}
+
+/* 页面标题 */
+.page-header {
+  margin-bottom: 32rpx;
+  text-align: center;
+}
+
+.header-title {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 12rpx;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.header-subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 统计卡片 */
+.stats-card {
+  background: white;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 24rpx;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stat-value {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #6366f1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+/* 历史列表 */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.history-item {
+  background: white;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  transition: all 0.3s;
+}
+
+.history-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 日期标签 */
+.item-date-tag {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-bottom: 2rpx solid #86efac;
+}
+
+.date-icon {
+  font-size: 24rpx;
+}
+
+.date-text {
+  font-size: 24rpx;
+  color: #166534;
+  font-weight: 600;
+}
+
+/* 评估内容 */
+.item-content {
+  padding: 24rpx;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.item-title {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+}
+
+.role-badge {
+  font-size: 22rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 10rpx;
+  font-weight: 500;
+}
+
+.role-badge.role-student {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.role-badge.role-adult {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.level-badge {
+  font-size: 22rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 10rpx;
+  font-weight: 600;
+}
+
+.level-badge.level-beginner {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.level-badge.level-developing {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.level-badge.level-intermediate {
+  background: #fef3c7;
+  color: #ca8a04;
+}
+
+.level-badge.level-advanced {
+  background: #d1fae5;
+  color: #16a34a;
+}
+
+.level-badge.level-expert {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.item-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.score-number {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #6366f1;
+}
+
+.score-unit {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+/* 维度分数 */
+.dimension-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.dimension-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dimension-name {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.dimension-progress {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 12rpx;
+  background: #f3f4f6;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 6rpx;
+  transition: width 0.3s;
+}
+
+.dimension-score {
+  font-size: 22rpx;
+  color: #374151;
+  font-weight: 600;
+  min-width: 48rpx;
+  text-align: right;
+}
+
+/* 底部信息 */
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16rpx;
+  border-top: 2rpx solid #f3f4f6;
+}
+
+.time-info {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.detail-link {
+  font-size: 22rpx;
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  padding: 80rpx 40rpx;
+  background: white;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.empty-icon {
+  font-size: 80rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.empty-state .btn {
+  margin-top: 16rpx;
+}

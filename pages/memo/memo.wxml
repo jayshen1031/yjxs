@@ -56,42 +56,62 @@
           <!-- 时间段选择 -->
           <view class="time-range-selector">
             <!-- 开始时间 -->
-            <view class="time-picker-group">
+            <view class="time-input-group">
               <text class="time-label">开始</text>
-              <picker
-                mode="selector"
-                range="{{ timeOptions }}"
-                range-key="label"
-                value="{{ startTimeIndex }}"
-                bindchange="onStartTimeChange"
-              >
-                <view class="picker-display">
-                  <text class="picker-icon">⏰</text>
-                  <text class="picker-text">{{ startTimeDisplay || '选择时间' }}</text>
-                  <text class="picker-arrow">▼</text>
-                </view>
-              </picker>
+              <view class="time-input-container">
+                <input
+                  class="time-hour-input"
+                  type="number"
+                  placeholder="05"
+                  value="{{ startHour }}"
+                  bindinput="onStartHourInput"
+                  bindblur="onStartHourBlur"
+                  maxlength="2"
+                />
+                <text class="time-colon">:</text>
+                <picker
+                  mode="selector"
+                  range="{{ minuteOptions }}"
+                  value="{{ startMinuteIndex }}"
+                  bindchange="onStartMinuteChange"
+                >
+                  <view class="time-minute-picker">
+                    <text>{{ minuteOptions[startMinuteIndex] }}</text>
+                    <text class="picker-arrow-small">▼</text>
+                  </view>
+                </picker>
+              </view>
             </view>
 
             <!-- 连接线 -->
             <text class="time-separator">→</text>
 
             <!-- 结束时间 -->
-            <view class="time-picker-group">
+            <view class="time-input-group">
               <text class="time-label">结束</text>
-              <picker
-                mode="selector"
-                range="{{ timeOptions }}"
-                range-key="label"
-                value="{{ endTimeIndex }}"
-                bindchange="onEndTimeChange"
-              >
-                <view class="picker-display">
-                  <text class="picker-icon">⏰</text>
-                  <text class="picker-text">{{ endTimeDisplay || '选择时间' }}</text>
-                  <text class="picker-arrow">▼</text>
-                </view>
-              </picker>
+              <view class="time-input-container">
+                <input
+                  class="time-hour-input"
+                  type="number"
+                  placeholder="06"
+                  value="{{ endHour }}"
+                  bindinput="onEndHourInput"
+                  bindblur="onEndHourBlur"
+                  maxlength="2"
+                />
+                <text class="time-colon">:</text>
+                <picker
+                  mode="selector"
+                  range="{{ minuteOptions }}"
+                  value="{{ endMinuteIndex }}"
+                  bindchange="onEndMinuteChange"
+                >
+                  <view class="time-minute-picker">
+                    <text>{{ minuteOptions[endMinuteIndex] }}</text>
+                    <text class="picker-arrow-small">▼</text>
+                  </view>
+                </picker>
+              </view>
             </view>
           </view>
 

@@ -18,7 +18,7 @@
 | `Start Time` | Rich Text | 开始时间（如：09:00） |
 | `End Time` | Rich Text | 结束时间（如：10:00） |
 | `Type` | Select | 记录类型：normal/planning |
-| `Is Planning` | Checkbox | 是否为明日规划记录 |
+| `Is Planning` | Checkbox | 是否为次日规划记录 |
 | `Tags` | Multi-select | 标签（工作、学习、生活等） |
 | `Goal ID` | Rich Text | 关联目标ID |
 | `Sync Status` | Select | 同步状态：synced/pending/failed |
@@ -152,7 +152,7 @@ Tags: 工作, 学习
 Sync Status: synced
 ```
 
-### 明日规划示例
+### 次日规划示例
 
 ```
 Name: memo_1704700800000

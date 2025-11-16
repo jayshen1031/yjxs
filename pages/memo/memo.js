@@ -33,15 +33,17 @@ Page({
 
     // 时间选择相关
     selectedDateType: 'today', // 'today' | 'yesterday' | 'custom'
-    startTimeIndex: 0, // 开始时间选项索引
-    endTimeIndex: 1, // 结束时间选项索引
+    minuteOptions: ['00', '30'], // 分钟选项数组
+    startHour: 5, // 开始小时 (5-23)
+    startMinuteIndex: 0, // 开始分钟索引 (0=00, 1=30)
+    endHour: 6, // 结束小时 (5-23)
+    endMinuteIndex: 0, // 结束分钟索引
     startTimeDisplay: '', // 开始时间显示
     endTimeDisplay: '', // 结束时间显示
     selectedTimeDisplay: '', // 完整时间显示
     customDate: '',
     customDateDisplay: '',
-    todayDate: '',
-    timeOptions: [], // 时间选项数组
+    todayDate: ''
 
     // 保存相关
     isSaving: false,
@@ -63,20 +65,23 @@ Page({
       // 初始化时间选项
       const today = new Date()
       const todayDate = this.formatDate(today)
-      const timeOptions = this.generateTimeOptions()
+      const startTimeDisplay = this.formatTimeDisplay(5, 0) // 默认5:00
+      const endTimeDisplay = this.formatTimeDisplay(6, 0)   // 默认6:00
 
       console.log('📅 时间选项初始化:', {
-        todayDate,
-        timeOptionsCount: timeOptions.length
+        todayDate
       })
 
       this.setData({
         todayDate: todayDate,
         customDate: todayDate,
-        timeOptions: timeOptions,
-        startTimeDisplay: timeOptions[0]?.label || '',
-        endTimeDisplay: timeOptions[1]?.label || '',
-        selectedTimeDisplay: this.getSelectedTimeDisplay('today', 0, 1)
+        startHour: 5,
+        startMinuteIndex: 0,
+        endHour: 6,
+        endMinuteIndex: 0,
+        startTimeDisplay: startTimeDisplay,
+        endTimeDisplay: endTimeDisplay,
+        selectedTimeDisplay: this.getSelectedTimeDisplay('today')
       })
 
       console.log('✅ 页面数据初始化完成')
@@ -232,8 +237,10 @@ Page({
     })
 
     // ⭐ 处理时间字段
-    let startTimeIndex = 0
-    let endTimeIndex = 1
+    let startHour = 5
+    let startMinuteIndex = 0
+    let endHour = 6
+    let endMinuteIndex = 0
     let startTimeDisplay = ''
     let endTimeDisplay = ''
     let dateMode = 'today'
@@ -250,31 +257,31 @@ Page({
 
     // 解析开始和结束时间
     if (memoData.startTime && memoData.endTime) {
-      const timeOptions = this.data.timeOptions
+      // 解析开始时间 (格式: "HH:MM")
+      const startMatch = memoData.startTime.match(/(\d{1,2}):(\d{2})/)
+      if (startMatch) {
+        startHour = parseInt(startMatch[1])
+        const startMinute = parseInt(startMatch[2])
+        startMinuteIndex = startMinute >= 30 ? 1 : 0
+        startTimeDisplay = this.formatTimeDisplay(startHour, startMinute)
+      }
 
-      if (memoData.startTime === '睡眠' || memoData.endTime === '睡眠') {
-        // 睡眠时间，使用特殊索引99
-        startTimeIndex = 99
-        endTimeIndex = 99
-        startTimeDisplay = '😴 睡眠'
-        endTimeDisplay = '😴 睡眠'
-      } else {
-        // 查找匹配的时间索引
-        startTimeIndex = timeOptions.findIndex(opt => opt.value !== 99 && opt.label.includes(memoData.startTime))
-        endTimeIndex = timeOptions.findIndex(opt => opt.value !== 99 && opt.label.includes(memoData.endTime))
-
-        if (startTimeIndex === -1) startTimeIndex = 0
-        if (endTimeIndex === -1) endTimeIndex = 1
-
-        startTimeDisplay = timeOptions[startTimeIndex]?.label || ''
-        endTimeDisplay = timeOptions[endTimeIndex]?.label || ''
+      // 解析结束时间
+      const endMatch = memoData.endTime.match(/(\d{1,2}):(\d{2})/)
+      if (endMatch) {
+        endHour = parseInt(endMatch[1])
+        const endMinute = parseInt(endMatch[2])
+        endMinuteIndex = endMinute >= 30 ? 1 : 0
+        endTimeDisplay = this.formatTimeDisplay(endHour, endMinute)
       }
 
       console.log('⏰ 时间解析结果:', {
         startTime: memoData.startTime,
         endTime: memoData.endTime,
-        startTimeIndex,
-        endTimeIndex,
+        startHour,
+        startMinuteIndex,
+        endHour,
+        endMinuteIndex,
         startTimeDisplay,
         endTimeDisplay
       })
@@ -291,13 +298,15 @@ Page({
       totalWastefulMinutes: totalWastefulMinutes,
       recordMode: memoData.recordMode || 'daily',
       // ⭐ 时间相关字段
-      dateMode: dateMode,
+      selectedDateType: dateMode,
       customDate: customDate,
-      startTimeIndex: startTimeIndex,
-      endTimeIndex: endTimeIndex,
+      startHour: startHour,
+      startMinuteIndex: startMinuteIndex,
+      endHour: endHour,
+      endMinuteIndex: endMinuteIndex,
       startTimeDisplay: startTimeDisplay,
       endTimeDisplay: endTimeDisplay,
-      selectedTimeDisplay: this.getSelectedTimeDisplay(dateMode, startTimeIndex, endTimeIndex)
+      selectedTimeDisplay: this.getSelectedTimeDisplay(dateMode)
     })
 
     wx.showToast({
@@ -659,9 +668,11 @@ Page({
 
       console.log('📝 生成主记录ID:', recordId)
 
-      // 计算开始和结束时间
-      const startTimeOption = this.data.timeOptions[this.data.startTimeIndex]
-      const endTimeOption = this.data.timeOptions[this.data.endTimeIndex]
+      // 获取时间
+      const startHour = this.data.startHour
+      const startMinute = this.data.startMinuteIndex === 0 ? 0 : 30
+      const endHour = this.data.endHour
+      const endMinute = this.data.endMinuteIndex === 0 ? 0 : 30
 
       // 根据选中的日期类型确定基础时间戳
       let baseDate
@@ -680,64 +691,69 @@ Page({
           baseDate = new Date()
       }
 
-      // 辅助函数：根据baseDate和timeValue计算完整的DateTime
-      const getFullTimestamp = (baseTimestamp, timeValue) => {
-        // 特殊处理：睡眠选项
-        if (timeValue === 99) {
-          return null // 睡眠不需要具体时间
-        }
-
+      // 辅助函数：根据baseDate、小时和分钟计算完整的DateTime
+      const getFullTimestamp = (baseTimestamp, hour, minute) => {
         const date = new Date(baseTimestamp)
-        let hour = Math.floor(timeValue)
-        const minute = (timeValue % 1) === 0.5 ? 30 : 0
-
-        // 处理跨日情况(晚睡时间 >= 24)
-        if (timeValue >= 24) {
-          date.setDate(date.getDate() + 1)
-          hour = hour - 24
-        }
-
         date.setHours(hour, minute, 0, 0)
         return date
       }
 
-      const startDateTime = getFullTimestamp(baseDate, startTimeOption.value)
-      const endDateTime = getFullTimestamp(baseDate, endTimeOption.value)
+      const startDateTime = getFullTimestamp(baseDate, startHour, startMinute)
+      const endDateTime = getFullTimestamp(baseDate, endHour, endMinute)
 
-      // 格式化时间显示（处理睡眠选项）
-      const formatTimeForNotion = (dateTime, timeOption) => {
-        if (timeOption.value === 99) {
-          return '睡眠'
-        }
-        return `${dateTime.getHours().toString().padStart(2, '0')}:${dateTime.getMinutes().toString().padStart(2, '0')}`
+      // 格式化时间显示
+      const formatTimeForNotion = (hour, minute) => {
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
       }
 
-      const startTimeStr = formatTimeForNotion(startDateTime, startTimeOption)
-      const endTimeStr = formatTimeForNotion(endDateTime, endTimeOption)
+      const startTimeStr = formatTimeForNotion(startHour, startMinute)
+      const endTimeStr = formatTimeForNotion(endHour, endMinute)
 
       console.log('⏰ 时间段:', {
-        start: startDateTime ? startDateTime.toISOString() : '睡眠',
-        end: endDateTime ? endDateTime.toISOString() : '睡眠',
-        startLabel: startTimeOption.label,
-        endLabel: endTimeOption.label
+        start: startDateTime.toISOString(),
+        end: endDateTime.toISOString(),
+        startTime: startTimeStr,
+        endTime: endTimeStr
       })
+
+      // 🔍 获取数据库Schema，自动适配新旧字段名
+      let schema = null
+      try {
+        const schemaResult = await notionApiService.getDatabaseSchema(apiKey, mainRecordsDatabaseId)
+        if (schemaResult.success) {
+          schema = schemaResult.properties
+          console.log('📋 检测到数据库字段:', Object.keys(schema))
+        }
+      } catch (err) {
+        console.warn('⚠️ 获取Schema失败，使用新字段名:', err)
+      }
+
+      // 🎯 智能选择字段名（兼容新旧数据库）
+      const titleField = schema && 'Name' in schema ? 'Name' : 'Title'
+      const contentField = schema && 'Summary' in schema ? 'Summary' : 'Content'
+      const dateField = schema && 'Record Date' in schema ? 'Record Date' : 'Date'
+      const typeField = schema && 'Type' in schema ? 'Type' : 'Record Type'
+
+      console.log('🔧 使用字段名:', { titleField, contentField, dateField, typeField })
+
+      const properties = {
+        [titleField]: { title: [{ text: { content: recordId } }] },
+        [contentField]: { rich_text: [{ text: { content: content } }] },
+        [dateField]: { date: { start: baseDate.toISOString().split('T')[0] } },
+        [typeField]: { select: { name: '日常记录' } },
+        'Start Time': {
+          rich_text: [{ text: { content: startTimeStr } }]
+        },
+        'End Time': {
+          rich_text: [{ text: { content: endTimeStr } }]
+        },
+        'User ID': { rich_text: [{ text: { content: currentUser.email } }] }
+      }
 
       const mainRecordResult = await notionApiService.createPageGeneric(
         {
           parent: { database_id: mainRecordsDatabaseId },
-          properties: {
-            'Title': { title: [{ text: { content: recordId } }] },  // ✅ 修正：Name → Title
-            'Content': { rich_text: [{ text: { content: content } }] },  // ✅ 修正：Summary → Content
-            'Date': { date: { start: baseDate.toISOString().split('T')[0] } },  // ✅ 修正：Record Date → Date
-            'Record Type': { select: { name: '日常记录' } },  // ✅ 修正：Type → Record Type
-            'Start Time': {
-              rich_text: [{ text: { content: startTimeStr } }]
-            },
-            'End Time': {
-              rich_text: [{ text: { content: endTimeStr } }]
-            },
-            'User ID': { rich_text: [{ text: { content: currentUser.email } }] }
-          }
+          properties: properties
         },
         apiKey
       )
@@ -763,13 +779,14 @@ Page({
 
         const valueRating = valueRatingMap[activity.activityType] || '高价值'
 
+        // 完全按照notionApiService.js第2348-2360行查询代码中的字段名
         const properties = {
-          'Name': { title: [{ text: { content: activity.activity } }] },  // ✅ 修正：Activity Name → Name
+          'Name': { title: [{ text: { content: activity.activity } }] },
           'Description': { rich_text: [{ text: { content: `${valueRating}活动，投入${activity.minutes}分钟` } }] },
-          'Duration': { number: activity.minutes },  // ✅ 修正：Minutes → Duration
-          'Value Rating': { select: { name: valueRating } },  // ✅ 修正：Value Type → Value Rating，使用正确的选项值
+          'Duration': { number: activity.minutes },
+          'Activity Type': { select: { name: valueRating } },  // 使用valueRating作为活动类型
           'User ID': { rich_text: [{ text: { content: currentUser.email } }] },
-          'Related Main Record': { relation: [{ id: mainRecordId }] }  // ✅ 修正：Record → Related Main Record
+          'Record': { relation: [{ id: mainRecordId }] }
         }
 
         // 添加标签（持久化到Notion）
@@ -789,10 +806,8 @@ Page({
           properties['Related Todo'] = { relation: [{ id: activity.todoId }] }
         }
 
-        console.log(`🔗 创建活动明细 "${activity.activity}"，关联配置:`, {
-          'Related Main Record': properties['Related Main Record'],
-          mainRecordId: mainRecordId
-        })
+        console.log(`🔗 创建活动明细 "${activity.activity}"`)
+        console.log('📤 完整properties对象:', JSON.stringify(properties, null, 2))
 
         const activityResult = await notionApiService.createPageGeneric(
           {
@@ -804,6 +819,18 @@ Page({
 
         if (!activityResult.success) {
           console.error(`❌ 创建活动明细失败: ${activity.activity}`, activityResult.error)
+
+          // 🔍 诊断：获取数据库实际字段名
+          if (activityResult.error && activityResult.error.includes('is not a property that exists')) {
+            console.log('🔍 检查活动明细表的实际字段...')
+            const schemaResult = await notionApiService.getDatabaseSchema(apiKey, activityDetailsDatabaseId)
+            if (schemaResult.success) {
+              console.log('📋 活动明细表实际字段名:')
+              console.log(JSON.stringify(schemaResult.properties, null, 2))
+              console.log('\n❌ 字段名不匹配！请检查数据库配置。')
+              console.log('💡 建议：使用注册流程重新自动创建数据库，或手动修改数据库字段名与代码一致。')
+            }
+          }
         } else {
           console.log(`✅ 活动明细创建成功: ${activity.activity}`)
           console.log(`   活动ID: ${activityResult.pageId}`)
@@ -886,49 +913,26 @@ Page({
 
   // === 时间选择相关方法 ===
 
-  // 生成时间选项(5:00-23:00 半小时切分 + 睡眠)
-  generateTimeOptions: function() {
-    const options = []
+  // 格式化时间显示
+  formatTimeDisplay: function(hour, minute) {
+    const hourStr = hour.toString().padStart(2, '0')
+    const minuteStr = minute === 0 ? '00' : '30'
+    const timeStr = `${hourStr}:${minuteStr}`
 
-    // 早上5点到晚上11点 (半小时粒度)
-    for (let hour = 5; hour <= 23; hour++) {
-      // 整点时间
-      const timeStr1 = `${hour.toString().padStart(2, '0')}:00`
-      const label1 = hour < 6 ? `清晨 ${timeStr1}` :
-                    hour < 12 ? `上午 ${timeStr1}` :
-                    hour === 12 ? `中午 ${timeStr1}` :
-                    hour < 18 ? `下午 ${timeStr1}` :
-                    `晚上 ${timeStr1}`
+    if (hour < 6) return `清晨 ${timeStr}`
+    if (hour < 12) return `上午 ${timeStr}`
+    if (hour === 12) return `中午 ${timeStr}`
+    if (hour < 18) return `下午 ${timeStr}`
+    return `晚上 ${timeStr}`
+  },
 
-      options.push({
-        value: hour + 0.0, // 用小数表示半小时，如 5.0, 5.5, 6.0, 6.5
-        time: timeStr1,
-        label: label1
-      })
-
-      // 半小时时间
-      const timeStr2 = `${hour.toString().padStart(2, '0')}:30`
-      const label2 = hour < 6 ? `清晨 ${timeStr2}` :
-                    hour < 12 ? `上午 ${timeStr2}` :
-                    hour === 12 ? `中午 ${timeStr2}` :
-                    hour < 18 ? `下午 ${timeStr2}` :
-                    `晚上 ${timeStr2}`
-
-      options.push({
-        value: hour + 0.5,
-        time: timeStr2,
-        label: label2
-      })
-    }
-
-    // 添加"睡眠"选项作为兜底
-    options.push({
-      value: 99, // 特殊值表示睡眠
-      time: '睡眠',
-      label: '😴 睡眠'
-    })
-
-    return options
+  // 验证小时范围 (5-23)
+  validateHour: function(hour) {
+    const h = parseInt(hour)
+    if (isNaN(h)) return 5
+    if (h < 5) return 5
+    if (h > 23) return 23
+    return h
   },
 
   // 格式化日期 YYYY-MM-DD
@@ -983,52 +987,136 @@ Page({
       selectedDateType: dateType,
       customDate: dateStr,
       customDateDisplay: displayText,
-      selectedTimeDisplay: this.getSelectedTimeDisplay(dateType, this.data.startTimeIndex, this.data.endTimeIndex)
+      selectedTimeDisplay: this.getSelectedTimeDisplay(dateType)
     })
   },
 
-  // 开始时间选择
-  onStartTimeChange: function(e) {
-    const startIndex = parseInt(e.detail.value)
-    let endIndex = this.data.endTimeIndex
-
-    // 确保结束时间不早于开始时间
-    if (endIndex <= startIndex) {
-      endIndex = Math.min(startIndex + 1, this.data.timeOptions.length - 1)
-    }
-
+  // 开始小时输入
+  onStartHourInput: function(e) {
     this.setData({
-      startTimeIndex: startIndex,
-      endTimeIndex: endIndex,
-      startTimeDisplay: this.data.timeOptions[startIndex].label,
-      endTimeDisplay: this.data.timeOptions[endIndex].label,
-      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType, startIndex, endIndex)
+      startHour: e.detail.value
     })
   },
 
-  // 结束时间选择
-  onEndTimeChange: function(e) {
-    const endIndex = parseInt(e.detail.value)
-    let startIndex = this.data.startTimeIndex
+  // 开始小时失焦（验证）
+  onStartHourBlur: function(e) {
+    let hour = this.validateHour(e.detail.value)
+    const minute = this.data.startMinuteIndex === 0 ? 0 : 30
 
-    // 确保开始时间不晚于结束时间
-    if (startIndex >= endIndex) {
-      startIndex = Math.max(0, endIndex - 1)
+    // 自动调整结束时间
+    const startMinutes = hour * 60 + minute
+    const endHour = this.data.endHour
+    const endMinute = this.data.endMinuteIndex === 0 ? 0 : 30
+    const endMinutes = endHour * 60 + endMinute
+
+    let newEndHour = endHour
+    let newEndMinuteIndex = this.data.endMinuteIndex
+
+    if (endMinutes <= startMinutes) {
+      // 结束时间设为开始时间+30分钟
+      let newEndMinutes = startMinutes + 30
+      newEndHour = Math.floor(newEndMinutes / 60)
+      const newEndMinute = newEndMinutes % 60
+
+      if (newEndHour > 23 || (newEndHour === 23 && newEndMinute > 30)) {
+        newEndHour = 23
+        newEndMinuteIndex = 1 // 30分钟
+      } else {
+        newEndMinuteIndex = newEndMinute === 0 ? 0 : 1
+      }
     }
 
+    const startDisplay = this.formatTimeDisplay(hour, minute)
+    const endDisplay = this.formatTimeDisplay(newEndHour, newEndMinuteIndex === 0 ? 0 : 30)
+
     this.setData({
-      startTimeIndex: startIndex,
-      endTimeIndex: endIndex,
-      startTimeDisplay: this.data.timeOptions[startIndex].label,
-      endTimeDisplay: this.data.timeOptions[endIndex].label,
-      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType, startIndex, endIndex)
+      startHour: hour,
+      endHour: newEndHour,
+      endMinuteIndex: newEndMinuteIndex,
+      startTimeDisplay: startDisplay,
+      endTimeDisplay: endDisplay,
+      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType)
+    })
+  },
+
+  // 开始分钟选择
+  onStartMinuteChange: function(e) {
+    const minuteIndex = parseInt(e.detail.value)
+    const hour = this.data.startHour
+    const minute = minuteIndex === 0 ? 0 : 30
+    const startDisplay = this.formatTimeDisplay(hour, minute)
+
+    this.setData({
+      startMinuteIndex: minuteIndex,
+      startTimeDisplay: startDisplay,
+      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType)
+    })
+  },
+
+  // 结束小时输入
+  onEndHourInput: function(e) {
+    this.setData({
+      endHour: e.detail.value
+    })
+  },
+
+  // 结束小时失焦（验证）
+  onEndHourBlur: function(e) {
+    let hour = this.validateHour(e.detail.value)
+    const minute = this.data.endMinuteIndex === 0 ? 0 : 30
+
+    // 自动调整开始时间
+    const endMinutes = hour * 60 + minute
+    const startHour = this.data.startHour
+    const startMinute = this.data.startMinuteIndex === 0 ? 0 : 30
+    const startMinutes = startHour * 60 + startMinute
+
+    let newStartHour = startHour
+    let newStartMinuteIndex = this.data.startMinuteIndex
+
+    if (startMinutes >= endMinutes) {
+      // 开始时间设为结束时间-30分钟
+      let newStartMinutes = endMinutes - 30
+      newStartHour = Math.floor(newStartMinutes / 60)
+      const newStartMinute = newStartMinutes % 60
+
+      if (newStartHour < 5) {
+        newStartHour = 5
+        newStartMinuteIndex = 0
+      } else {
+        newStartMinuteIndex = newStartMinute === 0 ? 0 : 1
+      }
+    }
+
+    const endDisplay = this.formatTimeDisplay(hour, minute)
+    const startDisplay = this.formatTimeDisplay(newStartHour, newStartMinuteIndex === 0 ? 0 : 30)
+
+    this.setData({
+      endHour: hour,
+      startHour: newStartHour,
+      startMinuteIndex: newStartMinuteIndex,
+      startTimeDisplay: startDisplay,
+      endTimeDisplay: endDisplay,
+      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType)
+    })
+  },
+
+  // 结束分钟选择
+  onEndMinuteChange: function(e) {
+    const minuteIndex = parseInt(e.detail.value)
+    const hour = this.data.endHour
+    const minute = minuteIndex === 0 ? 0 : 30
+    const endDisplay = this.formatTimeDisplay(hour, minute)
+
+    this.setData({
+      endMinuteIndex: minuteIndex,
+      endTimeDisplay: endDisplay,
+      selectedTimeDisplay: this.getSelectedTimeDisplay(this.data.selectedDateType)
     })
   },
 
   // 获取选中时间的完整显示文本
-  getSelectedTimeDisplay: function(dateType, startIndex, endIndex) {
-    if (!this.data.timeOptions || this.data.timeOptions.length === 0) return '时间待定'
-
+  getSelectedTimeDisplay: function(dateType) {
     let dateText = ''
     switch (dateType) {
       case 'today':
@@ -1042,21 +1130,15 @@ Page({
         break
     }
 
-    // 安全检查索引范围
-    const validStartIndex = Math.min(Math.max(0, startIndex), this.data.timeOptions.length - 1)
-    const validEndIndex = Math.min(Math.max(0, endIndex), this.data.timeOptions.length - 1)
+    const startHour = this.data.startHour
+    const startMinute = this.data.startMinuteIndex === 0 ? 0 : 30
+    const endHour = this.data.endHour
+    const endMinute = this.data.endMinuteIndex === 0 ? 0 : 30
 
-    const startTime = this.data.timeOptions[validStartIndex]
-    const endTime = this.data.timeOptions[validEndIndex]
+    const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
+    const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
 
-    if (!startTime || !endTime) return `${dateText} 时间待定`
-
-    // 特殊处理：如果选择了睡眠
-    if (startTime.value === 99 || endTime.value === 99) {
-      return `${dateText} 😴 睡眠`
-    }
-
-    return `${dateText} ${startTime.time}-${endTime.time}`
+    return `${dateText} ${startTimeStr}-${endTimeStr}`
   },
 
   // 自定义日期选择
@@ -1067,7 +1149,7 @@ Page({
     this.setData({
       customDate: selectedDate,
       customDateDisplay: displayText,
-      selectedTimeDisplay: this.getSelectedTimeDisplay('custom', this.data.startTimeIndex, this.data.endTimeIndex)
+      selectedTimeDisplay: this.getSelectedTimeDisplay('custom')
     })
   }
 })

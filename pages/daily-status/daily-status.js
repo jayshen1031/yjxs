@@ -545,7 +545,7 @@ Page({
       wx.hideLoading()
 
       if (result.success && result.user && result.user.notionConfig) {
-        console.log('✅ 从云端获取到配置:', result.user.notionConfig)
+//         console.log('✅ 从云端获取到配置:', result.user.notionConfig)
 
         // 更新本地userManager
         userManager.updateUser(currentUser.id, {
@@ -606,6 +606,16 @@ Page({
       return
     }
 
+    // 验证：心情必须至少选择一个
+    if (!this.data.statusData.mood || this.data.statusData.mood.length === 0) {
+      wx.showToast({
+        title: '请至少选择一个心情',
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+
     // 详细的配置检查和诊断
     console.log('=== 每日状态配置诊断 ===')
     console.log('currentUser:', currentUser)
@@ -642,7 +652,7 @@ dailyStatus: ${currentUser.notionConfig?.databases?.dailyStatus || '未配置'}`
       return
     }
 
-    console.log('✅ 配置检查通过，开始保存...')
+//     console.log('✅ 配置检查通过，开始保存...')
 
     wx.showLoading({ title: this.data.existingPageId ? '更新中...' : '保存中...' })
 
@@ -725,7 +735,9 @@ dailyStatus: ${currentUser.notionConfig?.databases?.dailyStatus || '未配置'}`
         date: data.fullDate ? { start: data.fullDate } : null
       },
       'Mood': {
-        select: data.mood && data.mood.length > 0 ? { name: data.mood[0] } : null  // ✅ 修正：multi_select → select（单选）
+        multi_select: data.mood && data.mood.length > 0
+          ? data.mood.map(m => ({ name: m }))
+          : []
       },
       'Energy Level': {
         select: data.energyLevel ? { name: data.energyLevel } : null

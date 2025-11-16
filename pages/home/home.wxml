@@ -21,44 +21,127 @@ module.exports = {
 </wxs>
 
 <view class="container">
-  <!-- 每日箴言力量库 -->
+  <!-- ⭐ 每日箴言力量库 - 分别显示系统箴言和我的箴言 -->
   <view class="quote-section fade-in">
-    <view class="quote-header">
-      <view class="quote-title">
-        <text class="icon">💫</text>
-        <text>今日箴言</text>
-      </view>
-      <view class="quote-actions">
-        <view class="action-btn" bindtap="refreshQuote">
-          <text class="icon">🎲</text>
+    <!-- 系统箴言 -->
+    <view class="quote-card-wrapper">
+      <view class="quote-header">
+        <view class="quote-title">
+          <text class="icon">⭐</text>
+          <text>系统箴言</text>
         </view>
-        <view class="action-btn" bindtap="toggleQuoteFavorite">
-          <text class="icon heart {{currentQuoteData.isFavorite ? 'favorite' : ''}}">❤️</text>
-        </view>
-        <view class="action-btn" bindtap="changeQuoteTheme">
-          <text class="icon">🎨</text>
-        </view>
-        <view class="action-btn" bindtap="goToQuoteManager">
-          <text class="icon">⚙️</text>
+        <view class="quote-actions">
+          <view class="action-btn" bindtap="refreshSystemQuote">
+            <text class="icon">🎲</text>
+          </view>
+          <view class="action-btn" bindtap="goToQuoteManager">
+            <text class="icon">⚙️</text>
+          </view>
         </view>
       </view>
-    </view>
-    
-    <view class="quote-card {{quoteTheme ? 'theme-' + quoteTheme : 'theme-purple'}}">
-      <view class="quote-content">{{ currentQuoteData.content || currentQuote }}</view>
-      <view class="quote-meta" wx:if="{{ currentQuoteData.category }}">
-        <view class="category-tag category-{{ utils.getCategoryClass(currentQuoteData.category) }}">{{ currentQuoteData.category }}</view>
-        <view class="usage-count">已激励 {{ currentQuoteData.usageCount || 0 }} 次</view>
-        <view class="source-info">{{ currentQuoteData.source }}</view>
+
+      <view class="quote-card theme-purple" wx:if="{{systemQuote}}">
+        <view class="quote-content">{{ systemQuote.content }}</view>
+        <view class="quote-meta">
+          <view class="category-tag category-{{ utils.getCategoryClass(systemQuote.category) }}">{{ systemQuote.category }}</view>
+          <view class="source-info">{{ systemQuote.source || '系统默认' }}</view>
+        </view>
+      </view>
+
+      <view class="quote-card theme-purple" wx:else>
+        <view class="quote-content empty-quote">暂无系统箴言</view>
       </view>
     </view>
 
+    <!-- 我的箴言 -->
+    <view class="quote-card-wrapper">
+      <view class="quote-header">
+        <view class="quote-title">
+          <text class="icon">✏️</text>
+          <text>我的箴言</text>
+        </view>
+        <view class="quote-actions">
+          <view class="action-btn" bindtap="refreshMyQuote">
+            <text class="icon">🎲</text>
+          </view>
+          <view class="action-btn" bindtap="goToQuoteManager">
+            <text class="icon">➕</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="quote-card theme-orange" wx:if="{{myQuote}}">
+        <view class="quote-content">{{ myQuote.content }}</view>
+        <view class="quote-meta">
+          <view class="category-tag category-{{ utils.getCategoryClass(myQuote.category) }}">{{ myQuote.category }}</view>
+          <view class="source-info">{{ myQuote.source || '我的创作' }}</view>
+        </view>
+      </view>
+
+      <view class="quote-card theme-orange" wx:else>
+        <view class="quote-content empty-quote">点击➕添加你的第一条箴言</view>
+      </view>
+    </view>
   </view>
 
-  <!-- 今日价值统计 -->
-  <view class="stat-card-single">
-    <view class="stat-number">{{ todayValueMinutes }}</view>
-    <view class="stat-label">今日有价值投入</view>
+  <!-- ⭐ 今日有价值投入 - 改为列表展示 -->
+  <view class="card value-activities-card">
+    <view class="card-content">
+      <view class="title-row">
+        <view class="title">
+          <text class="title-icon">🌟</text>
+          <text>今日有价值投入</text>
+        </view>
+        <view class="value-total">
+          <text class="total-minutes">{{ todayValueMinutes }}</text>
+          <text class="total-unit">分钟</text>
+        </view>
+      </view>
+
+      <!-- 活动列表 -->
+      <view class="value-activities-list" wx:if="{{todayValueActivities.length > 0}}">
+        <view
+          class="value-activity-item"
+          wx:for="{{ todayValueActivities }}"
+          wx:key="id"
+        >
+          <view class="activity-time">{{ item.startTime || '未记录' }}</view>
+          <view class="activity-content">
+            <view class="activity-name">{{ item.name }}</view>
+            <view class="activity-meta">
+              <view class="activity-duration">{{ item.duration }}分钟</view>
+              <view class="activity-type" wx:if="{{ item.activityType }}">{{ item.activityType }}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:else>
+        <view class="empty-icon">📝</view>
+        <view class="empty-text">今天还没有记录有价值的活动</view>
+        <view class="empty-hint">去"记录时间投入"页面添加吧～</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- HUMAN 3.0 评估入口 -->
+  <view class="card human30-card" bindtap="goToAssessment">
+    <view class="human30-header">
+      <view class="human30-icon">🧭</view>
+      <view class="human30-title">HUMAN 3.0 发展评估</view>
+    </view>
+    <view class="human30-desc">
+      了解你在心智、身体、精神、事业四个维度的发展水平
+    </view>
+    <view class="human30-actions">
+      <view class="human30-btn human30-btn-primary">开始评估</view>
+      <view class="human30-btn human30-btn-secondary" catchtap="viewAssessmentHistory">查看历史</view>
+    </view>
+    <view class="human30-status" wx:if="{{lastAssessment}}">
+      <text class="status-text">上次评估：{{lastAssessment.timeAgo}}</text>
+      <text class="status-type">{{lastAssessment.metatype}}</text>
+    </view>
   </view>
 
   <!-- 今日开心推荐 -->

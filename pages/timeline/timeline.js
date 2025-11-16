@@ -90,13 +90,13 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
-      console.log('🔍 Timeline - 用户Notion配置:', {
-        hasConfig: !!notionConfig,
-        hasApiKey: !!notionConfig?.apiKey,
-        mainRecordsDatabaseId: notionConfig?.mainRecordsDatabaseId,
-        mainDatabaseId: notionConfig?.mainDatabaseId,
-        email: currentUser.email
-      })
+      // console.log('🔍 Timeline - 用户Notion配置:', {
+      //   hasConfig: !!notionConfig,
+      //   hasApiKey: !!notionConfig?.apiKey,
+      //   mainRecordsDatabaseId: notionConfig?.mainRecordsDatabaseId,
+      //   mainDatabaseId: notionConfig?.mainDatabaseId,
+      //   email: currentUser.email
+      // })
 
       if (!notionConfig || !notionConfig.apiKey || !notionConfig.mainRecordsDatabaseId) {
         console.log('Notion未配置，使用本地数据')
@@ -127,10 +127,10 @@ Page({
 
       const mainRecords = result.records || []
 
-      console.log('📊 从Notion获取的主记录数据:', mainRecords)
-      console.log('📊 主记录数量:', mainRecords.length)
+//       console.log('📊 从Notion获取的主记录数据:', mainRecords)
+//       console.log('📊 主记录数量:', mainRecords.length)
       if (mainRecords.length > 0) {
-        console.log('📊 第一条主记录详情:', mainRecords[0])
+//         console.log('📊 第一条主记录详情:', mainRecords[0])
       }
 
       // 转换Main Records为memo格式
@@ -141,7 +141,7 @@ Page({
           content: record.content,
           timestamp: new Date(record.date).getTime(),
           type: 'text', // Main Records都是文本类型
-          recordMode: record.recordType === '明日规划' ? 'planning' : 'normal',
+          recordMode: record.recordType === '次日规划' ? 'planning' : 'normal',
           tags: record.tags || [],
           notionPageId: record.id,
           timeDisplay: this.formatTimeDisplay(new Date(record.date)),
@@ -218,7 +218,7 @@ Page({
   getCategoryColorByType: function(recordType) {
     const colorMap = {
       '日常记录': '#3b82f6',
-      '明日规划': '#f59e0b'
+      '次日规划': '#f59e0b'
     }
     return colorMap[recordType] || '#3b82f6'
   },

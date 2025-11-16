@@ -381,9 +381,9 @@ Page({
       console.log('连接测试成功，继续保存配置...')
 
       // 🔧 确保notionConfig包含完整的databases对象
-      console.log('📝 保存前的notionConfig:', notionConfig)
-      console.log('📝 保存前的databases:', notionConfig.databases)
-      console.log('📝 保存前的databases.knowledge:', notionConfig.databases?.knowledge)
+//       console.log('📝 保存前的notionConfig:', notionConfig)
+//       console.log('📝 保存前的databases:', notionConfig.databases)
+//       console.log('📝 保存前的databases.knowledge:', notionConfig.databases?.knowledge)
 
       const completeNotionConfig = {
         ...notionConfig,
@@ -399,9 +399,9 @@ Page({
         }
       }
 
-      console.log('🔍 完整的notionConfig:', completeNotionConfig)
-      console.log('🔍 完整的databases:', completeNotionConfig.databases)
-      console.log('🔍 完整的databases.knowledge:', completeNotionConfig.databases.knowledge)
+//       console.log('🔍 完整的notionConfig:', completeNotionConfig)
+//       console.log('🔍 完整的databases:', completeNotionConfig.databases)
+//       console.log('🔍 完整的databases.knowledge:', completeNotionConfig.databases.knowledge)
 
       // 保存配置 - 同时保存到本地和云数据库
       const localSuccess = userManager.configureNotion(userId, completeNotionConfig)

@@ -1,0 +1,244 @@
+/* pages/assessment-intro/assessment-intro.wxss */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+  padding: 40rpx 30rpx 80rpx;
+}
+
+/* 顶部标题 */
+.header {
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.icon {
+  font-size: 100rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  font-size: 48rpx;
+  font-weight: bold;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10rpx;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+/* 分隔线 */
+.divider {
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent 0%, #cbd5e1 50%, transparent 100%);
+  margin: 40rpx 0;
+}
+
+/* 角色选择 */
+.role-section {
+  margin-bottom: 40rpx;
+}
+
+.role-options {
+  display: flex;
+  gap: 20rpx;
+}
+
+.role-card {
+  flex: 1;
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx 20rpx;
+  text-align: center;
+  border: 3rpx solid #e5e7eb;
+  transition: all 0.3s;
+}
+
+.role-card.active {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.2);
+  transform: translateY(-4rpx);
+}
+
+.role-icon {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
+
+.role-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+
+.role-card.active .role-name {
+  color: #6366f1;
+}
+
+.role-desc {
+  font-size: 22rpx;
+  color: #64748b;
+}
+
+/* 四象限说明 */
+.quadrants-section {
+  margin-bottom: 40rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 24rpx;
+}
+
+.quadrant-item {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.quadrant-icon {
+  font-size: 48rpx;
+  margin-right: 20rpx;
+}
+
+.quadrant-info {
+  flex: 1;
+}
+
+.quadrant-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+
+.quadrant-desc {
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+/* 评估信息 */
+.info-section {
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 40rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.info-item:not(:last-child) {
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.info-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+}
+
+.info-text {
+  font-size: 28rpx;
+  color: #4b5563;
+}
+
+/* 评估建议 */
+.tips-section {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 40rpx;
+  border-left: 4rpx solid #f59e0b;
+}
+
+.tip-item {
+  font-size: 26rpx;
+  color: #92400e;
+  line-height: 1.8;
+  margin: 8rpx 0;
+}
+
+/* 历史评估提示 */
+.history-hint {
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 40rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-text {
+  font-size: 28rpx;
+  color: #4b5563;
+}
+
+.history-link {
+  font-size: 26rpx;
+  color: #6366f1;
+  text-decoration: underline;
+}
+
+/* 底部按钮 */
+.button-group {
+  margin-bottom: 40rpx;
+}
+
+.btn {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-bottom: 20rpx;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+.btn-secondary {
+  background: white;
+  color: #6366f1;
+  border: 2rpx solid #6366f1;
+}
+
+.btn-secondary::after {
+  border: none;
+}
+
+/* 版权信息 */
+.footer {
+  text-align: center;
+  padding-top: 20rpx;
+}
+
+.footer-text {
+  font-size: 22rpx;
+  color: #94a3b8;
+}

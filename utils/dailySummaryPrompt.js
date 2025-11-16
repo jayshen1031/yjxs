@@ -40,7 +40,7 @@ function generateDailySummaryPrompt(todayData) {
   // 构建主记录内容
   let recordsText = '\n## 今日记录内容\n\n'
   mainRecords.forEach((record, index) => {
-    const typeLabel = record.recordType === '明日规划' ? '【明日规划】' : '【日常记录】'
+    const typeLabel = record.recordType === '次日规划' ? '【次日规划】' : '【日常记录】'
     recordsText += `${index + 1}. ${typeLabel} ${record.content}\n\n`
   })
 
@@ -74,7 +74,7 @@ ${recordsText}
 [如果有关联目标，总结目标的推进情况]
 
 ## 🔮 明日展望
-[如果有明日规划记录，提炼关键待办事项；如果没有，建议明天重点关注的方向]
+[如果有次日规划记录，提炼关键待办事项；如果没有，建议明天重点关注的方向]
 
 ---
 

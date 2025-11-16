@@ -1,0 +1,183 @@
+{
+  "skill_name": "Notion数据库自动创建最佳实践",
+  "version": "1.0.0",
+  "created_date": "2025-11-02",
+  "category": "Notion API",
+  "description": "使用Notion API创建数据库时的重要注意事项和最佳实践",
+
+  "critical_knowledge": {
+    "dual_property_timing": {
+      "title": "⏱️ dual_property关系创建需要等待",
+      "severity": "HIGH",
+      "problem": "使用dual_property创建双向关系时，Notion需要时间在后台创建反向关系字段",
+      "symptom": "立即基于反向关系创建rollup字段会失败，错误：'Cannot create rollup with relation property XXX'",
+      "solution": "在创建关系后等待5秒，再尝试创建依赖该关系的rollup字段",
+      "code_example": {
+        "wrong": "await createActivityDetails()\nawait addRollup('Related Activities') // ❌ 立即失败",
+        "correct": "await createActivityDetails()\nawait sleep(5000) // ⏱️ 等待Notion创建反向关系\nawait addRollup('Related Activities') // ✅ 成功"
+      }
+    },
+
+    "retry_mechanism": {
+      "title": "🔄 Rollup字段创建需要重试机制",
+      "severity": "MEDIUM",
+      "problem": "即使等待5秒，网络延迟或Notion API响应慢时仍可能失败",
+      "solution": "添加重试逻辑：失败后再等待5秒重试一次",
+      "best_practice": [
+        "第一次失败：记录警告，等待5秒后重试",
+        "第二次失败：记录错误，但继续流程（rollup是可选字段）",
+        "提供清晰的日志，告知用户可以手动添加"
+      ],
+      "code_pattern": "for (let i = 0; i < 2; i++) {\n  try {\n    await createRollup()\n    break\n  } catch (error) {\n    if (i === 0) {\n      console.warn('失败，5秒后重试')\n      await sleep(5000)\n    } else {\n      console.warn('创建失败，可手动添加')\n    }\n  }\n}"
+    },
+
+    "rollup_optional": {
+      "title": "📊 Rollup字段是可选的",
+      "severity": "LOW",
+      "insight": "Rollup字段是统计字段，不是核心功能",
+      "design_principle": "即使rollup创建失败，数据库仍然可用，不应阻塞整个流程",
+      "user_experience": "提供清晰的警告信息，告知用户可以在Notion界面手动添加"
+    }
+  },
+
+  "implementation_checklist": [
+    {
+      "step": 1,
+      "task": "添加sleep工具函数",
+      "code": "sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }"
+    },
+    {
+      "step": 2,
+      "task": "创建关系字段（dual_property）",
+      "note": "这一步会触发Notion后台创建反向关系"
+    },
+    {
+      "step": 3,
+      "task": "等待5秒",
+      "code": "await this.sleep(5000)",
+      "reason": "让Notion完成反向关系创建"
+    },
+    {
+      "step": 4,
+      "task": "创建rollup字段（带重试）",
+      "pattern": "for循环，最多尝试2次，失败后等待5秒"
+    },
+    {
+      "step": 5,
+      "task": "记录详细日志",
+      "requirements": [
+        "成功：✅ 已添加 XXX rollup字段",
+        "第一次失败：⚠️ XXX rollup字段创建失败，5秒后重试...",
+        "第二次失败：⚠️ XXX rollup字段创建失败（可选字段，可在Notion界面手动添加）"
+      ]
+    }
+  ],
+
+  "timing_recommendations": {
+    "initial_wait": {
+      "duration": "5秒",
+      "location": "创建关系字段后，添加rollup字段前",
+      "reason": "给Notion时间创建反向关系"
+    },
+    "retry_wait": {
+      "duration": "5秒",
+      "location": "第一次rollup创建失败后",
+      "reason": "网络延迟或Notion API响应慢"
+    },
+    "total_overhead": {
+      "best_case": "5秒（所有rollup第一次成功）",
+      "worst_case": "20秒（3个rollup各重试1次）",
+      "acceptable": "用户体验优于创建失败后手动添加"
+    }
+  },
+
+  "error_handling_strategy": {
+    "principle": "优雅降级",
+    "levels": [
+      {
+        "level": "关键字段（数据库本身）",
+        "strategy": "失败即中断，抛出错误"
+      },
+      {
+        "level": "重要字段（relation关系）",
+        "strategy": "失败可重试，但不应继续"
+      },
+      {
+        "level": "可选字段（rollup统计）",
+        "strategy": "失败后警告，继续流程"
+      }
+    ]
+  },
+
+  "real_world_example": {
+    "project": "语寄心声微信小程序",
+    "file": "utils/notionQuadDatabaseCreator.js",
+    "scenario": "创建8数据库架构",
+    "affected_rollups": [
+      "Total Time (主记录表)",
+      "Activity Count (主记录表)",
+      "Actual Time (待办库)"
+    ],
+    "solution_location": {
+      "sleep_function": "第23-28行",
+      "wait_after_activity_db": "第90-93行",
+      "rollup_retry_logic": "第573-636行, 667-698行"
+    }
+  },
+
+  "lessons_learned": [
+    "Notion API的异步特性需要显式等待",
+    "不要假设API调用立即生效",
+    "关键字段和可选字段要区别对待",
+    "重试机制要有上限，避免无限循环",
+    "详细的日志对排查问题至关重要",
+    "用户体验优先：5-20秒等待 > 创建失败手动修复"
+  ],
+
+  "anti_patterns": [
+    {
+      "pattern": "立即创建rollup",
+      "why_wrong": "反向关系还没创建好",
+      "result": "400错误，rollup创建失败"
+    },
+    {
+      "pattern": "无限重试",
+      "why_wrong": "可能卡住流程",
+      "result": "用户等待过久，体验差"
+    },
+    {
+      "pattern": "rollup失败就中断",
+      "why_wrong": "rollup不是核心功能",
+      "result": "阻塞了整个数据库创建"
+    },
+    {
+      "pattern": "没有详细日志",
+      "why_wrong": "用户不知道发生了什么",
+      "result": "调试困难，用户困惑"
+    }
+  ],
+
+  "testing_tips": {
+    "test_scenarios": [
+      "正常情况：所有rollup第一次成功",
+      "网络慢：需要重试的情况",
+      "API故障：两次都失败的情况"
+    ],
+    "verification": [
+      "检查数据库是否创建成功",
+      "检查rollup字段是否存在",
+      "检查日志输出是否清晰",
+      "检查失败后系统是否仍可用"
+    ]
+  },
+
+  "references": {
+    "notion_api_docs": "https://developers.notion.com/reference/property-object#relation",
+    "project_memory": "CLAUDE.md (第1569-1684行)",
+    "iteration_log": "迭代记录/2025-11-02_八数据库自动创建优化.md",
+    "related_skills": [
+      "wechat-console-critical-rules.skill.json",
+      "notion-database.skill.json"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "openapi": [
+      "wxacode.get",
+      "subscribeMessage.send"
+    ]
+  },
+  "timeout": 180,
+  "envVariables": {},
+  "installDependency": true
+}

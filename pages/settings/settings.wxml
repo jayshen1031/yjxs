@@ -119,6 +119,14 @@
         >
           <text>{{ creating ? '创建中...' : '🚀 自动创建数据库' }}</text>
         </button>
+        <button
+          class="btn btn-secondary btn-diagnose"
+          bindtap="diagnoseDatabases"
+          loading="{{ diagnosing }}"
+          disabled="{{ diagnosing || !notionConfig.apiKey }}"
+        >
+          <text>{{ diagnosing ? '诊断中...' : '🔍 诊断数据库字段' }}</text>
+        </button>
       </view>
 
       <!-- 手动配置模式 -->
@@ -264,6 +272,60 @@
         <button class="btn btn-warning" bindtap="fixMainRecords"
                 wx:if="{{ notionConfig.enabled }}">
           <text>🔧 修复主记录表</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- HUMAN3.0发展评估 -->
+  <view class="card">
+    <view class="card-content">
+      <view class="section-header">
+        <view class="title">🧠 HUMAN3.0发展评估</view>
+        <view wx:if="{{ latestAssessment }}" class="assessment-badge">
+          <text class="badge-text">已测{{ assessmentHistory.length }}次</text>
+        </view>
+      </view>
+
+      <!-- 最新评估摘要 -->
+      <view wx:if="{{ latestAssessment }}" class="latest-assessment-summary">
+        <view class="summary-header">
+          <text class="summary-title">📊 最近评估</text>
+          <text class="summary-date">{{ latestAssessment.dateStr }}</text>
+        </view>
+        <view class="summary-score">
+          <view class="score-item">
+            <text class="score-label">总分</text>
+            <text class="score-value">{{ latestAssessment.totalScore }}</text>
+          </view>
+          <view class="score-item">
+            <text class="score-label">维度</text>
+            <text class="score-value">{{ latestAssessment.dimensionCount }}个</text>
+          </view>
+          <view class="score-item">
+            <text class="score-label">等级</text>
+            <text class="score-value level-{{ latestAssessment.level }}">{{ latestAssessment.levelText }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 无评估提示 -->
+      <view wx:else class="no-assessment-hint">
+        <text class="hint-icon">🌟</text>
+        <text class="hint-text">还没有进行过评估，开始你的第一次HUMAN3.0发展评估吧！</text>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="assessment-actions">
+        <button class="btn btn-primary" bindtap="startAssessment">
+          <text>{{ latestAssessment ? '🔄 重新评估' : '🚀 开始评估' }}</text>
+        </button>
+        <button
+          wx:if="{{ assessmentHistory.length > 0 }}"
+          class="btn btn-secondary"
+          bindtap="viewAssessmentHistory"
+        >
+          <text>📈 查看历史 ({{ assessmentHistory.length }})</text>
         </button>
       </view>
     </view>

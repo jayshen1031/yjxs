@@ -468,8 +468,10 @@ Page({
 
   // 记住密码选项
   onRememberPasswordChange: function (e) {
+    // checkbox-group返回的是数组，如果选中则包含'remember'
+    const checked = e.detail.value.includes('remember')
     this.setData({
-      rememberPassword: e.detail.value
+      rememberPassword: checked
     })
   },
 
@@ -663,10 +665,21 @@ Page({
           console.error('Notion配置同步失败:', configError)
           // 不抛出错误，继续登录流程
         }
-        
+
+        // 🔐 获取并保存微信openid（用于用户身份隔离）
+        try {
+          const loginRes = await wx.cloud.callFunction({ name: 'login' })
+          const wxOpenId = loginRes.result.openid
+          console.log('✅ 获取微信openid成功:', wxOpenId)
+          userManager.updateUserOpenId(localUser.id, wxOpenId)
+        } catch (openidErr) {
+          console.warn('⚠️ 获取openid失败，继续登录流程:', openidErr)
+          // 不阻塞登录流程
+        }
+
         // 更新云端的最后登录时间
         await apiService.updateUserLogin(cloudUser.id)
-        
+
         // 切换到该用户
         userManager.switchUser(localUser.id)
 

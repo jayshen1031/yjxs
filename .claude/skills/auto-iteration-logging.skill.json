@@ -1,0 +1,296 @@
+{
+  "skill_name": "自动迭代记录",
+  "version": "1.0.0",
+  "created_date": "2025-11-02",
+  "category": "Project Management",
+  "priority": "critical",
+  "description": "每次进入项目时自动检查并记录问题和迭代过程",
+
+  "trigger_conditions": {
+    "always_check": [
+      "用户报告问题、错误、功能异常",
+      "用户说'又失败了'、'不行'、'有问题'等负面反馈",
+      "看到错误堆栈或异常日志",
+      "完成代码修改、功能开发、问题修复"
+    ],
+    "auto_create": true,
+    "ask_user": false
+  },
+
+  "workflow": {
+    "step_1": {
+      "action": "检查用户反馈",
+      "logic": "if (用户报告问题 || 出现错误) { 立即创建问题记录 }"
+    },
+    "step_2": {
+      "action": "检查代码变更",
+      "logic": "if (完成代码修改) { 立即创建迭代记录 }"
+    },
+    "step_3": {
+      "action": "同步到项目记忆",
+      "logic": "更新 CLAUDE.md 和 Claude Skills"
+    }
+  },
+
+  "record_types": {
+    "problem_record": {
+      "template": "迭代记录/模板_问题记录.md",
+      "naming": "YYYY-MM-DD_问题记录_{问题简述}.md",
+      "trigger": [
+        "用户报告错误",
+        "功能失败",
+        "性能问题",
+        "用户体验问题"
+      ],
+      "required_sections": [
+        "问题现象",
+        "根本原因",
+        "影响范围",
+        "解决方案",
+        "执行步骤",
+        "预防措施"
+      ]
+    },
+    "iteration_record": {
+      "template": "迭代记录/模板_迭代记录.md",
+      "naming": "YYYY-MM-DD_迭代记录_{功能简述}.md",
+      "trigger": [
+        "新功能开发",
+        "Bug修复",
+        "性能优化",
+        "代码重构"
+      ],
+      "required_sections": [
+        "迭代背景",
+        "技术方案",
+        "实现过程",
+        "代码变更",
+        "完成的工作",
+        "待完成工作",
+        "技术总结"
+      ]
+    },
+    "complete_record": {
+      "template": null,
+      "naming": "YYYY-MM-DD_完整记录.md",
+      "trigger": [
+        "一天工作结束",
+        "重大里程碑完成",
+        "用户明确要求"
+      ],
+      "content": "整合当天所有问题记录和迭代记录"
+    }
+  },
+
+  "detection_patterns": {
+    "error_keywords": [
+      "❌", "错误", "失败", "Error", "Exception",
+      "400", "404", "500", "不存在", "不可用",
+      "Cannot", "Invalid", "undefined", "null"
+    ],
+    "negative_feedback": [
+      "又失败了", "还是不行", "有问题", "不对",
+      "创建失败", "无法", "不能", "没反应"
+    ],
+    "positive_signals": [
+      "完成", "成功", "✅", "修复", "优化",
+      "实现", "添加", "更新", "改进"
+    ]
+  },
+
+  "auto_actions": {
+    "when_error_detected": {
+      "priority": "immediate",
+      "steps": [
+        "1. 停止当前操作",
+        "2. 收集错误信息（堆栈、日志、用户反馈）",
+        "3. 使用问题记录模板创建文档",
+        "4. 分析根本原因",
+        "5. 提出解决方案",
+        "6. 记录到文档",
+        "7. 通知用户已记录"
+      ],
+      "notification": "✅ 问题已记录到：迭代记录/YYYY-MM-DD_问题记录_{问题简述}.md"
+    },
+    "when_work_completed": {
+      "priority": "high",
+      "steps": [
+        "1. 检查Git diff（如果可用）",
+        "2. 收集修改的文件列表",
+        "3. 使用迭代记录模板创建文档",
+        "4. 记录技术方案和实现过程",
+        "5. 总结经验教训",
+        "6. 记录到文档",
+        "7. 更新 CLAUDE.md"
+      ],
+      "notification": "✅ 迭代已记录到：迭代记录/YYYY-MM-DD_迭代记录_{功能简述}.md"
+    }
+  },
+
+  "required_details": {
+    "problem_record": {
+      "error_info": {
+        "required": true,
+        "includes": [
+          "错误消息原文",
+          "完整堆栈跟踪",
+          "控制台日志",
+          "用户原话"
+        ]
+      },
+      "code_location": {
+        "required": true,
+        "format": "文件路径:行号",
+        "example": "utils/notionQuadDatabaseCreator.js:233"
+      },
+      "impact_analysis": {
+        "required": true,
+        "includes": [
+          "受影响的功能",
+          "受影响的用户",
+          "严重程度评估"
+        ]
+      }
+    },
+    "iteration_record": {
+      "code_changes": {
+        "required": true,
+        "includes": [
+          "新增文件列表",
+          "修改文件列表",
+          "删除文件列表",
+          "关键代码片段"
+        ]
+      },
+      "technical_summary": {
+        "required": true,
+        "includes": [
+          "学到的知识",
+          "解决的难点",
+          "经验教训",
+          "最佳实践"
+        ]
+      }
+    }
+  },
+
+  "sync_to_memory": {
+    "CLAUDE_md": {
+      "when": [
+        "重要问题修复",
+        "重大功能完成",
+        "架构变更",
+        "新增重要配置"
+      ],
+      "location": "CLAUDE.md 的相应章节",
+      "format": "### YYYY-MM-DD: {标题} ⭐\n\n{内容摘要}"
+    },
+    "claude_skills": {
+      "when": [
+        "发现新的技术最佳实践",
+        "总结重要经验教训",
+        "识别反模式",
+        "建立新的工作流程"
+      ],
+      "action": "创建或更新对应的 .skill.json 文件"
+    }
+  },
+
+  "quality_checklist": {
+    "before_creating_record": [
+      "✓ 是否包含完整的错误信息？",
+      "✓ 是否分析了根本原因？",
+      "✓ 是否评估了影响范围？",
+      "✓ 是否提供了解决方案？",
+      "✓ 是否包含代码位置？",
+      "✓ 是否记录了经验教训？"
+    ],
+    "before_sync_to_memory": [
+      "✓ 是否是重要的变更？",
+      "✓ 是否有长期价值？",
+      "✓ 是否影响其他功能？",
+      "✓ 是否需要其他开发者知道？"
+    ]
+  },
+
+  "examples": {
+    "example_1": {
+      "scenario": "用户报告：'创建目标又失败了'",
+      "detection": "检测到'失败'关键词",
+      "action": "立即创建问题记录",
+      "output": "迭代记录/2025-11-02_问题记录_Goals缺少必需字段.md"
+    },
+    "example_2": {
+      "scenario": "完成Rollup字段优化",
+      "detection": "代码修改完成",
+      "action": "创建迭代记录",
+      "output": "迭代记录/2025-11-02_迭代记录_八数据库自动创建优化.md"
+    },
+    "example_3": {
+      "scenario": "一天工作结束",
+      "detection": "用户要求记录或检测到多个变更",
+      "action": "创建完整记录",
+      "output": "迭代记录/2025-11-02_完整记录.md"
+    }
+  },
+
+  "do_not": [
+    "❌ 不要问用户'是否需要记录'",
+    "❌ 不要等到会话结束才记录",
+    "❌ 不要省略错误堆栈",
+    "❌ 不要只记录'修复了XX问题'而不说明原因",
+    "❌ 不要忘记更新 CLAUDE.md",
+    "❌ 不要创建空的或内容不完整的记录"
+  ],
+
+  "always_do": [
+    "✅ 主动检测问题和变更",
+    "✅ 立即记录，即时同步",
+    "✅ 包含完整的技术细节",
+    "✅ 分析根本原因",
+    "✅ 总结经验教训",
+    "✅ 更新项目记忆",
+    "✅ 通知用户已记录"
+  ],
+
+  "integration": {
+    "with_other_skills": {
+      "notion-database.skill.json": "记录Notion相关问题和优化",
+      "wechat-miniprogram.skill.json": "记录小程序开发问题",
+      "project-memory.skill.json": "同步重要变更到项目记忆"
+    }
+  },
+
+  "metrics": {
+    "track": [
+      "问题记录数量",
+      "迭代记录数量",
+      "平均记录质量",
+      "记录完成度",
+      "记录响应时间"
+    ],
+    "quality_indicators": [
+      "是否包含错误堆栈",
+      "是否有根本原因分析",
+      "是否有解决方案",
+      "是否有预防措施",
+      "是否同步到 CLAUDE.md"
+    ]
+  },
+
+  "references": {
+    "templates": [
+      "迭代记录/模板_问题记录.md",
+      "迭代记录/模板_迭代记录.md"
+    ],
+    "documentation": [
+      "CLAUDE.md - 自动记录机制章节",
+      ".claude/README.md"
+    ],
+    "examples": [
+      "迭代记录/2025-11-02_问题记录_Goals缺少必需字段.md",
+      "迭代记录/2025-11-02_迭代记录_八数据库自动创建优化.md",
+      "迭代记录/2025-11-02_完整记录.md"
+    ]
+  }
+}

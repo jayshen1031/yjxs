@@ -50,7 +50,8 @@ Page({
       content: '',
       category: '励志',
       tags: [],
-      source: '用户添加'
+      source: '用户添加',
+      isPinned: false  // ⭐ 新增：是否固定
     },
     tagsInput: '',
     categoryIndex: 0,
@@ -118,7 +119,7 @@ Page({
   // 加载本地箴言（已禁用 - 只使用Notion数据）
   loadLocalQuotes: function() {
     // 不再加载本地存储的箴言，完全依赖Notion数据库
-    console.log('📝 跳过本地箴言加载，仅使用Notion数据')
+//     console.log('📝 跳过本地箴言加载，仅使用Notion数据')
   },
 
   // 加载当前箴言
@@ -296,7 +297,7 @@ Page({
               select: { name: newFavoriteState ? '收藏' : '启用' }
             }
           })
-          console.log('✅ 收藏状态已同步到Notion')
+//           console.log('✅ 收藏状态已同步到Notion')
         }
       } catch (error) {
         console.error('同步收藏状态到Notion失败:', error)
@@ -406,7 +407,8 @@ Page({
         content: quote.content || '',
         category: quote.category || '励志',
         tags: quote.tags || [],
-        source: quote.source || '用户添加'
+        source: quote.source || '用户添加',
+        isPinned: quote.isPinned || false  // ⭐ 新增：加载固定状态
       },
       tagsInput: (quote.tags || []).join(' '),
       categoryIndex: Math.max(0, categoryIndex)
@@ -455,7 +457,7 @@ Page({
             select: { name: '禁用' }
           }
         })
-        console.log('✅ 已在Notion中禁用箴言')
+//         console.log('✅ 已在Notion中禁用箴言')
       }
 
       // 更新列表
@@ -495,6 +497,12 @@ Page({
     })
   },
 
+  onPinnedChange: function(e) {
+    this.setData({
+      'formData.isPinned': e.detail.value
+    })
+  },
+
   onTagsInput: function(e) {
     const tagsInput = e.detail.value
     const tags = tagsInput.split(' ').filter(tag => tag.trim())
@@ -516,7 +524,7 @@ Page({
 
   // 确认添加/编辑箴言
   confirmAddQuote: async function() {
-    const { content, category, tags, source } = this.data.formData
+    const { content, category, tags, source, isPinned } = this.data.formData
 
     if (!content.trim()) {
       toast.error('请输入箴言内容')
@@ -527,7 +535,8 @@ Page({
       content: content.trim(),
       category: category,
       tags: tags,
-      source: source || '用户添加'
+      source: source || '用户添加',
+      isPinned: isPinned || false  // ⭐ 新增：固定状态
     }
 
     if (this.data.editingQuote) {
@@ -579,6 +588,9 @@ Page({
             },
             'Category': {
               select: { name: quoteData.category }
+            },
+            'Is Pinned': {
+              checkbox: quoteData.isPinned || false  // ⭐ 新增：更新固定状态
             }
           }
 
@@ -589,7 +601,7 @@ Page({
           }
 
           await notionApiService.updatePageProperties(apiKey, quoteId, properties)
-          console.log('✅ 箴言已同步到Notion')
+//           console.log('✅ 箴言已同步到Notion')
         }
       }
 

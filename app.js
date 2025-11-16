@@ -120,23 +120,72 @@ App({
 
   // 检查登录状态
   checkLoginStatus: function() {
-    const currentUser = userManager.getCurrentUser()
-    const users = userManager.getUsers()
-    
-    // 如果没有任何用户或没有当前用户，跳转到登录页
-    if (users.length === 0 || !currentUser) {
-      console.log('没有登录用户，跳转到登录页')
-      setTimeout(() => {
-        wx.reLaunch({
-          url: '/pages/login/login'
-        })
-      }, 1000)
-      return false
-    }
+    // 🔐 获取当前微信用户的openid（严格验证模式）
+    wx.cloud.callFunction({
+      name: 'login',
+      success: res => {
+        const wxOpenId = res.result.openid
+        console.log('🔐 当前微信用户openid:', wxOpenId)
 
-    console.log('当前用户:', currentUser.name)
-    this.globalData.userInfo = currentUser
-    return true
+        const currentUser = userManager.getCurrentUser()
+        const users = userManager.getUsers()
+
+        // 如果没有任何用户或没有当前用户，跳转到登录页
+        if (users.length === 0 || !currentUser) {
+          console.log('❌ 没有登录用户，跳转到登录页')
+          this.redirectToLogin()
+          return false
+        }
+
+        // 🚨 严格验证：检查当前用户的openid是否与微信用户的openid一致
+        if (currentUser.openid && currentUser.openid !== wxOpenId) {
+          console.log('❌ 用户身份不匹配！')
+          console.log('   本地用户:', currentUser.email)
+          console.log('   本地openid:', currentUser.openid)
+          console.log('   当前微信openid:', wxOpenId)
+          console.log('   🔒 清除本地用户，跳转到登录页')
+
+          // 清除当前用户设置（但保留用户数据，以便该微信账号重新登录）
+          userManager.clearCurrentUser()
+          this.redirectToLogin()
+          return false
+        }
+
+        // ✅ openid匹配或旧用户（没有openid），允许登录
+        console.log('✅ 用户身份验证通过:', currentUser.name)
+
+        // 如果旧用户没有openid，补充保存
+        if (!currentUser.openid) {
+          console.log('📝 旧用户数据，补充保存openid')
+          userManager.updateUserOpenId(currentUser.id, wxOpenId)
+        }
+
+        this.globalData.userInfo = currentUser
+        this.globalData.currentUser = currentUser
+        return true
+      },
+      fail: err => {
+        console.error('❌ 获取openid失败:', err)
+        // 降级处理：如果云函数调用失败，允许本地用户登录（但会有安全隐患）
+        const currentUser = userManager.getCurrentUser()
+        if (currentUser) {
+          console.log('⚠️ 降级处理：允许本地用户登录（openid验证失败）')
+          this.globalData.userInfo = currentUser
+          this.globalData.currentUser = currentUser
+        } else {
+          this.redirectToLogin()
+        }
+      }
+    })
+  },
+
+  // 跳转到登录页
+  redirectToLogin: function() {
+    setTimeout(() => {
+      wx.reLaunch({
+        url: '/pages/login/login'
+      })
+    }, 1000)
   },
 
   onShow: function() {
@@ -585,8 +634,22 @@ App({
       }
     }
 
-    const randomIndex = Math.floor(Math.random() * quotes.length)
-    const selectedQuote = quotes[randomIndex]
+    // ⭐⭐⭐ 优先选择固定箴言
+    const pinnedQuotes = quotes.filter(q => {
+      return typeof q === 'object' && q.isPinned === true
+    })
+
+    let selectedQuote
+    if (pinnedQuotes.length > 0) {
+      // 如果有固定箴言，随机选择一个固定箴言
+      const randomIndex = Math.floor(Math.random() * pinnedQuotes.length)
+      selectedQuote = pinnedQuotes[randomIndex]
+      console.log('📌 选择固定箴言:', selectedQuote.content?.substring(0, 20))
+    } else {
+      // 没有固定箴言，从所有箴言中随机选择
+      const randomIndex = Math.floor(Math.random() * quotes.length)
+      selectedQuote = quotes[randomIndex]
+    }
 
     // 如果已经是完整的箴言对象，直接使用
     if (typeof selectedQuote === 'object' && (selectedQuote.content || selectedQuote.quote)) {
@@ -713,6 +776,7 @@ App({
         category: quoteData.category || '励志',
         tags: quoteData.tags || [],
         source: quoteData.source || '用户添加',
+        isPinned: quoteData.isPinned || false,  // ⭐ 新增：固定状态
         isFavorite: false,
         usageCount: 0,
         createdAt: Date.now()
@@ -740,7 +804,8 @@ App({
           quote: quoteData.content,
           author: quoteData.source || '用户添加',
           category: quoteData.category || '励志',
-          tags: quoteData.tags || []
+          tags: quoteData.tags || [],
+          isPinned: quoteData.isPinned || false  // ⭐ 新增：固定状态
         }
         console.log('📦 箴言数据:', quotePayload)
 

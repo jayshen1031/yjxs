@@ -21,6 +21,13 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
+   * 延迟工具函数
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  /**
    * 创建父页面
    */
   async createParentPage() {
@@ -87,6 +94,12 @@ class NotionQuadDatabaseCreator {
       )
       console.log('✅ 活动明细表创建成功:', activityDb.id)
 
+      // ⏱️ 等待Notion创建反向关系字段（dual_property需要时间生效）
+      // 由于同时创建了3个dual_property（Goals/Todos/Main Records），需要更长等待时间
+      console.log('\n⏱️ 等待30秒，让Notion完成3个反向关系字段的创建...')
+      await this.sleep(30000)
+      console.log('✅ 等待完成')
+
       // Step 4.5: 更新主记录表的关联字段（需要在Activity Details创建后）
       console.log('\n[4.5/8] 更新主记录表关联关系...')
       await this.updateMainRecordsRelations(mainDb.id, activityDb.id)
@@ -96,6 +109,11 @@ class NotionQuadDatabaseCreator {
       console.log('\n[4.6/8] 更新待办库关联关系...')
       await this.updateTodosRelations(todosDb.id, activityDb.id, mainDb.id)
       console.log('✅ 待办库关联关系更新成功')
+
+      // Step 4.7: 更新目标库的Rollup字段（需要在Activity Details创建后）
+      console.log('\n[4.7/8] 更新目标库Rollup字段...')
+      await this.updateGoalsRollup(goalsDb.id)
+      console.log('✅ 目标库Rollup字段更新完成')
 
       // Step 5: 创建每日状态库（Daily Status）- 独立数据库
       console.log('\n[5/8] 创建每日状态库...')
@@ -205,6 +223,7 @@ class NotionQuadDatabaseCreator {
           }
         },
         'Progress': { number: { format: 'percent' } },
+        'Estimated Hours': { number: { format: 'number' } },  // ⭐ 新增：预计投入时间（小时）
         'Is Quantifiable': { checkbox: {} },
         'Target Value': { number: {} },
         'Current Value': { number: {} },
@@ -254,7 +273,7 @@ class NotionQuadDatabaseCreator {
       parent: { page_id: this.parentPageId },
       title: [{ text: { content: '✅ Todos - 待办事项库' } }],
       properties: {
-        'Title': { title: {} },
+        'Todo Name': { title: {} },  // ✅ 修正：Title → Todo Name
         'Description': { rich_text: {} },
         'Todo Type': {
           select: {
@@ -262,7 +281,8 @@ class NotionQuadDatabaseCreator {
               { name: '目标导向 (Goal-oriented)', color: 'blue' },
               { name: '临时待办 (Ad-hoc)', color: 'gray' },
               { name: '习惯养成 (Habit)', color: 'green' },
-              { name: '紧急处理 (Urgent)', color: 'red' }
+              { name: '紧急处理 (Urgent)', color: 'red' },
+              { name: '临时待办', color: 'gray' }  // ✅ 添加：兼容简化版本
             ]
           }
         },
@@ -278,10 +298,19 @@ class NotionQuadDatabaseCreator {
             ]
           }
         },
+        'Scope': {  // ✅ 添加：筛选范围字段
+          select: {
+            options: [
+              { name: '今日', color: 'red' },
+              { name: '近期', color: 'orange' },
+              { name: '未来', color: 'gray' }
+            ]
+          }
+        },
         'Due Date': { date: {} },
         'Planned Date': { date: {} },
         'Start Time': { rich_text: {} },
-        'Estimated Duration': { number: {} },
+        'Estimated Minutes': { number: {} },  // ✅ 修正：Estimated Duration → Estimated Minutes
         'Priority': {
           select: {
             options: [
@@ -370,14 +399,14 @@ class NotionQuadDatabaseCreator {
       parent: { page_id: this.parentPageId },
       title: [{ text: { content: '📝 Main Records - 主记录表' } }],
       properties: {
-        'Title': { title: {} },
-        'Content': { rich_text: {} },
-        'Date': { date: {} },
-        'Record Type': {
+        'Name': { title: {} },  // ✅ 修正：Title → Name（兼容代码使用）
+        'Summary': { rich_text: {} },  // ✅ 修正：Content → Summary
+        'Record Date': { date: {} },  // ✅ 修正：Date → Record Date
+        'Type': {  // ✅ 修正：Record Type → Type
           select: {
             options: [
               { name: '日常记录', color: 'blue' },
-              { name: '明日规划', color: 'orange' },
+              { name: '次日规划', color: 'orange' },
               { name: '每日总结', color: 'purple' },
               { name: '灵感记录', color: 'yellow' }
             ]
@@ -499,7 +528,7 @@ class NotionQuadDatabaseCreator {
             }
           }
         },
-        'Related Main Record': {
+        'Record': {  // ✅ 修正：改为'Record'以匹配代码中的使用
           relation: {
             database_id: mainRecordsDatabaseId,
             dual_property: {
@@ -527,6 +556,56 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
+   * 更新目标库的Rollup字段（Total Time Investment）
+   */
+  async updateGoalsRollup(goalsDatabaseId) {
+    console.log('添加目标库的汇总字段...')
+
+    // 🔍 检查反向关系字段是否已创建（由Activity Details的dual_property自动创建）
+    // 已等待30秒，如果还没有，再检查2次，每次间隔10秒
+    const fieldExists = await this.checkFieldExists(goalsDatabaseId, 'Related Activities', 2, 10)
+
+    if (!fieldExists) {
+      console.warn('⚠️ Related Activities字段不存在，跳过rollup字段创建')
+      return false
+    }
+
+    // 添加 Total Time Investment rollup 字段（依赖 Related Activities）
+    let rollupSuccess = false
+    for (let i = 0; i < 2; i++) {
+      try {
+        await this.service.callApi(`/databases/${goalsDatabaseId}`, {
+          apiKey: this.apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Total Time Investment': {
+                rollup: {
+                  relation_property_name: 'Related Activities',
+                  rollup_property_name: 'Duration',
+                  function: 'sum'
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ 已添加 Total Time Investment rollup字段')
+        rollupSuccess = true
+        break
+      } catch (error) {
+        if (i === 0) {
+          console.warn(`⚠️ Total Time Investment rollup字段创建失败，5秒后重试... (${error.message})`)
+          await this.sleep(5000)
+        } else {
+          console.warn('⚠️ Total Time Investment rollup字段创建失败（可选字段，可在Notion界面手动添加）:', error.message)
+        }
+      }
+    }
+
+    return rollupSuccess
+  }
+
+  /**
    * 更新目标库的自关联关系（Parent Goal / Sub Goals）
    */
   async updateGoalsSelfRelation(goalsDatabaseId) {
@@ -540,6 +619,37 @@ class NotionQuadDatabaseCreator {
   }
 
   /**
+   * 检查数据库字段是否存在
+   */
+  async checkFieldExists(databaseId, fieldName, maxRetries = 3, waitSeconds = 5) {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const result = await this.service.callApi(`/databases/${databaseId}`, {
+          apiKey: this.apiKey,
+          method: 'GET'
+        })
+
+        if (result.success && result.data && result.data.properties) {
+          if (fieldName in result.data.properties) {
+            console.log(`✅ 字段"${fieldName}"已存在`)
+            return true
+          }
+        }
+
+        if (i < maxRetries - 1) {
+          console.warn(`⚠️ 字段"${fieldName}"尚未创建，等待${waitSeconds}秒后重试 (${i + 1}/${maxRetries})...`)
+          await this.sleep(waitSeconds * 1000)
+        }
+      } catch (error) {
+        console.error(`检查字段"${fieldName}"时出错:`, error.message)
+      }
+    }
+
+    console.warn(`⚠️ 字段"${fieldName}"在${maxRetries}次尝试后仍不存在`)
+    return false
+  }
+
+  /**
    * 更新主记录表的关联关系（在所有数据库创建后）
    */
   async updateMainRecordsRelations(mainRecordsDatabaseId, activityDatabaseId) {
@@ -548,41 +658,79 @@ class NotionQuadDatabaseCreator {
     // ⚠️ Related Activities 已经由 Activity Details 的 dual_property 自动创建，不需要再添加
     console.log('ℹ️ Related Activities 已由Activity Details自动创建，跳过')
 
+    // 🔍 检查反向关系字段是否已创建
+    // 已等待30秒，如果还没有，再检查2次，每次间隔10秒
+    const fieldExists = await this.checkFieldExists(mainRecordsDatabaseId, 'Related Activities', 2, 10)
+
+    if (!fieldExists) {
+      console.warn('⚠️ Related Activities字段不存在，跳过rollup字段创建')
+      return false
+    }
+
     // 添加 Total Time rollup 字段（依赖 Related Activities）
-    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
-      apiKey: this.apiKey,
-      method: 'PATCH',
-      data: {
-        properties: {
-          'Total Time': {
-            rollup: {
-              relation_property_name: 'Related Activities',
-              rollup_property_name: 'Duration',
-              function: 'sum'
+    // 添加重试机制，如果失败再等待5秒后重试
+    let totalTimeSuccess = false
+    for (let i = 0; i < 2; i++) {
+      try {
+        await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
+          apiKey: this.apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Total Time': {
+                rollup: {
+                  relation_property_name: 'Related Activities',
+                  rollup_property_name: 'Duration',
+                  function: 'sum'
+                }
+              }
             }
           }
+        })
+        console.log('✅ 已添加 Total Time rollup字段')
+        totalTimeSuccess = true
+        break
+      } catch (error) {
+        if (i === 0) {
+          console.warn(`⚠️ Total Time rollup字段创建失败，5秒后重试... (${error.message})`)
+          await this.sleep(5000)
+        } else {
+          console.warn('⚠️ Total Time rollup字段创建失败（可选字段，可在Notion界面手动添加）:', error.message)
         }
       }
-    })
-    console.log('✅ 已添加 Total Time rollup字段')
+    }
 
     // 添加 Activity Count rollup 字段
-    await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
-      apiKey: this.apiKey,
-      method: 'PATCH',
-      data: {
-        properties: {
-          'Activity Count': {
-            rollup: {
-              relation_property_name: 'Related Activities',
-              rollup_property_name: 'Name',
-              function: 'count'
+    let activityCountSuccess = false
+    for (let i = 0; i < 2; i++) {
+      try {
+        await this.service.callApi(`/databases/${mainRecordsDatabaseId}`, {
+          apiKey: this.apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Activity Count': {
+                rollup: {
+                  relation_property_name: 'Related Activities',
+                  rollup_property_name: 'Name',
+                  function: 'count'
+                }
+              }
             }
           }
+        })
+        console.log('✅ 已添加 Activity Count rollup字段')
+        activityCountSuccess = true
+        break
+      } catch (error) {
+        if (i === 0) {
+          console.warn(`⚠️ Activity Count rollup字段创建失败，5秒后重试... (${error.message})`)
+          await this.sleep(5000)
+        } else {
+          console.warn('⚠️ Activity Count rollup字段创建失败（可选字段，可在Notion界面手动添加）:', error.message)
         }
       }
-    })
-    console.log('✅ 已添加 Activity Count rollup字段')
+    }
 
     return true
   }
@@ -595,6 +743,10 @@ class NotionQuadDatabaseCreator {
 
     // ⚠️ Related Activities 已经由 Activity Details 的 dual_property 自动创建，不需要再添加
     console.log('ℹ️ Related Activities 已由Activity Details自动创建，跳过')
+
+    // 🔍 检查反向关系字段是否已创建
+    // 已等待30秒，如果还没有，再检查2次，每次间隔10秒
+    const fieldExists = await this.checkFieldExists(todosDatabaseId, 'Related Activities', 2, 10)
 
     // 添加 Related Main Records 关联字段（单向关联）
     await this.service.callApi(`/databases/${todosDatabaseId}`, {
@@ -613,23 +765,43 @@ class NotionQuadDatabaseCreator {
     })
     console.log('✅ 已添加 Related Main Records 关联')
 
-    // 添加 Actual Duration rollup 字段（依赖 Related Activities）
-    await this.service.callApi(`/databases/${todosDatabaseId}`, {
-      apiKey: this.apiKey,
-      method: 'PATCH',
-      data: {
-        properties: {
-          'Actual Duration': {
-            rollup: {
-              relation_property_name: 'Related Activities',
-              rollup_property_name: 'Duration',
-              function: 'sum'
+    if (!fieldExists) {
+      console.warn('⚠️ Related Activities字段不存在，跳过rollup字段创建')
+      return false
+    }
+
+    // 添加 Actual Time rollup 字段（依赖 Related Activities）
+    // 添加重试机制，如果失败再等待5秒后重试
+    let actualTimeSuccess = false
+    for (let i = 0; i < 2; i++) {
+      try {
+        await this.service.callApi(`/databases/${todosDatabaseId}`, {
+          apiKey: this.apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Actual Time': {  // ✅ 修正：Actual Duration → Actual Time（匹配代码使用）
+                rollup: {
+                  relation_property_name: 'Related Activities',
+                  rollup_property_name: 'Duration',
+                  function: 'sum'
+                }
+              }
             }
           }
+        })
+        console.log('✅ 已添加 Actual Time rollup字段')
+        actualTimeSuccess = true
+        break
+      } catch (error) {
+        if (i === 0) {
+          console.warn(`⚠️ Actual Time rollup字段创建失败，5秒后重试... (${error.message})`)
+          await this.sleep(5000)
+        } else {
+          console.warn('⚠️ Actual Time rollup字段创建失败（可选字段，可在Notion界面手动添加）:', error.message)
         }
       }
-    })
-    console.log('✅ 已添加 Actual Duration rollup字段')
+    }
 
     // 添加自关联字段：Blocking Todos 和 Blocked By
     await this.service.callApi(`/databases/${todosDatabaseId}`, {

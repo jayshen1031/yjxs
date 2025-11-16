@@ -578,7 +578,7 @@
   margin-bottom: 20rpx;
 }
 
-.time-picker-group {
+.time-input-group {
   flex: 1;
 }
 
@@ -595,6 +595,56 @@
   color: #6366f1;
   margin-top: 28rpx;
   font-weight: bold;
+}
+
+/* 时间输入容器 */
+.time-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 16rpx;
+  background: white;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  min-height: 72rpx;
+  box-sizing: border-box;
+}
+
+/* 小时输入框 */
+.time-hour-input {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  min-width: 64rpx;
+}
+
+/* 冒号分隔符 */
+.time-colon {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #6366f1;
+}
+
+/* 分钟选择器 */
+.time-minute-picker {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 10rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 80rpx;
+  justify-content: center;
+}
+
+.picker-arrow-small {
+  font-size: 20rpx;
+  color: #6366f1;
 }
 
 .picker-display {

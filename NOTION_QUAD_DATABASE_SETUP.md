@@ -109,7 +109,7 @@
 | Title | Title | 记录标题 |
 | Content | Rich Text | 记录内容 |
 | Date | Date | 记录日期 |
-| Record Type | Select | 日常记录/明日规划 |
+| Record Type | Select | 日常记录/次日规划 |
 | Time Period | Select | 早晨/上午/下午/晚上 |
 | **Related Todos** | **Relation** | **关联的待办** |
 | User ID | Rich Text | 用户标识 |
@@ -173,7 +173,7 @@
 
 ```
 1. 晚上规划明天
-   - 类型: 明日规划
+   - 类型: 次日规划
    - 列出明天要完成的待办
 
 2. 关联待办事项

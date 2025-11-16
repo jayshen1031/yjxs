@@ -67,7 +67,7 @@ Page({
       const success = userManager.configureNotion(currentUser.id, updatedConfig)
 
       if (success) {
-        console.log('✅ 本地配置更新成功')
+//         console.log('✅ 本地配置更新成功')
 
         // 同步到云端
         wx.showLoading({ title: '同步到云端...' })
@@ -78,7 +78,7 @@ Page({
         wx.hideLoading()
 
         if (result.success) {
-          console.log('✅ 云端同步成功')
+//           console.log('✅ 云端同步成功')
           this.setData({
             updated: true,
             config: updatedConfig

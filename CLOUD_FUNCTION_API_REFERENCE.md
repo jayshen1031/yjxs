@@ -27,7 +27,7 @@
     title: '今日工作总结',           // 必填
     content: '今天完成了....',       // 可选
     date: '2025-01-09',            // 可选，默认今天
-    recordType: '日常记录',         // 可选：日常记录/明日规划/每日总结/灵感记录
+    recordType: '日常记录',         // 可选：日常记录/次日规划/每日总结/灵感记录
     timePeriod: '晚上',            // 可选：早晨/上午/中午/下午/晚上/规划
     mood: '😊 开心',               // 可选
     relatedTodoIds: ['TODO_ID_1'], // 可选，关联的待办ID数组
@@ -96,7 +96,7 @@ console.log(result.recordId) // 返回Notion页面ID
 {
   userId: 'USER_ID',
   apiKey: 'ntn_...',
-  filter: 'all',              // 可选：all/日常记录/明日规划/每日总结/灵感记录
+  filter: 'all',              // 可选：all/日常记录/次日规划/每日总结/灵感记录
   startDate: '2025-01-01',    // 可选，开始日期
   endDate: '2025-01-31'       // 可选，结束日期
 }

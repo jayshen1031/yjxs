@@ -11,6 +11,12 @@
   },
   "skills": [
     {
+      "file": "auto-iteration-logging.skill.json",
+      "priority": "critical",
+      "auto_load": true,
+      "description": "自动迭代记录 - 每次进入项目时自动检查并记录问题和迭代"
+    },
+    {
       "file": "notion-database.skill.json",
       "priority": "high",
       "auto_load": true,
@@ -21,6 +27,18 @@
       "priority": "high",
       "auto_load": true,
       "description": "微信小程序开发规范"
+    },
+    {
+      "file": "wechat-console-critical-rules.skill.json",
+      "priority": "critical",
+      "auto_load": true,
+      "description": "微信开发者工具Console使用规则"
+    },
+    {
+      "file": "notion-database-creation.skill.json",
+      "priority": "high",
+      "auto_load": true,
+      "description": "Notion数据库创建最佳实践"
     },
     {
       "file": "project-memory.skill.json",

@@ -148,8 +148,9 @@
             value="{{formData.content}}"
             data-field="content"
             bindinput="onFormInput"
-            maxlength="2000"
+            maxlength="-1"
           />
+          <view class="char-count-hint">不限字数</view>
         </view>
 
         <view class="form-group">

@@ -45,13 +45,17 @@ Page({
     // 箴言设置
     quoteSettings: {
       onlyMyQuotes: false
-    }
+    },
+    // HUMAN3.0评估数据
+    latestAssessment: null, // 最新评估结果
+    assessmentHistory: [] // 历史评估记录
   },
 
   onLoad: function() {
     this.loadUserData()
     this.loadSyncStatus()
     this.loadQuoteData()
+    this.loadAssessmentData()
   },
 
   onShow: function() {
@@ -59,6 +63,7 @@ Page({
     this.loadSyncStatus()
     this.loadQuoteData()
     this.loadQuoteSettings()
+    this.loadAssessmentData()
   },
 
   // 加载用户数据
@@ -149,7 +154,7 @@ Page({
       try {
         const apiService = require('../../utils/apiService.js')
         await apiService.updateUserByEmail(currentUser.email, { notionConfig })
-        console.log('✅ 配置结构已自动修复并同步到云端')
+//         console.log('✅ 配置结构已自动修复并同步到云端')
       } catch (error) {
         console.error('❌ 同步修复后的配置失败:', error)
       }
@@ -536,7 +541,7 @@ Page({
     this.setData({ creating: true })
 
     try {
-      console.log('开始自动创建四数据库架构...')
+      console.log('开始自动创建八数据库架构...')
 
       const cloudTest = require('../../utils/cloudTest.js')
       const result = await cloudTest.autoCreateDatabases(apiKey, parentPageId)
@@ -553,8 +558,8 @@ Page({
           databaseId: result.mainDatabaseId,  // 兼容旧版
           mainRecordsDatabaseId: result.mainDatabaseId,
           activitiesDatabaseId: result.activityDatabaseId,
-          // 添加databases结构供云函数使用
-          databases: {
+          // 添加完整的八数据库结构
+          databases: result.databases || {
             goals: result.goalsDatabaseId,
             todos: result.todosDatabaseId,
             mainRecords: result.mainDatabaseId,
@@ -599,7 +604,7 @@ Page({
         const app = getApp()
         if (app.globalData) {
           app.globalData.currentUser = userManager.getCurrentUser()
-          console.log('✅ 已更新app.globalData.currentUser:', app.globalData.currentUser)
+//           console.log('✅ 已更新app.globalData.currentUser:', app.globalData.currentUser)
         }
 
         // 刷新其他页面数据（重要！）
@@ -620,13 +625,18 @@ Page({
         })
 
         // 显示成功消息
-        let message = '✅ 四数据库创建成功！\n'
-        message += `🎯 目标库ID: ${result.goalsDatabaseId.slice(0, 8)}...\n`
-        message += `📝 待办库ID: ${result.todosDatabaseId.slice(0, 8)}...\n`
-        message += `📋 主记录表ID: ${result.mainDatabaseId.slice(0, 8)}...\n`
-        message += `📊 活动明细表ID: ${result.activityDatabaseId.slice(0, 8)}...\n`
-        message += '🎉 数据库字段已自动初始化\n\n'
-        message += '⚠️ 请返回记录页面重新打开，以使用新数据库'
+        const dbs = result.databases || {}
+        let message = '✅ 八数据库创建成功！\n'
+        message += `🎯 目标库\n`
+        message += `📝 待办库\n`
+        message += `📋 主记录表\n`
+        message += `📊 活动明细表\n`
+        message += `📅 每日状态库\n`
+        message += `😊 开心库\n`
+        message += `💬 箴言库\n`
+        message += `📚 知识库\n`
+        message += '🎉 所有数据库已配置完成\n\n'
+        message += '⚠️ 请关闭并重新打开小程序'
 
         wx.showModal({
           title: '创建成功',
@@ -644,6 +654,54 @@ Page({
       toast.error('创建失败: ' + error.message)
     } finally {
       this.setData({ creating: false })
+    }
+  },
+
+  // 诊断数据库字段
+  diagnoseDatabases: async function() {
+    const { apiKey, goalsDatabaseId, todosDatabaseId, mainDatabaseId, activityDatabaseId } = this.data.notionConfig
+
+    if (!apiKey) {
+      toast.error('请先填写API Key')
+      return
+    }
+
+    if (!goalsDatabaseId && !todosDatabaseId && !mainDatabaseId && !activityDatabaseId) {
+      toast.error('请先配置至少一个数据库ID')
+      return
+    }
+
+    this.setData({ diagnosing: true })
+
+    try {
+      console.log('🏥 开始诊断数据库字段...\n')
+
+      const cloudTest = require('../../utils/cloudTest.js')
+
+      // 构建需要诊断的数据库列表
+      const databases = {}
+      if (goalsDatabaseId) databases['Goals (目标库)'] = goalsDatabaseId
+      if (todosDatabaseId) databases['Todos (待办库)'] = todosDatabaseId
+      if (mainDatabaseId) databases['Main Records (主记录表)'] = mainDatabaseId
+      if (activityDatabaseId) databases['Activity Details (活动明细表)'] = activityDatabaseId
+
+      console.log('将诊断以下数据库:', Object.keys(databases))
+
+      // 诊断所有数据库
+      await cloudTest.diagnoseAllDatabases(apiKey, databases)
+
+      wx.showModal({
+        title: '诊断完成',
+        content: '诊断结果已输出到控制台\n请查看Console查看详细信息',
+        showCancel: false,
+        confirmText: '好的'
+      })
+
+    } catch (error) {
+      console.error('❌ 诊断数据库失败:', error)
+      toast.error('诊断失败: ' + error.message)
+    } finally {
+      this.setData({ diagnosing: false })
     }
   },
 
@@ -751,7 +809,7 @@ Page({
       const notionApiService = require('../../utils/notionApiService.js')
       const notionConfig = this.data.currentUser.notionConfig
 
-      console.log('\n========== 开始诊断四数据库结构 ==========')
+      console.log('\n========== 开始诊断八数据库结构 ==========')
 
       // 诊断 Main Records
       const mainResult = await notionApiService.getDatabaseSchema(
@@ -784,7 +842,7 @@ Page({
       }
 
       // 打印诊断结果
-      console.log('\n📝 Main Records 数据库:')
+//       console.log('\n📝 Main Records 数据库:')
       if (mainResult.success) {
         console.log('  标题:', mainResult.title)
         console.log('  字段数:', mainResult.totalFields)
@@ -814,7 +872,7 @@ Page({
       }
 
       if (todosResult) {
-        console.log('\n✅ Todos 数据库:')
+//         console.log('\n✅ Todos 数据库:')
         if (todosResult.success) {
           console.log('  标题:', todosResult.title)
           console.log('  字段数:', todosResult.totalFields)
@@ -881,7 +939,7 @@ Page({
           )
 
           if (result.success) {
-            console.log('✅ 修复成功')
+//             console.log('✅ 修复成功')
             wx.showModal({
               title: '修复成功',
               content: `已成功添加以下字段：\n${result.addedFields.join('\n')}\n\n现在可以正常创建和编辑目标了！`,
@@ -1147,5 +1205,105 @@ Page({
         duration: 2000
       })
     }
+  },
+
+  // === HUMAN3.0评估相关方法 ===
+
+  /**
+   * 加载评估数据
+   */
+  loadAssessmentData: function() {
+    try {
+      // 从本地存储读取评估历史
+      const assessments = wx.getStorageSync('human30_assessments') || []
+
+      console.log('📊 加载评估历史:', {
+        count: assessments.length,
+        assessments: assessments.map(a => ({
+          date: a.completedAt,
+          score: a.totalScore,
+          level: a.level
+        }))
+      })
+
+      // 按时间倒序排列
+      const sortedAssessments = assessments.sort((a, b) => {
+        return new Date(b.completedAt) - new Date(a.completedAt)
+      })
+
+      // 获取最新评估
+      const latestAssessment = sortedAssessments.length > 0 ? this.formatAssessmentSummary(sortedAssessments[0]) : null
+
+      this.setData({
+        assessmentHistory: sortedAssessments,
+        latestAssessment: latestAssessment
+      })
+
+      console.log('✅ 评估数据加载完成:', {
+        totalCount: sortedAssessments.length,
+        hasLatest: !!latestAssessment,
+        latestScore: latestAssessment?.totalScore
+      })
+    } catch (error) {
+      console.error('❌ 加载评估数据失败:', error)
+    }
+  },
+
+  /**
+   * 格式化评估摘要（用于显示）
+   */
+  formatAssessmentSummary: function(assessment) {
+    if (!assessment) return null
+
+    // 格式化日期
+    const date = new Date(assessment.completedAt)
+    const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`
+
+    // 计算维度数量
+    const dimensionCount = assessment.dimensionScores ? Object.keys(assessment.dimensionScores).length : 0
+
+    // 获取等级文本
+    const levelText = this.getLevelText(assessment.level)
+
+    return {
+      ...assessment,
+      dateStr: dateStr,
+      dimensionCount: dimensionCount,
+      levelText: levelText
+    }
+  },
+
+  /**
+   * 获取等级文本
+   */
+  getLevelText: function(level) {
+    const levelMap = {
+      'beginner': '初级',
+      'developing': '发展中',
+      'intermediate': '中级',
+      'advanced': '高级',
+      'expert': '专家'
+    }
+    return levelMap[level] || '未知'
+  },
+
+  /**
+   * 开始评估
+   */
+  startAssessment: function() {
+    console.log('🚀 开始HUMAN3.0评估')
+    wx.navigateTo({
+      url: '/pages/assessment-intro/assessment-intro'
+    })
+  },
+
+  /**
+   * 查看评估历史
+   */
+  viewAssessmentHistory: function() {
+    console.log('📈 查看评估历史')
+    wx.navigateTo({
+      url: '/pages/assessment-history/assessment-history'
+    })
   }
 })

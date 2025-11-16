@@ -60,27 +60,6 @@ module.exports = {
     </view>
   </view>
 
-  <!-- 当前箴言 -->
-  <view class="current-quote-card">
-    <view class="card-header">
-      <text class="card-title">💫 今日箴言</text>
-      <view class="card-actions">
-        <text class="action-icon" bindtap="refreshCurrentQuote">🎲</text>
-        <text class="action-icon" bindtap="toggleCurrentFavorite">
-          {{currentQuote.isFavorite ? '❤️' : '🤍'}}
-        </text>
-      </view>
-    </view>
-    <view class="quote-content-large">{{currentQuote.content || '暂无箴言'}}</view>
-    <view class="quote-footer" wx:if="{{currentQuote.content}}">
-      <view class="category-badge category-{{utils.getCategoryClass(currentQuote.category)}}">
-        {{currentQuote.category}}
-      </view>
-      <view class="quote-source">{{currentQuote.source || '未知来源'}}</view>
-      <view class="quote-usage">激励了 {{currentQuote.usageCount || 0}} 次</view>
-    </view>
-  </view>
-
   <!-- Tab切换 -->
   <view class="tab-bar">
     <view class="tab-item {{activeTab === 'system' ? 'active' : ''}}" bindtap="switchTab" data-tab="system">
@@ -171,7 +150,7 @@ module.exports = {
       <view class="quote-card" wx:for="{{myQuotes}}" wx:key="id">
         <view class="card-header">
           <view class="source-badge local">
-            <text>✏️ 我的</text>
+            <text>{{item.isPinned ? '📌 固定' : '✏️ 我的'}}</text>
           </view>
           <view class="card-actions">
             <text class="action-icon" bindtap="editQuote" data-id="{{item.id}}">✏️</text>
@@ -259,6 +238,17 @@ module.exports = {
             value="{{formData.source}}"
             bindinput="onSourceInput"
           />
+        </view>
+
+        <view class="form-item">
+          <label class="checkbox-label">
+            <checkbox
+              checked="{{formData.isPinned}}"
+              bindchange="onPinnedChange"
+            />
+            <text class="checkbox-text">📌 固定箴言（每天必看）</text>
+          </label>
+          <view class="form-hint">固定的箴言会优先显示在首页</view>
         </view>
       </view>
 

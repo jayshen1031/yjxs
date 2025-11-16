@@ -14,7 +14,11 @@
     "pages/daily-status/daily-status",
     "pages/update-notion/update-notion",
     "pages/fix-relations/fix-relations",
-    "pages/fix-main-records/fix-main-records"
+    "pages/fix-main-records/fix-main-records",
+    "pages/assessment-intro/assessment-intro",
+    "pages/assessment/assessment",
+    "pages/assessment-report/assessment-report",
+    "pages/assessment-history/assessment-history"
   ],
   "window": {
     "backgroundTextStyle": "light",

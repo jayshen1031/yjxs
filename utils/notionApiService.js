@@ -7,6 +7,14 @@ class NotionApiService {
   constructor() {
     this.baseUrl = 'https://api.notion.com/v1'
     this.version = '2022-06-28'
+    this.debugMode = false  // 调试模式开关，设为false减少日志
+  }
+
+  // 条件日志输出
+  log(...args) {
+    if (this.debugMode) {
+      console.log(...args)
+    }
   }
 
   // 调用Notion API
@@ -26,7 +34,7 @@ class NotionApiService {
         header: headers,
         data: options.data,
         success: (response) => {
-          console.log('Notion API响应:', response.statusCode, response.data)
+          // 只在出错时输出日志
           if (response.statusCode >= 200 && response.statusCode < 300) {
             resolve({
               success: true,
@@ -34,7 +42,7 @@ class NotionApiService {
             })
           } else {
             const errorMsg = response.data?.message || JSON.stringify(response.data) || '请求失败'
-            console.error('Notion API错误:', response.statusCode, errorMsg)
+            console.error('❌ Notion API错误:', response.statusCode, errorMsg)
             resolve({
               success: false,
               error: `HTTP ${response.statusCode}: ${errorMsg}`
@@ -568,7 +576,7 @@ class NotionApiService {
           select: {
             options: [
               { name: '日常记录', color: 'blue' },  // ✅ 修正：中文值
-              { name: '明日规划', color: 'orange' }
+              { name: '次日规划', color: 'orange' }
             ]
           }
         },
@@ -1304,7 +1312,7 @@ class NotionApiService {
           },
           'Record Type': {  // ✅ 修正：Type → Record Type
             select: {
-              name: memo.recordMode || (memo.isPlanning ? '明日规划' : '日常记录')  // ✅ 修正：值改为中文
+              name: memo.recordMode || (memo.isPlanning ? '次日规划' : '日常记录')  // ✅ 修正：值改为中文
             }
           },
           'Is Planning': {
@@ -1489,7 +1497,7 @@ class NotionApiService {
   // 从Notion获取备忘录
   async getMemoListFromNotion(apiKey, databaseId) {
     try {
-      const result = await this.queryDatabase(apiKey, databaseId, {
+      let result = await this.queryDatabase(apiKey, databaseId, {
         sorts: [
           {
             property: 'Date',  // ✅ 修正：Record Date → Date
@@ -1497,6 +1505,12 @@ class NotionApiService {
           }
         ]
       })
+
+      // 如果排序字段不存在，降级为不排序查询
+      if (!result.success && result.error && result.error.includes('Could not find sort property')) {
+        console.log('⚠️ 主记录表缺少排序字段，尝试不排序查询')
+        result = await this.queryDatabase(apiKey, databaseId, {})
+      }
 
       if (result.success) {
         // 解析活动字符串为数组
@@ -2144,15 +2158,9 @@ class NotionApiService {
         ]
       }
 
-      // 构建查询参数
+      // 构建查询参数（不排序，避免字段名不匹配导致400错误）
       const queryData = {
-        filter: filter,
-        sorts: [
-          {
-            property: 'Date',  // ✅ 修正：Record Date → Date
-            direction: 'descending'
-          }
-        ]
+        filter: filter
       }
 
       // 添加分页限制
@@ -2162,7 +2170,7 @@ class NotionApiService {
 
       console.log('🔍 Notion查询参数:', JSON.stringify(queryData, null, 2))
 
-      const result = await this.queryDatabase(apiKey, databaseId, queryData)
+      let result = await this.queryDatabase(apiKey, databaseId, queryData)
 
       console.log('📥 Notion查询结果:', {
         success: result.success,
@@ -2183,7 +2191,7 @@ class NotionApiService {
         if (props['Type']?.select?.name) {
           // 如果Type是planning/normal，需要转换
           const typeValue = props['Type'].select.name
-          recordType = typeValue === 'planning' ? '明日规划' : '日常记录'
+          recordType = typeValue === 'planning' ? '次日规划' : '日常记录'
         } else if (props['Record Type']?.select?.name) {
           recordType = props['Record Type'].select.name
         }
@@ -2292,15 +2300,8 @@ class NotionApiService {
       // 组合过滤条件
       const filter = filters.length > 1 ? { and: filters } : (filters.length === 1 ? filters[0] : undefined)
 
-      // 构建查询参数
-      const queryData = {
-        sorts: [
-          {
-            timestamp: 'created_time',  // 使用系统创建时间排序（Activity Details没有日期字段）
-            direction: 'descending'
-          }
-        ]
-      }
+      // 构建查询参数（不排序，避免字段问题）
+      const queryData = {}
 
       // 只有当filter存在时才添加
       if (filter) {
@@ -2312,7 +2313,7 @@ class NotionApiService {
         queryData.page_size = options.limit
       }
 
-      const result = await this.queryDatabase(apiKey, databaseId, queryData)
+      let result = await this.queryDatabase(apiKey, databaseId, queryData)
 
       if (!result.success) {
         throw new Error(result.error || '查询活动明细表失败')
@@ -2349,8 +2350,9 @@ class NotionApiService {
           startTime: props['Start Time']?.rich_text?.[0]?.text?.content || '',
           endTime: props['End Time']?.rich_text?.[0]?.text?.content || '',
           duration: props['Duration']?.number || 0,              // 修正：使用'Duration'而非'Minutes'
-          activityType: props['Activity Type']?.select?.name || '', // 修正：使用'Activity Type'而非'Value Type'
-          valueRating: props['Value Rating']?.select?.name || '', // 添加价值评估
+          activityType: props['Activity Type']?.select?.name || '', // 活动类型：直接推进/间接支持/学习准备/无关
+          valueType: props['Value Type']?.select?.name || '',    // ⭐ 修复：添加价值类型字段（有价值/中性/低效）
+          recordDate: props['Record Date']?.date?.start || '',   // ⭐ 添加记录日期字段
           tags: props['Tags']?.multi_select?.map(tag => tag.name) || [],
           userId: props['User ID']?.rich_text?.[0]?.text?.content || '',
           // 关联字段
@@ -2409,25 +2411,13 @@ class NotionApiService {
           ]
         })
       } else if (options.scope === '跨天') {
-        // 查询进行中且Due Date < 今天的待办
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
+        // 查询进行中的待办（由于Due Date字段可能不存在，暂时只按状态筛选）
+        // TODO: 如果数据库有Due Date字段，可以添加日期过滤
         filters.push({
-          and: [
-            {
-              property: 'Status',
-              select: {
-                equals: '进行中'
-              }
-            },
-            {
-              property: 'Due Date',  // ✅ 修正：Record Date → Due Date（待办使用截止日期）
-              date: {
-                before: today.toISOString().split('T')[0]
-              }
-            }
-          ]
+          property: 'Status',
+          select: {
+            equals: '进行中'
+          }
         })
       } else {
         // 其他筛选：默认查询待办和进行中的
@@ -2458,23 +2448,29 @@ class NotionApiService {
         }
       }
 
-      // 构建查询参数
+      // 构建查询参数（只使用Priority排序，因为Due Date字段可能不存在）
       const queryData = {
         filter: filters.length > 1 ? { and: filters } : filters[0],
         sorts: [
           {
             property: 'Priority',
             direction: 'ascending'
-          },
-          {
-            property: 'Due Date',  // 使用Due Date而非Record Date
-            direction: 'ascending'
           }
         ],
         page_size: options.limit || 100
       }
 
-      const result = await this.queryDatabase(apiKey, todosDatabaseId, queryData)
+      let result = await this.queryDatabase(apiKey, todosDatabaseId, queryData)
+
+      // 如果排序字段不存在，降级为不排序查询
+      if (!result.success && result.error && result.error.includes('Could not find sort property')) {
+        console.log('⚠️ 数据库缺少排序字段，尝试不排序查询')
+        const queryDataNoSort = {
+          filter: filters.length > 1 ? { and: filters } : filters[0],
+          page_size: options.limit || 100
+        }
+        result = await this.queryDatabase(apiKey, todosDatabaseId, queryDataNoSort)
+      }
 
       if (!result.success) {
         throw new Error(result.error || '查询待办事项失败')
@@ -2696,6 +2692,50 @@ class NotionApiService {
   }
 
   /**
+   * 获取数据库Schema信息（用于诊断字段名问题）
+   * @param {string} apiKey - Notion API Key
+   * @param {string} databaseId - 数据库ID
+   * @returns {Promise<object>} { success, properties, title, error }
+   */
+  async getDatabaseSchema(apiKey, databaseId) {
+    try {
+      console.log(`🔍 获取数据库Schema: ${databaseId}`)
+
+      const result = await this.callApi(
+        `/databases/${databaseId}`,
+        {
+          method: 'GET',
+          apiKey: apiKey
+        }
+      )
+
+      if (!result.success) {
+        return { success: false, error: result.error }
+      }
+
+      // 提取属性名称和类型
+      const properties = {}
+      for (const [name, prop] of Object.entries(result.data.properties)) {
+        properties[name] = prop.type
+      }
+
+      console.log(`✅ 数据库 "${result.data.title?.[0]?.plain_text}" 字段:`, Object.keys(properties))
+
+      return {
+        success: true,
+        properties: properties,
+        title: result.data.title?.[0]?.plain_text || '未命名数据库'
+      }
+    } catch (error) {
+      console.error('❌ 获取数据库Schema失败:', error)
+      return {
+        success: false,
+        error: error.message || '获取数据库Schema失败'
+      }
+    }
+  }
+
+  /**
    * 查询目标列表
    * @param {string} apiKey - Notion API Key
    * @param {string} goalsDatabaseId - 目标库数据库ID
@@ -2729,7 +2769,7 @@ class NotionApiService {
       }
       // 如果 options.status === 'all'，不添加状态过滤，查询所有目标
 
-      // 构建查询参数
+      // 构建查询参数（先尝试带排序）
       const queryData = {
         sorts: [
           {
@@ -2749,7 +2789,17 @@ class NotionApiService {
         queryData.filter = filters.length > 1 ? { and: filters } : filters[0]
       }
 
-      const result = await this.queryDatabase(apiKey, goalsDatabaseId, queryData)
+      let result = await this.queryDatabase(apiKey, goalsDatabaseId, queryData)
+
+      // 如果排序字段不存在，降级为不排序查询
+      if (!result.success && result.error && result.error.includes('Could not find sort property')) {
+        console.log('⚠️ 目标数据库缺少排序字段，尝试不排序查询')
+        const queryDataNoSort = { page_size: options.limit || 100 }
+        if (filters.length > 0) {
+          queryDataNoSort.filter = filters.length > 1 ? { and: filters } : filters[0]
+        }
+        result = await this.queryDatabase(apiKey, goalsDatabaseId, queryDataNoSort)
+      }
 
       if (!result.success) {
         throw new Error(result.error || '查询目标失败')

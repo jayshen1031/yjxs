@@ -7,7 +7,7 @@ Page({
   data: {
     knowledgeList: [],
     filteredList: [],
-    categories: ['全部', '技术', '产品', '设计', '管理', '思考', '方法论', '其他'],
+    categories: ['全部', '技术', '产品', '设计', '管理', '思考', '方法论', '评估报告', '其他'],
     selectedCategory: '全部',
     searchKeyword: '',
     loading: false,
@@ -329,22 +329,58 @@ Page({
         wx.showToast({ title: '更新成功', icon: 'success' })
       } else {
         // 新增 - 混合方案：Preview存属性，完整内容存页面body
-        const pageData = {
-          parent: { database_id: notionConfig.databases.knowledge },
-          properties: properties,
-          children: [
-            {
+        // 将长内容分割成多个paragraph blocks（Notion限制单个block不超过2000字符）
+        const content = formData.content || ''
+        const maxChunkSize = 2000
+        const children = []
+
+        if (content.length === 0) {
+          // 空内容，创建一个空paragraph
+          children.push({
+            object: 'block',
+            type: 'paragraph',
+            paragraph: {
+              rich_text: [{
+                type: 'text',
+                text: { content: '' }
+              }]
+            }
+          })
+        } else if (content.length <= maxChunkSize) {
+          // 内容不超过2000字符，单个paragraph
+          children.push({
+            object: 'block',
+            type: 'paragraph',
+            paragraph: {
+              rich_text: [{
+                type: 'text',
+                text: { content: content }
+              }]
+            }
+          })
+        } else {
+          // 内容超过2000字符，分割成多个paragraphs
+          for (let i = 0; i < content.length; i += maxChunkSize) {
+            const chunk = content.slice(i, i + maxChunkSize)
+            children.push({
               object: 'block',
               type: 'paragraph',
               paragraph: {
                 rich_text: [{
                   type: 'text',
-                  text: { content: formData.content }
+                  text: { content: chunk }
                 }]
               }
-            }
-          ]
+            })
+          }
         }
+
+        const pageData = {
+          parent: { database_id: notionConfig.databases.knowledge },
+          properties: properties,
+          children: children
+        }
+
         await notionApiService.createPageGeneric(pageData, notionConfig.apiKey)
         wx.hideLoading()
         wx.showToast({ title: '保存成功', icon: 'success' })
@@ -361,7 +397,7 @@ Page({
 
   // 查看详情
   viewDetail: async function(e) {
-    console.log('🔍 viewDetail被调用')
+//     console.log('🔍 viewDetail被调用')
     const id = e.currentTarget.dataset.id
     console.log('📋 知识ID:', id)
 
@@ -393,10 +429,15 @@ Page({
 
         if (result.success && result.blocks.length > 0) {
           // 提取所有paragraph block的文本
+          // 注意：保存时按2000字符分割，读取时直接拼接（不添加额外换行）
           fullContent = result.blocks
             .filter(block => block.type === 'paragraph')
-            .map(block => block.paragraph?.rich_text?.[0]?.plain_text || '')
-            .join('\n')
+            .map(block => {
+              // 提取block中所有rich_text内容
+              const richTexts = block.paragraph?.rich_text || []
+              return richTexts.map(rt => rt.plain_text || '').join('')
+            })
+            .join('')  // 直接连接，不添加换行符
           console.log('📋 提取的完整内容:', fullContent)
         }
       }

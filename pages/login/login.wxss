@@ -239,25 +239,35 @@
 
 /* 记住密码 */
 .remember-password {
-  margin-top: 20rpx;
+  margin: 24rpx 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-.checkbox-label {
+.remember-label {
   display: flex;
   align-items: center;
   font-size: 28rpx;
   color: #374151;
+  cursor: pointer;
 }
 
-.checkbox-label checkbox {
+.remember-label checkbox {
   margin-right: 12rpx;
-  transform: scale(0.9);
+  transform: scale(1.1);
 }
 
-.checkbox-label text {
+.remember-text {
   user-select: none;
+  font-weight: 500;
+}
+
+.remember-hint {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-left: 44rpx;
+  line-height: 1.4;
 }
 
 .input-field {

@@ -112,29 +112,32 @@ class CloudTest {
     }
   }
 
-  // 自动创建四数据库
+  // 自动创建八数据库
   async autoCreateDatabases(apiKey, parentPageId) {
     try {
       if (!apiKey || !parentPageId) {
         throw new Error('API Key和父页面ID不能为空')
       }
 
-      console.log('开始自动创建四数据库架构...')
+      console.log('开始自动创建八数据库架构...')
 
-      const notionApiService = require('./notionApiService.js')
-      const result = await notionApiService.createQuadDatabases(apiKey, parentPageId)
+      // 直接使用 notionQuadDatabaseCreator（避免循环依赖）
+      const { createQuadDatabases } = require('./notionQuadDatabaseCreator.js')
+      const result = await createQuadDatabases(apiKey, parentPageId)
 
-      console.log('四数据库创建结果:', result)
+      console.log('八数据库创建结果:', result)
 
       if (result.success) {
         return {
           success: true,
-          message: '四数据库创建成功！',
-          goalsDatabaseId: result.goalsDatabaseId,
-          todosDatabaseId: result.todosDatabaseId,
-          mainDatabaseId: result.mainDatabaseId,
-          activityDatabaseId: result.activityDatabaseId,
-          tables: result.tables
+          message: '八数据库创建成功！',
+          databases: result.databases,
+          // 兼容旧字段
+          goalsDatabaseId: result.databases.goals,
+          todosDatabaseId: result.databases.todos,
+          mainDatabaseId: result.databases.mainRecords,
+          activityDatabaseId: result.databases.activityDetails,
+          tables: ['goals', 'todos', 'mainRecords', 'activityDetails', 'dailyStatus', 'happyThings', 'quotes', 'knowledge']
         }
       } else {
         return {
@@ -282,6 +285,18 @@ class CloudTest {
       envId: 'yjxs-3gbxme0rd1c50635',
       isReady: this.isReady
     }
+  }
+
+  // 诊断数据库字段
+  async diagnoseDatabaseFields(apiKey, databaseId, databaseName) {
+    const { diagnoseDatabaseFields } = require('./diagnoseNotionFields.js')
+    return await diagnoseDatabaseFields(apiKey, databaseId, databaseName)
+  }
+
+  // 诊断所有数据库
+  async diagnoseAllDatabases(apiKey, databases) {
+    const { diagnoseAllDatabases } = require('./diagnoseNotionFields.js')
+    return await diagnoseAllDatabases(apiKey, databases)
   }
 }
 

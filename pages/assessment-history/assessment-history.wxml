@@ -1,0 +1,92 @@
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="header-title">📈 HUMAN3.0评估历史</view>
+    <view class="header-subtitle">查看您的成长轨迹</view>
+  </view>
+
+  <!-- 统计概览 -->
+  <view class="stats-card" wx:if="{{ assessments.length > 0 }}">
+    <view class="stats-row">
+      <view class="stat-item">
+        <text class="stat-value">{{ assessments.length }}</text>
+        <text class="stat-label">总测评次数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{ latestLevel }}</text>
+        <text class="stat-label">当前等级</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{ scoreChange > 0 ? '+' : '' }}{{ scoreChange }}</text>
+        <text class="stat-label">分数变化</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 评估历史列表 -->
+  <view class="history-list" wx:if="{{ assessments.length > 0 }}">
+    <view
+      class="history-item"
+      wx:for="{{ assessments }}"
+      wx:key="id"
+      bindtap="viewAssessmentDetail"
+      data-assessment="{{ item }}"
+    >
+      <!-- 日期标签 -->
+      <view class="item-date-tag">
+        <text class="date-icon">📅</text>
+        <text class="date-text">{{ item.dateDisplay }}</text>
+      </view>
+
+      <!-- 评估信息 -->
+      <view class="item-content">
+        <view class="item-header">
+          <view class="item-title">
+            <text class="role-badge role-{{ item.role }}">{{ item.roleText }}</text>
+            <text class="level-badge level-{{ item.level }}">{{ item.levelText }}</text>
+          </view>
+          <view class="item-score">
+            <text class="score-number">{{ item.totalScore }}</text>
+            <text class="score-unit">分</text>
+          </view>
+        </view>
+
+        <!-- 维度分数 -->
+        <view class="dimension-scores">
+          <view
+            class="dimension-item"
+            wx:for="{{ item.dimensionList }}"
+            wx:key="name"
+            wx:for-item="dimension"
+          >
+            <text class="dimension-name">{{ dimension.name }}</text>
+            <view class="dimension-progress">
+              <view class="progress-bar">
+                <view
+                  class="progress-fill"
+                  style="width: {{ dimension.percentage }}%"
+                ></view>
+              </view>
+              <text class="dimension-score">{{ dimension.score }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 时间信息 -->
+        <view class="item-footer">
+          <text class="time-info">⏱️ 用时 {{ item.duration }}分钟</text>
+          <text class="detail-link">查看详情 →</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{ assessments.length === 0 }}">
+    <text class="empty-icon">📊</text>
+    <text class="empty-text">还没有评估记录</text>
+    <button class="btn btn-primary" bindtap="startNewAssessment">
+      <text>🚀 开始第一次评估</text>
+    </button>
+  </view>
+</view>

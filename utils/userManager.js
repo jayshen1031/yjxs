@@ -107,6 +107,7 @@ class UserManager {
       displayName: userInfo.displayName || userInfo.name || emailPrefix,
       avatar: userInfo.avatar || '',
       password: userInfo.password || '',  // 保存密码用于后续验证
+      openid: userInfo.openid || '',      // 🔐 微信openid，用于用户身份隔离
       createdAt: Date.now(),
       lastLoginAt: Date.now(),
       notionConfig: {
@@ -412,6 +413,30 @@ class UserManager {
     } catch (error) {
       return { success: false, error: error.message }
     }
+  }
+
+  // 🔐 清除当前用户设置（但保留用户数据）
+  clearCurrentUser() {
+    this.currentUser = null
+    storage.remove('currentUserId')
+    console.log('✅ 已清除当前用户设置')
+  }
+
+  // 🔐 更新用户的openid
+  updateUserOpenId(userId, openid) {
+    const user = this.users.find(u => u.id === userId)
+    if (user) {
+      user.openid = openid
+      this.saveUsers()
+      // 如果是当前用户，同步更新
+      if (this.currentUser && this.currentUser.id === userId) {
+        this.currentUser.openid = openid
+      }
+      console.log(`✅ 已更新用户 ${userId} 的openid`)
+      return true
+    }
+    console.warn(`⚠️ 未找到用户 ${userId}`)
+    return false
   }
 }
 

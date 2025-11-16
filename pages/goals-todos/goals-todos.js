@@ -120,7 +120,7 @@ Page({
       { value: '临时待办 (Ad-hoc)', label: '📝 临时待办' },
       { value: '习惯养成 (Habit)', label: '💪 习惯养成' },
       { value: '紧急处理 (Urgent)', label: '🚨 紧急处理' },
-      { value: '明日规划 (Planning)', label: '📅 明日规划' }
+      { value: '次日规划 (Planning)', label: '📅 次日规划' }
     ],
     todoTypeIndex: 1,
     todoPriorityOptions: [
@@ -200,7 +200,7 @@ Page({
         try {
           const apiService = require('../../utils/apiService.js')
           await apiService.updateUserByEmail(currentUser.email, { notionConfig })
-          console.log('✅ Goals页面：配置结构已自动修复并同步到云端')
+//           console.log('✅ Goals页面：配置结构已自动修复并同步到云端')
         } catch (error) {
           console.error('❌ Goals页面：同步修复后的配置失败:', error)
         }
@@ -210,22 +210,32 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
-      if (!notionConfig || !notionConfig.apiKey || !notionConfig.goalsDatabaseId) {
+      // 兼容新旧数据库ID格式
+      const goalsDatabaseId = notionConfig?.databases?.goals || notionConfig?.goalsDatabaseId
+
+      if (!notionConfig || !notionConfig.apiKey || !goalsDatabaseId) {
         console.log('Notion未配置，使用本地数据')
         this.loadGoalsFromLocal()
         return
       }
 
-      // 前端直接查询Notion数据库（不过滤，返回所有记录）
-      console.log('🔍 开始查询Goals数据库:', notionConfig.goalsDatabaseId)
+      // 前端直接查询Notion数据库（过滤掉已删除的记录）
+//       console.log('🔍 开始查询Goals数据库:', goalsDatabaseId)
       const result = await notionApiService.queryDatabase(
         notionConfig.apiKey,
-        notionConfig.goalsDatabaseId,
-        {} // 空对象表示不过滤
+        goalsDatabaseId,
+        {
+          filter: {
+            property: 'Status',
+            select: {
+              does_not_equal: '已删除'
+            }
+          }
+        }
       )
 
-      console.log('✅ Goals查询结果:', result)
-      console.log('📊 Goals数据条数:', result.data?.results?.length || 0)
+//       console.log('✅ Goals查询结果:', result)
+//       console.log('📊 Goals数据条数:', result.data?.results?.length || 0)
 
       if (!result.success) {
         console.error('❌ 加载Goals失败:', result.error)
@@ -321,7 +331,7 @@ Page({
         }
       })
 
-      console.log('📝 解析后的Goals:', goals)
+//       console.log('📝 解析后的Goals:', goals)
       console.log('🎨 处理后的Goals:', processedGoals)
 
       this.setData({
@@ -407,7 +417,7 @@ Page({
   },
 
   filterGoals() {
-    console.log('🔍 开始筛选Goals，原始数据条数:', this.data.goals.length)
+//     console.log('🔍 开始筛选Goals，原始数据条数:', this.data.goals.length)
     let filtered = [...this.data.goals]
 
     if (this.data.goalSearchKeyword) {
@@ -416,7 +426,7 @@ Page({
         goal.title.toLowerCase().includes(keyword) ||
         (goal.description && goal.description.toLowerCase().includes(keyword))
       )
-      console.log('📝 搜索关键词:', this.data.goalSearchKeyword, ', 筛选后:', filtered.length)
+//       console.log('📝 搜索关键词:', this.data.goalSearchKeyword, ', 筛选后:', filtered.length)
     }
 
     if (this.data.selectedGoalCategory) {
@@ -424,7 +434,7 @@ Page({
       console.log('🏷️ 筛选分类:', this.data.selectedGoalCategory, ', 筛选后:', filtered.length)
     }
 
-    console.log('✅ 最终筛选结果:', filtered.length, '条')
+//     console.log('✅ 最终筛选结果:', filtered.length, '条')
     this.setData({
       filteredGoals: filtered
     })
@@ -509,12 +519,12 @@ Page({
       const page = pageResult.data
       const props = page.properties
 
-      console.log('🔍 Notion返回的原始properties:', props)
-      console.log('🔍 所有字段名:', Object.keys(props))
-      console.log('🔍 Name字段:', props.Name)
-      console.log('🔍 Goal Name字段:', props['Goal Name'])
-      console.log('🔍 Start Date字段:', props['Start Date'])
-      console.log('🔍 Estimated Hours字段:', props['Estimated Hours'])
+//       console.log('🔍 Notion返回的原始properties:', props)
+//       console.log('🔍 所有字段名:', Object.keys(props))
+//       console.log('🔍 Name字段:', props.Name)
+//       console.log('🔍 Goal Name字段:', props['Goal Name'])
+//       console.log('🔍 Start Date字段:', props['Start Date'])
+//       console.log('🔍 Estimated Hours字段:', props['Estimated Hours'])
 
       const goal = {
         id: page.id,
@@ -529,7 +539,7 @@ Page({
         tags: this.getMultiSelectValue(props.Tags)
       }
 
-      console.log('📝 从Notion加载的最新目标数据:', goal)
+//       console.log('📝 从Notion加载的最新目标数据:', goal)
 
       // 更新本地数据
       const goalIndex = this.data.goals.findIndex(g => g.id === goalId)
@@ -649,7 +659,9 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
-      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.goalsDatabaseId
+      // 兼容新旧数据库ID格式
+      const goalsDatabaseId = notionConfig?.databases?.goals || notionConfig?.goalsDatabaseId
+      const useCloud = notionConfig && notionConfig.apiKey && goalsDatabaseId
 
       if (useCloud) {
         if (this.data.editingGoal) {
@@ -701,8 +713,10 @@ Page({
         } else {
           // 前端直接创建目标到Notion
           const goalData = this.data.goalFormData
+          // 兼容新旧数据库ID格式
+          const goalsDatabaseId = notionConfig.databases?.goals || notionConfig.goalsDatabaseId
           const pageData = {
-            parent: { database_id: notionConfig.goalsDatabaseId },
+            parent: { database_id: goalsDatabaseId },
             properties: {
               'Goal Name': {
                 title: [{ text: { content: goalData.title } }]
@@ -727,9 +741,6 @@ Page({
               },
               'Estimated Hours': {
                 number: goalData.estimatedHours || 0
-              },
-              'Total Time Investment': {
-                number: 0
               },
               'User ID': {
                 rich_text: [{ text: { content: currentUser.email } }]
@@ -851,7 +862,7 @@ Page({
           )
 
           if (result.success) {
-            console.log('✅ Notion目标已标记为删除')
+//             console.log('✅ Notion目标已标记为删除')
           } else {
             console.warn('⚠️ Notion删除失败，仅删除本地记录:', result.error)
           }
@@ -892,7 +903,9 @@ Page({
       }
 
       const notionConfig = currentUser.notionConfig
-      const useCloud = notionConfig && notionConfig.apiKey && notionConfig.goalsDatabaseId
+      // 兼容新旧数据库ID格式
+      const goalsDatabaseId = notionConfig?.databases?.goals || notionConfig?.goalsDatabaseId
+      const useCloud = notionConfig && notionConfig.apiKey && goalsDatabaseId
 
       if (useCloud) {
         const result = await apiService.updateGoal(
@@ -982,21 +995,28 @@ Page({
         return
       }
 
-      // 前端直接查询Notion数据库（不过滤，返回所有记录）
-      console.log('🔍 开始查询Todos数据库:', notionConfig.todosDatabaseId)
+      // 前端直接查询Notion数据库（过滤掉已删除的记录）
+//       console.log('🔍 开始查询Todos数据库:', notionConfig.todosDatabaseId)
       const result = await notionApiService.queryDatabase(
         notionConfig.apiKey,
         notionConfig.todosDatabaseId,
-        {} // 空对象表示不过滤
+        {
+          filter: {
+            property: 'Status',
+            select: {
+              does_not_equal: '已删除'
+            }
+          }
+        }
       )
 
-      console.log('✅ Todos查询结果:', result)
-      console.log('📊 Todos数据条数:', result.data?.results?.length || 0)
+//       console.log('✅ Todos查询结果:', result)
+//       console.log('📊 Todos数据条数:', result.data?.results?.length || 0)
 
       // 打印第一条原始数据看看结构
       if (result.data?.results?.length > 0) {
-        console.log('🔍 第一条Todo原始数据:', result.data.results[0])
-        console.log('🔍 第一条Todo的properties:', result.data.results[0].properties)
+//         console.log('🔍 第一条Todo原始数据:', result.data.results[0])
+//         console.log('🔍 第一条Todo的properties:', result.data.results[0].properties)
       }
 
       if (!result.success) {
@@ -1008,7 +1028,7 @@ Page({
       // 解析Notion返回的数据
       const todos = (result.data?.results || []).map(page => {
         const props = page.properties
-        console.log('📝 解析单条Todo，props:', props)
+//         console.log('📝 解析单条Todo，props:', props)
         return {
           id: page.id,
           title: props['Todo Name']?.title?.[0]?.text?.content || '',
@@ -1078,7 +1098,7 @@ Page({
         }
       })
 
-      console.log('📝 解析后的Todos:', todos)
+//       console.log('📝 解析后的Todos:', todos)
       console.log('🎨 处理后的Todos:', processedTodos)
 
       this.setData({
@@ -1164,7 +1184,7 @@ Page({
   },
 
   filterTodos() {
-    console.log('🔍 开始筛选Todos，原始数据条数:', this.data.todos.length)
+//     console.log('🔍 开始筛选Todos，原始数据条数:', this.data.todos.length)
     let filtered = [...this.data.todos]
 
     const hasSearchKeyword = this.data.todoSearchKeyword && this.data.todoSearchKeyword.trim().length > 0
@@ -1176,7 +1196,7 @@ Page({
         todo.title.toLowerCase().includes(keyword) ||
         (todo.description && todo.description.toLowerCase().includes(keyword))
       )
-      console.log('🔍 搜索模式 - 关键词:', this.data.todoSearchKeyword, ', 筛选后:', filtered.length, '条（包含已完成）')
+//       console.log('🔍 搜索模式 - 关键词:', this.data.todoSearchKeyword, ', 筛选后:', filtered.length, '条（包含已完成）')
     } else if (!this.data.selectedTodoStatus) {
       // 没有搜索且没有选择状态时，默认不显示已完成的待办（除非用户开启了显示选项）
       if (!this.data.showCompletedTodos) {
@@ -1188,7 +1208,7 @@ Page({
     // 状态筛选（优先级高于showCompletedTodos）
     if (this.data.selectedTodoStatus) {
       filtered = filtered.filter(todo => todo.status === this.data.selectedTodoStatus)
-      console.log('📊 筛选状态:', this.data.selectedTodoStatus, ', 筛选后:', filtered.length)
+//       console.log('📊 筛选状态:', this.data.selectedTodoStatus, ', 筛选后:', filtered.length)
     }
 
     // 类型筛选（适用于搜索和默认模式）
@@ -1197,7 +1217,7 @@ Page({
       console.log('🏷️ 筛选类型:', this.data.selectedTodoType, ', 筛选后:', filtered.length)
     }
 
-    console.log('✅ 最终筛选结果:', filtered.length, '条')
+//     console.log('✅ 最终筛选结果:', filtered.length, '条')
     this.setData({
       filteredTodos: filtered
     })
@@ -1263,7 +1283,7 @@ Page({
     })
   },
 
-  // 快速添加明日规划
+  // 快速添加次日规划
   addTomorrowPlanning() {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
@@ -1273,7 +1293,7 @@ Page({
       todoFormData: {
         title: '',
         description: '',
-        type: '明日规划 (Planning)',
+        type: '次日规划 (Planning)',
         priority: '重要不紧急',
         status: '待办',
         dueDate: tomorrowStr,
@@ -1281,7 +1301,7 @@ Page({
         relatedGoalId: '',
         tags: []
       },
-      todoTypeIndex: 4, // 明日规划的索引
+      todoTypeIndex: 4, // 次日规划的索引
       todoPriorityIndex: 1,
       todoStatusIndex: 0,
       todoGoalIndex: -1,
@@ -1334,7 +1354,7 @@ Page({
         completed: props['Is Completed'] ? this.getCheckboxValue(props['Is Completed']) : false
       }
 
-      console.log('📝 从Notion加载的最新待办数据:', todo)
+//       console.log('📝 从Notion加载的最新待办数据:', todo)
 
       // 更新本地数据
       const todoIndex = this.data.todos.findIndex(t => t.id === todoId)
@@ -1483,7 +1503,7 @@ Page({
           }
 
           if (todoData.dueDate) {
-            properties['Due Date'] = { date: { start: todoData.dueDate } }  // ✅ 修正：Record Date → Due Date
+            properties['Due Date'] = { date: { start: todoData.dueDate } }
           }
 
           // 预估时长字段 - 如果数据库有此字段才添加
@@ -1537,7 +1557,7 @@ Page({
           }
 
           if (todoData.dueDate) {
-            pageData.properties['Due Date'] = { date: { start: todoData.dueDate } }  // ✅ 修正：Record Date → Due Date
+            pageData.properties['Due Date'] = { date: { start: todoData.dueDate } }
           }
 
           // 预估时长字段 - 如果数据库有此字段才添加
@@ -1659,7 +1679,7 @@ Page({
           throw new Error(result.error || '更新失败')
         }
 
-        console.log('✅ Notion更新成功')
+//         console.log('✅ Notion更新成功')
       } else {
         console.log('💾 使用本地存储更新')
         // 降级到本地存储
@@ -1725,7 +1745,7 @@ Page({
                   }
                 }
               )
-              console.log('✅ 已在Notion中删除待办')
+//               console.log('✅ 已在Notion中删除待办')
             } else {
               // 降级到本地存储
               let todos = this.data.todos.filter(t => t.id !== todoId)
@@ -1919,7 +1939,7 @@ Page({
       console.log('🗄️ 活动明细库ID:', notionConfig.databases.activityDetails)
 
       // 查询关联的活动明细（带User ID过滤）
-      console.log('🔍 第一次查询：使用User ID + Goal ID过滤')
+//       console.log('🔍 第一次查询：使用User ID + Goal ID过滤')
       const result = await notionApiService.queryActivities(
         notionConfig.apiKey,
         notionConfig.databases.activityDetails,

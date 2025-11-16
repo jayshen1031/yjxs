@@ -81,6 +81,7 @@ async function loadQuotesFromNotion() {
         displayCount: getNumberValue(props['Display Count']) || 0,
         lastDisplayedDate: getDateValue(props['Last Displayed Date']),
         isSystemDefault: getCheckboxValue(props['Is System Default']),
+        isPinned: getCheckboxValue(props['Is Pinned']), // ⭐ 新增：是否固定
         isFavorite: false,
         usageCount: 0,
         createdAt: Date.now()
@@ -282,6 +283,9 @@ async function addCustomQuote(quoteData) {
         },
         'Is System Default': {
           checkbox: false
+        },
+        'Is Pinned': {
+          checkbox: quoteData.isPinned || false  // ⭐ 新增：固定箴言
         },
         'Display Count': {
           number: 0

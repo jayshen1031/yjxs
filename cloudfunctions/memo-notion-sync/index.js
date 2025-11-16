@@ -1353,7 +1353,7 @@ function getMainRecordsDatabaseSchema(todosDatabaseId) {
       select: {
         options: [
           { name: '日常记录', color: 'blue' },
-          { name: '明日规划', color: 'orange' }
+          { name: '次日规划', color: 'orange' }
         ]
       }
     },

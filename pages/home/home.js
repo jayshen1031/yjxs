@@ -1,17 +1,22 @@
 const app = getApp()
 const userManager = require('../../utils/userManager.js')
 const notionApiService = require('../../utils/notionApiService.js')
+const quoteService = require('../../utils/quoteService.js')
 
 Page({
   data: {
     currentQuote: '',
     currentQuoteData: {},
+    // ⭐ 新增：分别显示系统箴言和我的箴言
+    systemQuote: null,
+    myQuote: null,
     todayMemoCount: 0,
     totalMemoCount: 0,
     recentMemos: [],
     todayPlanning: null,
     planningDate: '',
     todayValueMinutes: 0, // 今日价值分钟总数
+    todayValueActivities: [], // ⭐ 今日有价值活动列表
     todayStatus: null, // 今日状态
     todayHappyThings: [], // 今日开心推荐
     // 箴言相关
@@ -47,7 +52,9 @@ Page({
       completed: 0
     },
     // 进行中待办
-    inProgressTodos: []
+    inProgressTodos: [],
+    // HUMAN 3.0评估
+    lastAssessment: null
   },
 
   onLoad: function() {
@@ -82,6 +89,9 @@ Page({
     // 获取今日箴言
     this.loadCurrentQuote()
 
+    // ⭐ 新增：加载系统箴言和我的箴言
+    this.loadSystemAndMyQuotes()
+
     // 获取箴言分类
     this.loadQuoteCategories()
 
@@ -114,6 +124,9 @@ Page({
 
     // ⭐ 加载今日有价值投入
     this.loadTodayValueMinutes()
+
+    // 加载最近评估
+    this.loadLastAssessment()
   },
 
   // 加载当前箴言
@@ -168,11 +181,90 @@ Page({
   loadQuoteCategories: function() {
     const categories = Object.keys(app.getQuoteCategories())
     const quotesCount = app.getAllQuotes().length
-    
+
     this.setData({
       quoteCategories: categories,
       quotesCount: quotesCount
     })
+  },
+
+  // ⭐ 新增：分别加载系统箴言和我的箴言
+  loadSystemAndMyQuotes: async function() {
+    try {
+      // 从Notion加载所有箴言
+      const allQuotes = await quoteService.loadQuotesFromNotion()
+
+      if (!allQuotes || allQuotes.length === 0) {
+        console.log('📚 箴言库为空')
+        return
+      }
+
+      // 分离系统箴言和我的箴言
+      const systemQuotes = allQuotes.filter(q => q.source !== '用户添加')
+      const myQuotes = allQuotes.filter(q => q.source === '用户添加')
+
+      // 随机选择一条系统箴言
+      let selectedSystemQuote = null
+      if (systemQuotes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * systemQuotes.length)
+        selectedSystemQuote = systemQuotes[randomIndex]
+      }
+
+      // 随机选择一条我的箴言
+      let selectedMyQuote = null
+      if (myQuotes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * myQuotes.length)
+        selectedMyQuote = myQuotes[randomIndex]
+      }
+
+      this.setData({
+        systemQuote: selectedSystemQuote,
+        myQuote: selectedMyQuote
+      })
+
+      console.log('✅ 系统箴言:', selectedSystemQuote?.content || '无')
+      console.log('✅ 我的箴言:', selectedMyQuote?.content || '无')
+    } catch (error) {
+      console.error('❌ 加载箴言失败:', error)
+    }
+  },
+
+  // 刷新系统箴言
+  refreshSystemQuote: async function() {
+    try {
+      const allQuotes = await quoteService.loadQuotesFromNotion()
+      const systemQuotes = allQuotes.filter(q => q.source !== '用户添加')
+
+      if (systemQuotes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * systemQuotes.length)
+        this.setData({
+          systemQuote: systemQuotes[randomIndex]
+        })
+        wx.showToast({ title: '已刷新', icon: 'success', duration: 1000 })
+      }
+    } catch (error) {
+      console.error('❌ 刷新系统箴言失败:', error)
+    }
+  },
+
+  // 刷新我的箴言
+  refreshMyQuote: async function() {
+    try {
+      const allQuotes = await quoteService.loadQuotesFromNotion()
+      const myQuotes = allQuotes.filter(q => q.source === '用户添加')
+
+      if (myQuotes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * myQuotes.length)
+        this.setData({
+          myQuote: myQuotes[randomIndex]
+        })
+        wx.showToast({ title: '已刷新', icon: 'success', duration: 1000 })
+      } else {
+        wx.showToast({ title: '暂无自定义箴言', icon: 'none', duration: 1500 })
+      }
+    } catch (error) {
+      console.error('❌ 刷新我的箴言失败:', error)
+    }
   },
 
   // 加载备忘录统计
@@ -360,9 +452,9 @@ Page({
       })
 
       if (result.success && result.todos.length > 0) {
-        // 筛选昨天的明日规划类型待办
+        // 筛选昨天的次日规划类型待办
         const yesterdayPlannings = result.todos.filter(todo => {
-          return todo.todoType === '明日规划 (Planning)' &&
+          return todo.todoType === '次日规划 (Planning)' &&
                  todo.dueDate &&
                  todo.dueDate.startsWith(yesterdayStr)
         })
@@ -425,8 +517,8 @@ Page({
   loadInProgressTodos: async function() {
     try {
       const currentUser = userManager.getCurrentUser()
-      console.log('🔍 [进行中待办] 当前用户:', currentUser ? '已登录' : '未登录')
-      console.log('🔍 [进行中待办] notionConfig:', JSON.stringify(currentUser?.notionConfig, null, 2))
+//       console.log('🔍 [进行中待办] 当前用户:', currentUser ? '已登录' : '未登录')
+//       console.log('🔍 [进行中待办] notionConfig:', JSON.stringify(currentUser?.notionConfig, null, 2))
 
       if (!currentUser || !currentUser.notionConfig) {
         console.log('❌ [进行中待办] 未配置Notion，无法加载进行中待办')
@@ -436,8 +528,8 @@ Page({
       const { apiKey, databases } = currentUser.notionConfig
       const todosDatabaseId = databases?.todos || currentUser.notionConfig.todosDatabaseId || currentUser.notionConfig.databaseId
 
-      console.log('🔍 [进行中待办] databases对象:', databases)
-      console.log('🔍 [进行中待办] 待办库ID:', todosDatabaseId)
+//       console.log('🔍 [进行中待办] databases对象:', databases)
+//       console.log('🔍 [进行中待办] 待办库ID:', todosDatabaseId)
 
       if (!todosDatabaseId) {
         console.log('❌ [进行中待办] 未配置待办库ID')
@@ -451,7 +543,7 @@ Page({
         scope: '进行中'
       })
 
-      console.log('✅ [进行中待办] Notion API调用结果:', result)
+//       console.log('✅ [进行中待办] Notion API调用结果:', result)
 
       if (result.success && result.todos.length > 0) {
         // 处理数据，添加进度百分比
@@ -460,15 +552,13 @@ Page({
             ? Math.min(Math.round((todo.actualMinutes / todo.estimatedMinutes) * 100), 100)
             : 0
 
-          console.log(`📋 [进行中待办] ${todo.title} - ${todo.actualMinutes}/${todo.estimatedMinutes}分钟 (${progressPercentage}%)`)
-
           return {
             ...todo,
             progressPercentage: progressPercentage
           }
         })
 
-        console.log(`✅ [进行中待办] 成功加载 ${todos.length} 个进行中待办`)
+//         console.log(`✅ [进行中待办] 成功加载 ${todos.length} 个进行中待办`)
         this.setData({
           inProgressTodos: todos
         })
@@ -1040,7 +1130,7 @@ Page({
       const today = new Date()
       const dateStr = this.formatDate(today)
 
-      console.log('🔍 首页查询今日状态:', dateStr)
+//       console.log('🔍 首页查询今日状态:', dateStr)
 
       // 查询今日状态
       const apiKey = currentUser.notionConfig.apiKey
@@ -1055,13 +1145,13 @@ Page({
         page_size: 1
       })
 
-      console.log('📊 查询结果:', response)
+//       console.log('📊 查询结果:', response)
 
       if (response.success && response.data?.results && response.data.results.length > 0) {
         const page = response.data.results[0]
-        console.log('✅ 找到今日状态:', page)
+//         console.log('✅ 找到今日状态:', page)
         const status = this.parseDailyStatusPage(page)
-        console.log('📝 解析后的状态:', status)
+//         console.log('📝 解析后的状态:', status)
         this.setData({
           todayStatus: status
         })
@@ -1166,7 +1256,7 @@ Page({
       const today = new Date()
       const todayDate = this.formatDate(today)
 
-      console.log('📊 开始查询今日有价值投入:', todayDate)
+//       console.log('📊 开始查询今日有价值投入:', todayDate)
 
       const result = await notionApiService.queryActivities(
         notionConfig.apiKey,
@@ -1180,7 +1270,7 @@ Page({
         return
       }
 
-      console.log(`📊 查询到 ${result.activities.length} 条活动明细`)
+//       console.log(`📊 查询到 ${result.activities.length} 条活动明细`)
 
       // 筛选今日的有价值活动
       const todayValueActivities = result.activities.filter(activity => {
@@ -1188,14 +1278,21 @@ Page({
         const activityDate = activity.recordDate || ''
         const isToday = activityDate === todayDate
 
-        // 检查是否为有价值活动
-        const isValuable = activity.activityType && activity.activityType.includes('有价值')
-
-        if (isToday) {
-          console.log(`  📌 ${activity.name}: ${activity.activityType} - ${activity.duration}分钟 - 日期:${activityDate}`)
-        }
+        // ⭐ 检查是否为有价值活动（兼容两种字段）
+        // 1. Value Type 字段 = '有价值'
+        // 2. Activity Type 字段包含 '价值' 或 '高价值'
+        const isValuable = activity.valueType === '有价值' ||
+                          activity.activityType?.includes('价值') ||
+                          activity.activityType?.includes('高价值')
 
         return isToday && isValuable
+      })
+
+      // 按时间降序排序
+      todayValueActivities.sort((a, b) => {
+        const timeA = a.startTime || ''
+        const timeB = b.startTime || ''
+        return timeB.localeCompare(timeA)
       })
 
       // 计算总分钟数
@@ -1206,7 +1303,8 @@ Page({
       console.log(`✅ 今日有价值投入: ${totalMinutes} 分钟 (${todayValueActivities.length}个活动)`)
 
       this.setData({
-        todayValueMinutes: totalMinutes
+        todayValueMinutes: totalMinutes,
+        todayValueActivities: todayValueActivities // ⭐ 保存活动列表
       })
 
     } catch (error) {
@@ -1235,5 +1333,73 @@ Page({
       duration: 1500
     })
   },
+
+  // ==================== HUMAN 3.0 评估相关 ====================
+
+  /**
+   * 加载最近评估
+   */
+  loadLastAssessment: function() {
+    try {
+      const assessments = wx.getStorageSync('human30_assessments') || []
+      if (assessments.length > 0) {
+        const last = assessments[assessments.length - 1]
+        const timeAgo = this.getTimeAgo(last.createdAt)
+
+        this.setData({
+          lastAssessment: {
+            metatype: last.metatype || 'Unknown',
+            timeAgo: timeAgo
+          }
+        })
+      }
+    } catch (e) {
+      console.error('加载评估记录失败:', e)
+    }
+  },
+
+  /**
+   * 计算时间差
+   */
+  getTimeAgo: function(timestamp) {
+    const now = Date.now()
+    const diff = now - timestamp
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const minutes = Math.floor(diff / (1000 * 60))
+
+    if (days > 0) {
+      return `${days}天前`
+    } else if (hours > 0) {
+      return `${hours}小时前`
+    } else if (minutes > 0) {
+      return `${minutes}分钟前`
+    } else {
+      return '刚刚'
+    }
+  },
+
+  /**
+   * 前往评估页面
+   */
+  goToAssessment: function() {
+    wx.navigateTo({
+      url: '/pages/assessment-intro/assessment-intro'
+    })
+  },
+
+  /**
+   * 查看评估历史
+   */
+  viewAssessmentHistory: function(e) {
+    // 阻止事件冒泡到父元素
+    e.stopPropagation()
+
+    wx.showToast({
+      title: '历史记录功能开发中',
+      icon: 'none'
+    })
+    // TODO: 跳转到历史记录页面
+  }
 
 })

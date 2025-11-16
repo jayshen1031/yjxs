@@ -1,0 +1,128 @@
+{
+  "skill_name": "WeChat Console Critical Rules",
+  "priority": "CRITICAL",
+  "auto_load": true,
+  "description": "微信开发者工具Console环境的铁律 - 绝对不能违反",
+
+  "critical_rules": {
+    "rule_1": {
+      "title": "❌ 禁止在Console中使用require()",
+      "severity": "FATAL_ERROR",
+      "reason": "微信开发者工具的Console是浏览器环境，不支持Node.js的require()语法",
+      "error_message": "Uncaught ReferenceError: require is not defined",
+      "correct_approach": [
+        "使用 getApp() 获取应用实例",
+        "使用 wx.* API",
+        "使用 app.globalData 访问全局数据",
+        "直接调用全局函数"
+      ],
+      "examples": {
+        "WRONG": [
+          "const userManager = require('../../utils/userManager.js')",
+          "const apiService = require('../../utils/apiService.js')",
+          "require('./any/module.js')"
+        ],
+        "CORRECT": [
+          "const app = getApp()",
+          "const currentUser = app.globalData.currentUser",
+          "wx.getStorageSync('key')",
+          "wx.setStorageSync('key', value)"
+        ]
+      }
+    },
+
+    "rule_2": {
+      "title": "✅ Console中访问数据的正确方法",
+      "methods": {
+        "获取App实例": "const app = getApp()",
+        "获取当前用户": "app.globalData.currentUser",
+        "获取所有用户": "app.globalData.users",
+        "读取本地存储": "wx.getStorageSync('memo_users')",
+        "写入本地存储": "wx.setStorageSync('memo_users', data)",
+        "调用App方法": "app.methodName(params)"
+      }
+    },
+
+    "rule_3": {
+      "title": "⚠️ 用户多次反馈此错误",
+      "feedback_count": "10+次",
+      "user_frustration_level": "极高",
+      "impact": "严重影响用户体验和信任",
+      "action_required": "每次给出Console代码前，必须检查是否包含require()，如果包含则立即修正"
+    }
+  },
+
+  "common_tasks": {
+    "更新用户Notion配置": {
+      "code": [
+        "const app = getApp()",
+        "const currentUser = app.globalData.currentUser",
+        "currentUser.notionConfig.databases = { ... }",
+        "// 保存到存储",
+        "const users = app.globalData.users || []",
+        "const userIndex = users.findIndex(u => u.email === currentUser.email)",
+        "if (userIndex >= 0) {",
+        "  users[userIndex] = currentUser",
+        "  wx.setStorageSync('memo_users', JSON.stringify(users))",
+        "}"
+      ]
+    },
+
+    "查看用户数据": {
+      "code": [
+        "const app = getApp()",
+        "console.log('当前用户:', app.globalData.currentUser)",
+        "console.log('所有用户:', app.globalData.users)",
+        "console.log('存储数据:', wx.getStorageSync('memo_users'))"
+      ]
+    },
+
+    "调用App全局方法": {
+      "code": [
+        "const app = getApp()",
+        "app.createGoal(goalData)",
+        "app.updateGoal(goalId, updates)",
+        "app.refreshQuote()"
+      ]
+    }
+  },
+
+  "environment_differences": {
+    "Node.js环境": {
+      "location": "云函数、本地脚本、工具文件",
+      "module_system": "CommonJS (require/module.exports)",
+      "examples": [
+        "cloudfunctions/*/*.js",
+        "utils/*.js (在后端运行)",
+        "check-*.js, migrate-*.js等脚本"
+      ]
+    },
+
+    "浏览器环境": {
+      "location": "微信开发者工具Console",
+      "module_system": "全局对象访问",
+      "no_require": true,
+      "available_apis": [
+        "getApp()",
+        "wx.*",
+        "console.*",
+        "全局变量和函数"
+      ]
+    }
+  },
+
+  "pre_response_checklist": {
+    "before_giving_console_code": [
+      "✓ 检查是否包含require()",
+      "✓ 确认使用getApp()而非require()",
+      "✓ 确认使用wx.*而非Node.js API",
+      "✓ 确认代码可以在浏览器环境运行"
+    ]
+  },
+
+  "memory_reinforcement": {
+    "repeat": "微信开发者工具Console = 浏览器环境 = 不能用require()",
+    "mnemonic": "Console中看到require = 立即报错 = 用户愤怒",
+    "consequence": "用户已反馈10+次，严重影响信任和体验"
+  }
+}

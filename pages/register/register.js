@@ -410,21 +410,39 @@ Page({
     this.setData({ registering: true })
 
     try {
+      // 🔐 0. 获取微信openid（用于用户身份隔离）
+      let wxOpenId = ''
+      try {
+        const loginRes = await wx.cloud.callFunction({ name: 'login' })
+        wxOpenId = loginRes.result.openid
+        console.log('✅ 获取微信openid成功:', wxOpenId)
+      } catch (err) {
+        console.error('❌ 获取openid失败:', err)
+        wx.showToast({
+          title: '获取微信身份失败，请重试',
+          icon: 'none',
+          duration: 2000
+        })
+        this.setData({ registering: false })
+        return
+      }
+
       // 1. 创建本地用户
       const userName = displayName || email.split('@')[0]
       const userInfo = {
         email: email,
         name: userName,
         displayName: displayName || userName,
-        password: password  // 添加密码用于验证
+        password: password,  // 添加密码用于验证
+        openid: wxOpenId     // 🔐 保存openid用于身份验证
       }
       console.log('准备创建用户，参数:', userInfo)
       const newUser = userManager.createUser(userInfo)
-      console.log('用户创建成功:', newUser.id)
+      console.log('用户创建成功:', newUser.id, 'openid:', wxOpenId)
 
       // 2. 配置Notion
-      console.log('🔍 注册流程 - notionApiKey值:', notionApiKey)
-      console.log('🔍 注册流程 - createdDatabaseIds:', createdDatabaseIds)
+//       console.log('🔍 注册流程 - notionApiKey值:', notionApiKey)
+//       console.log('🔍 注册流程 - createdDatabaseIds:', createdDatabaseIds)
 
       const notionConfig = {
         apiKey: notionApiKey,

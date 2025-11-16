@@ -1,0 +1,162 @@
+<view class="container">
+  <!-- 顶部标题 -->
+  <view class="header">
+    <view class="icon">🧭</view>
+    <view class="title">HUMAN 3.0</view>
+    <view class="subtitle">个人发展评估系统</view>
+  </view>
+
+  <!-- 分隔线 -->
+  <view class="divider"></view>
+
+  <!-- 角色选择 -->
+  <view class="role-section">
+    <view class="section-title">👤 选择你的角色</view>
+    <view class="role-options">
+      <view
+        class="role-card {{selectedRole === 'adult' ? 'active' : ''}}"
+        data-role="adult"
+        bindtap="selectRole"
+      >
+        <view class="role-icon">💼</view>
+        <view class="role-name">已工作人群</view>
+        <view class="role-desc">关注事业发展</view>
+      </view>
+      <view
+        class="role-card {{selectedRole === 'student' ? 'active' : ''}}"
+        data-role="student"
+        bindtap="selectRole"
+      >
+        <view class="role-icon">🎓</view>
+        <view class="role-name">在校学生</view>
+        <view class="role-desc">关注学习成长</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分隔线 -->
+  <view class="divider"></view>
+
+  <!-- 四象限说明 - 成年人版本 -->
+  <view class="quadrants-section" wx:if="{{selectedRole === 'adult'}}">
+    <view class="section-title">📊 评估四大象限</view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">🧠</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Mind：心智世界</view>
+        <view class="quadrant-desc">思维方式、信念系统、认知模式</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">💪</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Body：身体状态</view>
+        <view class="quadrant-desc">健康、体能、精力管理</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">🌟</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Spirit：精神连接</view>
+        <view class="quadrant-desc">关系、意义、归属感</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">💼</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Vocation：事业发展</view>
+        <view class="quadrant-desc">职业、价值创造、社会贡献</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 四象限说明 - 学生版本 -->
+  <view class="quadrants-section" wx:if="{{selectedRole === 'student'}}">
+    <view class="section-title">📊 评估四大领域</view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">🧠</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Mind：思维方式</view>
+        <view class="quadrant-desc">学习态度、兴趣探索、思考能力</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">💪</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Body：身体健康</view>
+        <view class="quadrant-desc">运动习惯、作息规律、精力管理</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">🌈</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Spirit：人际情感</view>
+        <view class="quadrant-desc">同学关系、家庭关系、兴趣爱好</view>
+      </view>
+    </view>
+
+    <view class="quadrant-item">
+      <view class="quadrant-icon">📚</view>
+      <view class="quadrant-info">
+        <view class="quadrant-name">Learning：学习成长</view>
+        <view class="quadrant-desc">学习方法、学习动力、成长目标</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 评估信息 -->
+  <view class="info-section">
+    <view class="info-item">
+      <view class="info-icon">⏱️</view>
+      <view class="info-text">预计时长：30-45分钟</view>
+    </view>
+    <view class="info-item">
+      <view class="info-icon">❓</view>
+      <view class="info-text">问题数量：12-32个（自适应）</view>
+    </view>
+    <view class="info-item">
+      <view class="info-icon">📈</view>
+      <view class="info-text">生成报告：个性化行动计划</view>
+    </view>
+  </view>
+
+  <!-- 分隔线 -->
+  <view class="divider"></view>
+
+  <!-- 评估建议 -->
+  <view class="tips-section">
+    <view class="section-title">💡 评估建议</view>
+    <view class="tip-item">• 选择安静不被打扰的时间</view>
+    <view class="tip-item">• 诚实回答，避免理想化答案</view>
+    <view class="tip-item">• 可以随时暂停，下次继续</view>
+    <view class="tip-item">• 回答越详细，评估越准确</view>
+  </view>
+
+  <!-- 历史评估提示 -->
+  <view class="history-hint" wx:if="{{hasHistory}}">
+    <view class="history-text">📚 你有 {{historyCount}} 次历史评估</view>
+    <view class="history-link" bindtap="viewHistory">查看历史记录</view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="button-group">
+    <button class="btn btn-primary" bindtap="startAssessment">
+      开始评估
+    </button>
+    <button class="btn btn-secondary" bindtap="goBack">
+      稍后再说
+    </button>
+  </view>
+
+  <!-- 版权信息 -->
+  <view class="footer">
+    <view class="footer-text">Based on Dan Koe's HUMAN 3.0 Framework</view>
+  </view>
+</view>

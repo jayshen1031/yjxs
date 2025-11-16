@@ -391,7 +391,7 @@ const MainRecordsDatabaseSchema = {
       select: {
         options: [
           { name: '日常记录', color: 'blue' },
-          { name: '明日规划', color: 'orange' },
+          { name: '次日规划', color: 'orange' },
           { name: '每日总结', color: 'purple' },
           { name: '灵感记录', color: 'yellow' }
         ]
@@ -472,13 +472,16 @@ const MainRecordsDatabaseSchema = {
       }
     },
     'Mood': {
-      select: {
+      multi_select: {
         options: [
           { name: '😊 开心', color: 'green' },
-          { name: '😌 平静', color: 'blue' },
+          { name: '💪 充满动力', color: 'blue' },
+          { name: '😌 平静', color: 'default' },
           { name: '😕 迷茫', color: 'gray' },
-          { name: '😔 沮丧', color: 'red' },
-          { name: '💪 充满动力', color: 'orange' }
+          { name: '😔 沮丧', color: 'brown' },
+          { name: '😰 焦虑', color: 'orange' },
+          { name: '😴 疲惫', color: 'yellow' },
+          { name: '😤 压力大', color: 'red' }
         ]
       }
     }
@@ -601,7 +604,7 @@ const DailyStatusDatabaseSchema = {
 
     // === 心情和能量 ===
     'Mood': {
-      select: {
+      multi_select: {
         options: [
           { name: '😊 开心', color: 'green' },
           { name: '💪 充满动力', color: 'blue' },
@@ -916,6 +919,10 @@ const QuotesDatabaseSchema = {
       checkbox: {}  // 是否为系统默认箴言
     },
 
+    'Is Pinned': {
+      checkbox: {}  // 是否为固定箴言（每天必看）
+    },
+
     // === 统计信息 ===
     'Display Count': {
       number: {
@@ -974,6 +981,7 @@ const KnowledgeDatabaseSchema = {
           { name: '生活', color: 'green' },
           { name: '学习', color: 'yellow' },
           { name: '思考', color: 'pink' },
+          { name: '评估报告', color: 'red' },
           { name: '其他', color: 'gray' }
         ]
       }
@@ -992,6 +1000,7 @@ const KnowledgeDatabaseSchema = {
           { name: '课程', color: 'orange' },
           { name: '经验', color: 'green' },
           { name: '对话', color: 'pink' },
+          { name: 'HUMAN 3.0', color: 'default' },
           { name: '其他', color: 'gray' }
         ]
       }

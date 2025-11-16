@@ -9,46 +9,17 @@
     <text class="subtitle">记录生活，连接思想</text>
   </view>
 
-  <!-- 现有用户快速选择 -->
-  <view class="login-card" wx:if="{{users.length > 0}}">
+  <!-- 账号登录 -->
+  <view class="login-card">
     <view class="card-header">
-      <text class="welcome-text">快速选择用户</text>
-      <text class="welcome-desc">点击头像快速登录</text>
+      <text class="welcome-text">账号登录</text>
+      <text class="welcome-desc">使用邮箱和密码登录</text>
     </view>
-    <view class="user-list">
-      <view class="user-item" 
-            wx:for="{{users}}" 
-            wx:key="id"
-            bindtap="selectUser"
-            data-user-id="{{item.id}}">
-        <view class="user-avatar">
-          <text>{{item.name.charAt(0)}}</text>
-        </view>
-        <view class="user-info">
-          <text class="user-name">{{item.displayName || item.name}}</text>
-          <text class="user-email">{{item.email}}</text>
-          <text class="last-login">上次登录：{{item.lastLoginText}}</text>
-        </view>
-        <view class="user-status">
-          <view class="notion-status {{item.notionConfigured ? 'connected' : 'disconnected'}}">
-            <text>{{item.notionConfigured ? 'Notion已连接' : 'Notion未配置'}}</text>
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 已有账号登录 -->
-  <view class="existing-user-login">
-    <view class="section-header" bindtap="toggleExistingLogin">
-      <text class="section-title">已有账号登录</text>
-      <text class="toggle-icon">{{showExistingLogin ? '▼' : '▶'}}</text>
-    </view>
-    <view class="input-group" wx:if="{{showExistingLogin}}">
+    <view class="input-group">
       <view class="input-item">
         <text class="input-label">邮箱地址</text>
-        <input class="input-field" 
-               placeholder="请输入已注册的邮箱地址" 
+        <input class="input-field"
+               placeholder="请输入已注册的邮箱地址"
                value="{{loginEmail}}"
                bindinput="onLoginEmailInput"
                type="email"/>
@@ -60,8 +31,8 @@
       <view class="input-item">
         <text class="input-label">密码</text>
         <view class="password-input">
-          <input class="input-field password-field" 
-                 placeholder="请输入密码" 
+          <input class="input-field password-field"
+                 placeholder="请输入密码"
                  value="{{loginPassword}}"
                  bindinput="onLoginPasswordInput"
                  password="{{!showPassword}}"
@@ -75,122 +46,52 @@
           <text wx:else>输入您的登录密码</text>
         </view>
       </view>
-      <view class="remember-password">
-        <label class="checkbox-label">
-          <checkbox value="remember" checked="{{rememberPassword}}" bindchange="onRememberPasswordChange"/>
-          <text>记住密码</text>
-        </label>
-      </view>
     </view>
-    <button class="login-btn" 
-            wx:if="{{showExistingLogin}}"
+
+    <!-- 记住密码选项 -->
+    <view class="remember-password">
+      <checkbox-group bindchange="onRememberPasswordChange">
+        <label class="remember-label">
+          <checkbox value="remember" checked="{{rememberPassword}}"/>
+          <text class="remember-text">记住登录信息</text>
+        </label>
+      </checkbox-group>
+      <text class="remember-hint">仅在本设备有效，跨设备需重新登录</text>
+    </view>
+
+    <button class="login-btn"
             bindtap="loginWithPassword"
             disabled="{{!loginEmail || !loginPassword || logging}}">
       {{logging ? '登录中...' : '登录'}}
     </button>
-    
   </view>
 
   <!-- 创建新账户 -->
   <view class="login-card">
     <view class="card-header">
-      <text class="welcome-text">创建新账户</text>
-      <text class="welcome-desc">首次使用请创建账户并配置Notion</text>
+      <text class="welcome-text">还没有账户？</text>
+      <text class="welcome-desc">首次使用请完成注册并配置Notion</text>
     </view>
-
-    <!-- 推荐：完整注册流程 -->
-    <view class="recommended-register">
-      <button class="register-guide-btn" bindtap="goToRegister">
-        <view class="btn-content">
-          <text class="btn-icon">✨</text>
-          <view class="btn-text">
-            <text class="btn-title">完整注册（推荐）</text>
-            <text class="btn-desc">包含Notion配置向导</text>
-          </view>
-        </view>
-      </button>
-    </view>
-
-    <view class="divider">
-      <text class="divider-text">或快速创建</text>
-    </view>
-
-    <view class="create-user-section">
-      <view class="section-header" wx:if="{{users.length > 0}}" bindtap="toggleCreateUser">
-        <text class="section-title">快速注册信息</text>
-        <text class="toggle-icon">{{showCreateUser ? '▼' : '▶'}}</text>
-      </view>
-      <view class="input-group" wx:if="{{showCreateUser || users.length === 0}}">
-        <view class="input-item">
-          <text class="input-label">邮箱地址</text>
-          <input class="input-field" 
-                 placeholder="请输入邮箱地址，如：user@example.com" 
-                 value="{{newUserEmail}}"
-                 bindinput="onUserEmailInput"
-                 type="email"/>
-          <view class="input-hint {{emailError ? 'error' : ''}}">
-            {{emailError || '邮箱将作为您的账户标识，建议使用Notion注册邮箱'}}
-          </view>
-        </view>
-        <view class="input-item">
-          <text class="input-label">设置密码</text>
-          <view class="password-input">
-            <input class="input-field password-field" 
-                   placeholder="请设置登录密码（至少6位）" 
-                   value="{{newUserPassword}}"
-                   bindinput="onUserPasswordInput"
-                   password="{{!showPassword}}"
-                   type="text"/>
-            <view class="password-toggle" bindtap="togglePasswordVisibility">
-              <text class="toggle-icon">{{showPassword ? '👁️' : '🙈'}}</text>
-            </view>
-          </view>
-          <view class="input-hint {{passwordError ? 'error' : ''}}">
-            {{passwordError || '密码用于保护您的账户安全'}}
-          </view>
-        </view>
-        <view class="input-item">
-          <text class="input-label">确认密码</text>
-          <view class="password-input">
-            <input class="input-field password-field" 
-                   placeholder="请再次输入密码" 
-                   value="{{newUserPasswordConfirm}}"
-                   bindinput="onUserPasswordConfirmInput"
-                   password="{{!showConfirmPassword}}"
-                   type="text"/>
-            <view class="password-toggle" bindtap="toggleConfirmPasswordVisibility">
-              <text class="toggle-icon">{{showConfirmPassword ? '👁️' : '🙈'}}</text>
-            </view>
-          </view>
-          <view class="input-hint">请确认您的密码</view>
-        </view>
-        <view class="input-item">
-          <text class="input-label">显示名称（可选）</text>
-          <input class="input-field" 
-                 placeholder="请输入显示名称" 
-                 value="{{newUserName}}"
-                 bindinput="onUserNameInput"/>
-          <view class="input-hint">不填写将使用邮箱前缀作为显示名称</view>
+    <button class="register-guide-btn" bindtap="goToRegister">
+      <view class="btn-content">
+        <text class="btn-icon">✨</text>
+        <view class="btn-text">
+          <text class="btn-title">立即注册</text>
+          <text class="btn-desc">包含完整的Notion配置向导</text>
         </view>
       </view>
-      <button class="create-btn" 
-              wx:if="{{showCreateUser || users.length === 0}}"
-              bindtap="createUser"
-              disabled="{{!isEmailValid || !isPasswordValid || creating}}">
-        {{creating ? '创建中...' : '创建账户'}}
-      </button>
-    </view>
+    </button>
   </view>
 
   <!-- 底部说明 -->
   <view class="footer">
-    <text class="footer-text">每个用户的数据独立存储</text>
-    <text class="footer-text">支持个人Notion账户连接</text>
+    <text class="footer-text">🔐 每个微信账号的数据完全隔离</text>
+    <text class="footer-text">📱 同一微信账号只需登录一次</text>
   </view>
 </view>
 
 <!-- 加载遮罩 -->
-<view class="loading-mask" wx:if="{{loading}}">
+<view class="loading-mask" wx:if="{{logging}}">
   <view class="loading-content">
     <view class="loading-spinner"></view>
     <text>正在登录...</text>
