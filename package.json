@@ -4,9 +4,11 @@
   "description": "语寄心声微信小程序",
   "scripts": {
     "create-databases": "node scripts/createNotionDatabases_interactive.js",
-    "create-daily-status": "node scripts/createDailyStatusDatabase_interactive.js"
+    "create-daily-status": "node scripts/createDailyStatusDatabase_interactive.js",
+    "upgrade-databases": "node scripts/upgradeToSystemManagement.js"
   },
   "dependencies": {
+    "@notionhq/client": "^2.2.0",
     "axios": "^1.6.0",
     "towxml": "^3.0.6"
   },

@@ -127,6 +127,14 @@
         >
           <text>{{ diagnosing ? '诊断中...' : '🔍 诊断数据库字段' }}</text>
         </button>
+        <button
+          class="btn btn-warning btn-upgrade"
+          bindtap="upgradeDatabases"
+          loading="{{ upgrading }}"
+          disabled="{{ upgrading || !notionConfig.apiKey }}"
+        >
+          <text>{{ upgrading ? '升级中...' : '⬆️ 升级到系统管理版本' }}</text>
+        </button>
       </view>
 
       <!-- 手动配置模式 -->

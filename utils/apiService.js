@@ -19,7 +19,10 @@ class ApiService {
 
   // 确保云开发已初始化
   ensureCloudInit() {
-    if (this.isInitialized) return
+    if (this.isInitialized) {
+      console.log('ApiService: 云环境已初始化')
+      return
+    }
 
     const app = getApp()
     if (app && app.globalData.cloudReady) {
@@ -31,11 +34,29 @@ class ApiService {
     // 如果App还没初始化，自己初始化
     if (typeof wx !== 'undefined' && wx.cloud) {
       console.log('ApiService: 自行初始化云环境:', this.envId)
-      wx.cloud.init({
-        env: this.envId,
-        traceUser: true
-      })
-      this.isInitialized = true
+      try {
+        wx.cloud.init({
+          env: this.envId,
+          traceUser: true
+        })
+        this.isInitialized = true
+        console.log('✅ ApiService: 云环境初始化成功')
+      } catch (error) {
+        console.error('❌ ApiService: 云环境初始化失败:', error)
+        // 重试一次（不追踪用户）
+        try {
+          wx.cloud.init({
+            env: this.envId,
+            traceUser: false
+          })
+          this.isInitialized = true
+          console.log('✅ ApiService: 云环境重试初始化成功（无用户追踪）')
+        } catch (retryError) {
+          console.error('❌ ApiService: 云环境重试初始化仍然失败:', retryError)
+        }
+      }
+    } else {
+      console.error('❌ ApiService: wx.cloud 不可用')
     }
   }
 

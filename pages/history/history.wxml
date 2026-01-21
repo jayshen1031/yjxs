@@ -1,164 +1,147 @@
 <view class="container">
-  <!-- 页面标题说明 -->
-  <view class="page-header">
-    <view class="header-top">
-      <view class="header-left">
-        <view class="page-title">⏱️ 我的足迹</view>
-        <view class="page-desc">看看时间都去哪了，每一分钟都值得回顾</view>
+  <!-- 日期选择器 -->
+  <view class="date-selector">
+    <button class="date-btn" bindtap="previousDay">◀ 前一天</button>
+    <picker mode="date" value="{{selectedDate}}" bindchange="onDateChange">
+      <view class="date-display">{{ selectedDateDisplay }}</view>
+    </picker>
+    <button class="date-btn" bindtap="nextDay">后一天 ▶</button>
+    <button class="today-btn" bindtap="goToToday">今天</button>
+  </view>
+
+  <!-- 今日统计 -->
+  <view class="stats-card">
+    <view class="stats-title">📊 今日统计</view>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <view class="stat-label">总时长</view>
+        <view class="stat-value">{{ stats.totalHours }}h</view>
       </view>
-      <view class="refresh-btn" bindtap="onRefresh">
-        <text class="refresh-icon">🔄</text>
+      <view class="stat-item">
+        <view class="stat-label">系统目标</view>
+        <view class="stat-value system-goal-color">{{ stats.systemGoalHours }}h</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-label">每日事项</view>
+        <view class="stat-value daily-task-color">{{ stats.dailyTaskHours }}h</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-label">流水账</view>
+        <view class="stat-value journal-color">{{ stats.journalHours }}h</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-label">活动数</view>
+        <view class="stat-value">{{ stats.activityCount }}</view>
       </view>
     </view>
   </view>
 
-  <!-- 日期选择和统计 -->
-  <view class="header-section">
-    <view class="date-selector">
-      <picker mode="date" value="{{ selectedDate }}" bindchange="onDateChange" start="2020-01-01" end="{{ todayDate }}">
-        <view class="date-picker">
-          <text class="date-text">{{ selectedDateDisplay }}</text>
-          <text class="date-icon">📅</text>
+  <!-- 活动明细表格 -->
+  <view class="activities-section">
+    <view class="section-header">
+      <view class="section-title">⏱️ 今日活动明细（按时间排序）</view>
+      <button class="refresh-btn" bindtap="loadActivities" disabled="{{ isLoading }}">
+        {{ isLoading ? '加载中...' : '🔄 刷新' }}
+      </button>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{ activities.length === 0 && !isLoading }}" class="empty-state">
+      <view class="empty-icon">📝</view>
+      <view class="empty-text">今天还没有记录活动</view>
+      <view class="empty-hint">点击下方"添加活动"开始记录</view>
+    </view>
+
+    <!-- 活动表格 -->
+    <scroll-view wx:if="{{ activities.length > 0 }}" class="table-scroll" scroll-y>
+      <view class="activity-table">
+        <!-- 表头 -->
+        <view class="table-header">
+          <view class="th time-col">开始</view>
+          <view class="th time-col">结束</view>
+          <view class="th name-col">活动</view>
+          <view class="th relation-col">关联</view>
+          <view class="th status-col">状态</view>
+          <view class="th duration-col">时长</view>
+          <view class="th action-col">操作</view>
         </view>
-      </picker>
-    </view>
-    
-    <!-- 核心统计卡片 - 只显示有意义的指标 -->
-    <view class="stats-grid-simple">
-      <view class="stat-card valuable" bindtap="showStatsDebug">
-        <view class="stat-icon">✅</view>
-        <view class="stat-number">{{ stats.valuableMinutes }}</view>
-        <view class="stat-label">分钟</view>
+
+        <!-- 表格内容 -->
+        <view
+          wx:for="{{ activities }}"
+          wx:key="id"
+          class="table-row activity-row {{ item.activityTypeClass }}"
+        >
+          <!-- 开始时间 -->
+          <view class="td time-col time-cell">{{ item.startTimeDisplay }}</view>
+
+          <!-- 结束时间 -->
+          <view class="td time-col time-cell">{{ item.endTimeDisplay }}</view>
+
+          <!-- 活动名称 -->
+          <view class="td name-col activity-name-cell">{{ item.activityName }}</view>
+
+          <!-- 关联 -->
+          <view class="td relation-col relation-cell">
+            <view wx:if="{{ item.relatedGoalName }}" class="relation-item">
+              🎯 {{ item.relatedGoalName }}
+            </view>
+            <view wx:if="{{ item.relatedTodoName }}" class="relation-item">
+              ✅ {{ item.relatedTodoName }}
+            </view>
+            <view wx:if="{{ item.relatedKnowledgeName }}" class="relation-item">
+              📚 {{ item.relatedKnowledgeName }}
+            </view>
+            <view wx:if="{{ !item.relatedGoalName && !item.relatedTodoName && !item.relatedKnowledgeName }}">
+              -
+            </view>
+          </view>
+
+          <!-- 状态 -->
+          <view class="td status-col status-cell">{{ item.statusDisplay }}</view>
+
+          <!-- 时长 -->
+          <view class="td duration-col duration-cell">{{ item.durationDisplay }}</view>
+
+          <!-- 操作 -->
+          <view class="td action-col action-cell">
+            <button class="action-btn edit-btn" bindtap="editActivity" data-id="{{ item.id }}">✏️</button>
+            <button class="action-btn delete-btn" bindtap="deleteActivity" data-id="{{ item.id }}">🗑️</button>
+          </view>
+        </view>
       </view>
-      <view class="stat-card wasteful" bindtap="showStatsDebug">
-        <view class="stat-icon">⚠️</view>
-        <view class="stat-number">{{ stats.wastefulMinutes }}</view>
-        <view class="stat-label">分钟</view>
-      </view>
-    </view>
+    </scroll-view>
   </view>
 
-  <!-- 高级筛选 -->
-  <view class="advanced-filter">
-    <view class="filter-header" bindtap="toggleFilterPanel">
-      <text class="filter-title">高级筛选</text>
-      <text class="filter-arrow {{ showFilterPanel ? 'active' : '' }}">▼</text>
-    </view>
-    
-    <view class="filter-panel {{ showFilterPanel ? 'show' : '' }}">
-      <!-- 标签筛选 -->
-      <view class="filter-group">
-        <view class="filter-label">标签筛选</view>
-        <view class="tag-filter">
-          <view class="filter-tag {{ selectedTags.indexOf(item) !== -1 ? 'selected' : '' }}" wx:for="{{ allTags }}" wx:key="index" bindtap="toggleTagFilter" data-tag="{{ item }}">
-            {{ item }}
-          </view>
-        </view>
-      </view>
-
-      <!-- 时间范围筛选 -->
-      <view class="filter-group">
-        <view class="filter-label">时间范围</view>
-        <view class="time-range-filter">
-          <view class="time-range-item {{ timeRange === item.value ? 'active' : '' }}" wx:for="{{ timeRangeOptions }}" wx:key="value" bindtap="setTimeRange" data-range="{{ item.value }}">
-            {{ item.label }}
-          </view>
-        </view>
-      </view>
-
-      <!-- 排序方式 -->
-      <view class="filter-group">
-        <view class="filter-label">排序方式</view>
-        <view class="sort-options">
-          <view class="sort-option {{ sortBy === item.value ? 'active' : '' }}" wx:for="{{ sortOptions }}" wx:key="value" bindtap="setSortBy" data-sort="{{ item.value }}">
-            {{ item.label }}
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 记录列表 -->
-  <view class="memo-list" wx:if="{{ filteredMemos.length > 0 }}">
-    <!-- 按日期分组显示 -->
-    <view class="date-group" wx:for="{{ groupedMemos }}" wx:key="date">
-      <view class="date-header">
-        <text class="date-title">{{ item.dateDisplay }}</text>
-        <text class="date-count">{{ item.memos.length }}条</text>
-      </view>
-      
-      <view class="memo-item" wx:for="{{ item.memos }}" wx:key="id" wx:for-item="memo">
-        <!-- 活动时间段列表 - 提升为主要内容 -->
-        <view class="activity-list-primary" wx:if="{{ memo.activities && memo.activities.length > 0 }}">
-          <view class="activity-header">
-            <view class="activity-header-left">
-              <text class="activity-period">{{ memo.timePeriodDisplay }}</text>
-              <text class="activity-summary">{{ memo.activities.length }}项活动</text>
-            </view>
-            <view class="activity-actions">
-              <text class="action-btn edit-btn" bindtap="editMemo" data-id="{{ memo.id }}">✏️</text>
-              <text class="action-btn delete-btn" bindtap="deleteMemo" data-id="{{ memo.id }}">🗑️</text>
-            </view>
-          </view>
-          <view class="activity-item" wx:for="{{ memo.activities }}" wx:key="index" wx:for-item="activity">
-            <view class="activity-icon" data-type="{{ activity.activityType }}">
-              <text wx:if="{{ activity.activityType.includes('有价值') || activity.activityType === 'valuable' }}">✅</text>
-              <text wx:elif="{{ activity.activityType.includes('低效') || activity.activityType === 'wasteful' }}">⚠️</text>
-              <text wx:else>📊</text>
-            </view>
-            <view class="activity-info">
-              <view class="activity-name">{{ activity.name }}</view>
-              <view class="activity-meta">
-                <text class="activity-duration">{{ activity.duration }}分钟</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 无活动明细时显示原记录 -->
-        <view class="memo-content-fallback" wx:else>
-          <view class="memo-header">
-            <view class="memo-header-left">
-              <view class="memo-type {{ memo.isPlanning ? 'planning' : memo.type }}">
-                <text>{{ memo.isPlanning ? '📋' : (memo.type === 'voice' ? '🎤' : '📝') }}</text>
-              </view>
-              <view class="memo-time-info">
-                <view class="time-period-main">{{ memo.timePeriodDisplay }}</view>
-              </view>
-            </view>
-            <view class="activity-actions">
-              <text class="action-btn edit-btn" bindtap="editMemo" data-id="{{ memo.id }}">✏️</text>
-              <text class="action-btn delete-btn" bindtap="deleteMemo" data-id="{{ memo.id }}">🗑️</text>
-            </view>
-          </view>
-
-          <view class="memo-text">{{ memo.content }}</view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 空状态 -->
-  <view wx:else class="empty-state">
-    <view class="empty-icon">🗂️</view>
-    <view class="empty-text">
-      <text wx:if="{{ hasActiveFilters }}">没有符合条件的记录</text>
-      <text wx:else>暂无历史记录</text>
-    </view>
-    <button wx:if="{{ hasActiveFilters }}" class="btn btn-secondary" bindtap="clearFilters">
-      <text>清除筛选</text>
+  <!-- 添加活动按钮 -->
+  <view class="add-button-container">
+    <button class="add-activity-btn" bindtap="showAddActivityDialog">
+      + 添加活动
     </button>
   </view>
 
-  <!-- 加载更多 -->
-  <view class="load-more" wx:if="{{ filteredMemos.length > 0 && hasMore }}">
-    <button class="btn btn-secondary" bindtap="loadMore" loading="{{ isLoading }}">
-      <text>{{ isLoading ? '加载中...' : '加载更多' }}</text>
-    </button>
+  <!-- 提示信息 -->
+  <view class="tips-card">
+    <view class="tips-title">💡 提示</view>
+    <view class="tips-list">
+      <view class="tip-item">• 系统目标显示进度（如：122/500h）</view>
+      <view class="tip-item">• 每日事项显示状态（进行中/已完成）</view>
+      <view class="tip-item">• 流水账不显示状态</view>
+    </view>
   </view>
+</view>
 
-  <!-- 悬浮的新建记录按钮 -->
-  <view class="float-add-btn" bindtap="createNewRecord">
-    <text class="add-icon">✏️</text>
+<!-- 添加活动弹窗（后续实现） -->
+<view wx:if="{{ showAddDialog }}" class="modal-overlay" bindtap="closeAddDialog">
+  <view class="add-activity-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <view class="modal-title">添加活动</view>
+      <button class="close-btn" bindtap="closeAddDialog">×</button>
+    </view>
+
+    <!-- 弹窗内容（待实现） -->
+    <view class="modal-body">
+      <view class="coming-soon">功能开发中...</view>
+    </view>
   </view>
 </view>

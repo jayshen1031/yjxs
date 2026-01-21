@@ -34,6 +34,7 @@ Page({
     creating: false, // 正在创建数据库
     diagnosing: false, // 正在诊断数据库
     fixing: false, // 正在修复数据库结构
+    upgrading: false, // 正在升级数据库
     // 箴言相关数据
     quoteStats: {
       total: 0,
@@ -702,6 +703,229 @@ Page({
       toast.error('诊断失败: ' + error.message)
     } finally {
       this.setData({ diagnosing: false })
+    }
+  },
+
+  // 升级数据库到系统管理版本
+  upgradeDatabases: async function() {
+    const currentUser = this.data.currentUser
+    if (!currentUser) {
+      toast.error('请先登录')
+      return
+    }
+
+    const notionConfig = currentUser.notionConfig
+    if (!notionConfig || !notionConfig.apiKey) {
+      toast.error('请先配置Notion集成')
+      return
+    }
+
+    const { apiKey, databases } = notionConfig
+    if (!databases || !databases.goals || !databases.activityDetails ||
+        !databases.todos || !databases.knowledge) {
+      toast.error('请先完成八数据库配置')
+      return
+    }
+
+    // 确认对话框
+    const confirmResult = await new Promise((resolve) => {
+      wx.showModal({
+        title: '确认升级',
+        content: '即将升级数据库到系统管理版本：\n\n✓ Goals: 添加Is System Managed和Daily Target Hours字段\n✓ Activity Details: 添加Activity Type、关联关系和状态字段\n\n升级过程约1-2分钟，不会删除任何数据。',
+        confirmText: '开始升级',
+        cancelText: '取消',
+        success: (res) => resolve(res.confirm)
+      })
+    })
+
+    if (!confirmResult) {
+      return
+    }
+
+    this.setData({ upgrading: true })
+
+    try {
+      console.log('🚀 开始升级数据库...')
+
+      const notionApiService = require('../../utils/notionApiService.js')
+
+      // 辅助函数：延迟
+      const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+      // 1. 升级 Goals 数据库
+      console.log('[1/2] 升级 Goals 数据库...')
+      wx.showLoading({ title: '升级Goals数据库...' })
+
+      try {
+        await notionApiService.callApi('/databases/' + databases.goals, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Is System Managed': {
+                checkbox: {}
+              }
+            }
+          }
+        })
+        console.log('✅ Is System Managed字段已添加')
+
+        await sleep(1000)
+
+        await notionApiService.callApi('/databases/' + databases.goals, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Daily Target Hours': {
+                number: {
+                  format: 'number'
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Daily Target Hours字段已添加')
+
+        console.log('✅ Goals数据库升级成功')
+      } catch (error) {
+        wx.hideLoading()
+        throw new Error('Goals数据库升级失败: ' + error.message)
+      }
+
+      // 2. 升级 Activity Details 数据库
+      console.log('[2/2] 升级 Activity Details 数据库...')
+      wx.showLoading({ title: '升级Activity Details...' })
+
+      try {
+        // 2.1 添加 Activity Type
+        await notionApiService.callApi('/databases/' + databases.activityDetails, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Activity Type': {
+                select: {
+                  options: [
+                    { name: '系统目标', color: 'blue' },
+                    { name: '每日事项', color: 'yellow' },
+                    { name: '流水账', color: 'gray' }
+                  ]
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Activity Type字段已添加')
+
+        await sleep(1000)
+
+        // 2.2 添加 Related Goal
+        await notionApiService.callApi('/databases/' + databases.activityDetails, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Related Goal': {
+                relation: {
+                  database_id: databases.goals,
+                  dual_property: {}
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Related Goal关联已添加')
+
+        await sleep(5000) // 等待Notion创建反向关系
+
+        // 2.3 添加 Related Todo
+        await notionApiService.callApi('/databases/' + databases.activityDetails, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Related Todo': {
+                relation: {
+                  database_id: databases.todos,
+                  dual_property: {}
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Related Todo关联已添加')
+
+        await sleep(5000) // 等待Notion创建反向关系
+
+        // 2.4 添加 Related Knowledge
+        await notionApiService.callApi('/databases/' + databases.activityDetails, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Related Knowledge': {
+                relation: {
+                  database_id: databases.knowledge,
+                  dual_property: {}
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Related Knowledge关联已添加')
+
+        await sleep(1000)
+
+        // 2.5 添加 Todo Status After
+        await notionApiService.callApi('/databases/' + databases.activityDetails, {
+          apiKey: apiKey,
+          method: 'PATCH',
+          data: {
+            properties: {
+              'Todo Status After': {
+                select: {
+                  options: [
+                    { name: '进行中', color: 'blue' },
+                    { name: '已完成', color: 'green' }
+                  ]
+                }
+              }
+            }
+          }
+        })
+        console.log('✅ Todo Status After字段已添加')
+
+        console.log('✅ Activity Details数据库升级成功')
+      } catch (error) {
+        wx.hideLoading()
+        throw new Error('Activity Details数据库升级失败: ' + error.message)
+      }
+
+      wx.hideLoading()
+
+      // 成功提示
+      wx.showModal({
+        title: '🎉 升级成功',
+        content: '数据库已成功升级到系统管理版本！\n\n新增字段：\n📚 Goals:\n• Is System Managed\n• Daily Target Hours\n\n⏱️ Activity Details:\n• Activity Type\n• Related Goal\n• Related Todo\n• Related Knowledge\n• Todo Status After\n\n现在可以使用系统管理功能了！',
+        showCancel: false,
+        confirmText: '好的'
+      })
+
+      console.log('🎉 数据库升级完成')
+
+    } catch (error) {
+      console.error('❌ 升级失败:', error)
+      wx.hideLoading()
+
+      wx.showModal({
+        title: '升级失败',
+        content: error.message || '升级过程中发生错误，请稍后重试',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    } finally {
+      this.setData({ upgrading: false })
     }
   },
 

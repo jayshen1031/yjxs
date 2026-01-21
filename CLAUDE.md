@@ -607,6 +607,89 @@ max-height: calc(100vh - 450rpx); /* +100rpx */
 
 ---
 
+### 2025-12-17: 修复history页面Schema兼容性问题 ⭐
+
+**核心成果**: 修复history页面因Schema版本差异导致的加载失败问题
+
+#### 问题现象
+
+用户在打开history页面时报错：
+```javascript
+❌ Notion API错误: 400 Could not find property with name or id: Date
+```
+
+**影响**：
+- ❌ 无法加载历史记录
+- ❌ 页面显示空白
+- ❌ 统计数据无法显示
+
+#### 根本原因
+
+history.js使用硬编码的字段名 `'Date'`，但用户使用的是旧版Schema，日期字段名为 `'Record Date'`。
+
+**Schema差异**：
+- **新Schema** (2025年10月): `Date`
+- **旧Schema** (2025年1月): `Record Date`
+
+#### 解决方案
+
+应用memo.js的成功经验，添加智能字段名检测：
+
+**修改文件**: `pages/history/history.js:115-135`
+
+```javascript
+// ⭐ 智能检测字段名，兼容新旧Schema
+let dateField = 'Date' // 默认新Schema字段名
+try {
+  const schema = await notionApiService.getDatabaseSchema(notionConfig.apiKey, mainRecordsDatabaseId)
+
+  if (schema) {
+    if ('Record Date' in schema) {
+      dateField = 'Record Date'
+      console.log('✅ 使用旧Schema字段名: Record Date')
+    } else if ('Date' in schema) {
+      dateField = 'Date'
+      console.log('✅ 使用新Schema字段名: Date')
+    }
+  }
+} catch (error) {
+  console.warn('⚠️ 获取Schema失败，使用默认字段名:', error.message)
+}
+
+// 使用检测到的字段名查询
+const mainRecordsResult = await notionApiService.queryDatabase(
+  notionConfig.apiKey,
+  mainRecordsDatabaseId,
+  {
+    filter: {
+      property: dateField,  // ✅ 动态字段名
+      date: { equals: selectedDateStr }
+    }
+  }
+)
+```
+
+#### 技术亮点
+
+1. **智能适配**: 运行时动态检测Schema，自动识别正确字段名
+2. **向后兼容**: 支持2025年1月和10月两个版本的Schema
+3. **优雅降级**: Schema检测失败时使用默认值，不中断流程
+4. **详细日志**: 便于用户和开发者诊断问题
+5. **一致策略**: 与memo.js保持相同的适配逻辑
+
+#### 相关文档
+
+- 迭代记录: `迭代记录/2025-12-17_修复history页面Schema兼容性问题.md`
+- Schema对比报告: `.claude/DATABASE_COMPARISON_REPORT.md`
+
+#### 后续计划
+
+- [ ] 检查其他页面是否存在类似问题（goals-todos.js, daily-status.js, timeline.js）
+- [ ] 提取字段名检测为通用工具函数 `utils/schemaAdapter.js`
+- [ ] 开发Schema版本检测和升级工具
+
+---
+
 ### 2025-01-09: Notion四数据库架构完整实现 ⭐
 
 **核心成果**: 实现完整的Notion四数据库架构自动化创建和管理

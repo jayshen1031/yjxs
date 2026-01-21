@@ -84,47 +84,6 @@ module.exports = {
     </view>
   </view>
 
-  <!-- ⭐ 今日有价值投入 - 改为列表展示 -->
-  <view class="card value-activities-card">
-    <view class="card-content">
-      <view class="title-row">
-        <view class="title">
-          <text class="title-icon">🌟</text>
-          <text>今日有价值投入</text>
-        </view>
-        <view class="value-total">
-          <text class="total-minutes">{{ todayValueMinutes }}</text>
-          <text class="total-unit">分钟</text>
-        </view>
-      </view>
-
-      <!-- 活动列表 -->
-      <view class="value-activities-list" wx:if="{{todayValueActivities.length > 0}}">
-        <view
-          class="value-activity-item"
-          wx:for="{{ todayValueActivities }}"
-          wx:key="id"
-        >
-          <view class="activity-time">{{ item.startTime || '未记录' }}</view>
-          <view class="activity-content">
-            <view class="activity-name">{{ item.name }}</view>
-            <view class="activity-meta">
-              <view class="activity-duration">{{ item.duration }}分钟</view>
-              <view class="activity-type" wx:if="{{ item.activityType }}">{{ item.activityType }}</view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 空状态 -->
-      <view class="empty-state" wx:else>
-        <view class="empty-icon">📝</view>
-        <view class="empty-text">今天还没有记录有价值的活动</view>
-        <view class="empty-hint">去"记录时间投入"页面添加吧～</view>
-      </view>
-    </view>
-  </view>
-
   <!-- HUMAN 3.0 评估入口 -->
   <view class="card human30-card" bindtap="goToAssessment">
     <view class="human30-header">
@@ -299,44 +258,6 @@ module.exports = {
       <view class="planning-meta">
         <view class="time-tag">📅 {{ todayPlanning.dueDateDisplay }}</view>
         <view class="priority-tag priority-{{ todayPlanning.priorityClass }}">{{ todayPlanning.priorityText }}</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 进行中待办 -->
-  <view wx:if="{{ inProgressTodos.length > 0 }}" class="card">
-    <view class="card-content">
-      <view class="title-row">
-        <view class="title">▶️ 进行中待办</view>
-        <view class="action-link" bindtap="goToGoalsTodos">管理待办</view>
-      </view>
-
-      <view class="in-progress-todos">
-        <view
-          class="todo-item-home"
-          wx:for="{{ inProgressTodos }}"
-          wx:key="id"
-          wx:for-item="todo"
-          bindtap="goToMemoWithTodo"
-          data-todo-id="{{ todo.id }}"
-        >
-          <view class="todo-header-home">
-            <view class="todo-title-home">{{ todo.title }}</view>
-            <view class="todo-type-badge">{{ todo.todoType }}</view>
-          </view>
-          <view class="todo-progress-info">
-            <text class="progress-text">已投入 {{ todo.actualMinutes || 0 }}分钟</text>
-            <text wx:if="{{ todo.estimatedMinutes > 0 }}" class="progress-text">/ 预计 {{ todo.estimatedMinutes }}分钟</text>
-            <text wx:if="{{ todo.estimatedMinutes > 0 }}" class="progress-percentage">{{ todo.progressPercentage }}%</text>
-          </view>
-          <view wx:if="{{ todo.estimatedMinutes > 0 }}" class="progress-bar-home">
-            <view class="progress-fill-home" style="width: {{ todo.progressPercentage }}%; background: {{ todo.progressPercentage >= 100 ? '#ef4444' : '#f59e0b' }}"></view>
-          </view>
-        </view>
-      </view>
-
-      <view wx:if="{{ inProgressTodos.length === 0 }}" class="empty-tip">
-        <text>暂无进行中的待办事项</text>
       </view>
     </view>
   </view>

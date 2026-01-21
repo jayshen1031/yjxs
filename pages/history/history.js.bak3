@@ -104,7 +104,7 @@ Page({
       this.initAudioContext()
       this.loadAllMemos()
 
-      console.log('🎉 History页面加载完成')
+      //       console.log('🎉 History页面加载完成')
     } catch (error) {
       console.error('❌ History页面加载失败:', error)
       wx.showToast({
@@ -131,7 +131,7 @@ Page({
 
   // 下拉刷新
   onRefresh: function() {
-    console.log('🔄 触发下拉刷新')
+    //     console.log('🔄 触发下拉刷新')
     this.setData({ refreshing: true })
     this.loadAllMemos().then(() => {
       this.setData({ refreshing: false })
@@ -222,7 +222,7 @@ Page({
         return
       }
 
-      console.log('🔍 准备查询Notion - 邮箱:', currentUser.email, '数据库ID:', mainDatabaseId)
+      //       console.log('🔍 准备查询Notion - 邮箱:', currentUser.email, '数据库ID:', mainDatabaseId)
 
       // 首先尝试使用邮箱过滤查询
       let result = await notionApiService.queryMainRecords(
@@ -234,7 +234,7 @@ Page({
 
       // ⭐ 如果没有找到记录，尝试不过滤User ID（诊断用）
       if (result.success && result.records.length === 0) {
-        console.log('⚠️ 使用邮箱过滤没有找到记录，尝试查询全部记录（不过滤User ID）')
+        //         console.log('⚠️ 使用邮箱过滤没有找到记录，尝试查询全部记录（不过滤User ID）')
 
         // 直接查询数据库，不过滤User ID（先尝试排序，失败则不排序）
         let allRecordsResult = await notionApiService.queryDatabase(
@@ -248,7 +248,7 @@ Page({
 
         // 如果排序字段不存在，降级为不排序查询
         if (!allRecordsResult.success && allRecordsResult.error && allRecordsResult.error.includes('Could not find sort property')) {
-          console.log('⚠️ Date字段不存在，尝试不排序查询')
+          //           console.log('⚠️ Date字段不存在，尝试不排序查询')
           allRecordsResult = await notionApiService.queryDatabase(
             notionConfig.apiKey,
             mainDatabaseId,
@@ -257,14 +257,14 @@ Page({
         }
 
         if (allRecordsResult.success && allRecordsResult.data.results.length > 0) {
-          console.log('✅ 不过滤User ID查询到记录:', allRecordsResult.data.results.length)
-          console.log('🔍 数据库中的User ID值:')
+          //           console.log('✅ 不过滤User ID查询到记录:', allRecordsResult.data.results.length)
+          //           console.log('🔍 数据库中的User ID值:')
           allRecordsResult.data.results.slice(0, 5).forEach((page, i) => {
             const userId = page.properties['User ID']?.rich_text?.[0]?.text?.content || '(空)'
             const title = page.properties['Name']?.title?.[0]?.text?.content || '(无标题)'
             console.log(`  ${i + 1}. User ID: "${userId}" | 标题: ${title}`)
           })
-          console.log('🔍 当前用户邮箱:', `"${currentUser.email}"`)
+          //           console.log('🔍 当前用户邮箱:', `"${currentUser.email}"`)
 
           // 手动解析所有记录（临时方案，帮助诊断问题）
           const records = allRecordsResult.data.results.map(page => {
@@ -272,7 +272,7 @@ Page({
             let recordType = '日常记录'
             if (props['Type']?.select?.name) {
               const typeValue = props['Type'].select.name
-              recordType = typeValue === 'planning' ? '明日规划' : '日常记录'
+              recordType = typeValue === 'planning' ? '次日规划' : '日常记录'
             } else if (props['Record Type']?.select?.name) {
               recordType = props['Record Type'].select.name
             }
@@ -298,7 +298,7 @@ Page({
             total: records.length
           }
 
-          console.log('✅ 临时使用全部记录（不过滤User ID），共', records.length, '条')
+          //           console.log('✅ 临时使用全部记录（不过滤User ID），共', records.length, '条')
         }
       }
 
@@ -315,8 +315,8 @@ Page({
 
       const records = result.records || []
 
-      console.log('📊 从Notion获取的主记录数据:', records)
-      console.log('📊 主记录数量:', records.length)
+      //       console.log('📊 从Notion获取的主记录数据:', records)
+      //       console.log('📊 主记录数量:', records.length)
 
       // 特别检查"王者荣耀"相关的主记录
       const wangzheRecord = records.find(r => r.content && r.content.includes('王者荣耀'))
@@ -351,7 +351,7 @@ Page({
         })
       }
       if (records.length > 0) {
-        console.log('📊 第一条主记录详情:', records[0])
+        //         console.log('📊 第一条主记录详情:', records[0])
       }
 
       // ⚠️ 根据ID去重（防止重复记录）
@@ -366,14 +366,14 @@ Page({
         }
       })
 
-      console.log('📋 去重后主记录数量:', uniqueRecords.length)
+      //       console.log('📋 去重后主记录数量:', uniqueRecords.length)
       if (uniqueRecords.length !== records.length) {
         console.warn(`⚠️ 去除了 ${records.length - uniqueRecords.length} 条重复记录`)
       }
 
       // 打印前3个主记录的ID，方便对比
       if (uniqueRecords.length > 0) {
-        console.log('📋 前3个主记录的ID:')
+        //         console.log('📋 前3个主记录的ID:')
         uniqueRecords.slice(0, 3).forEach((rec, index) => {
           console.log(`  ${index + 1}. ID: ${rec.id}, 标题: ${rec.title}`)
         })
@@ -384,7 +384,7 @@ Page({
       let allActivities = []
 
       if (activityDetailsDatabaseId) {
-        console.log('🔍 开始加载活动明细，数据库ID:', activityDetailsDatabaseId)
+        //         console.log('🔍 开始加载活动明细，数据库ID:', activityDetailsDatabaseId)
         const activitiesResult = await notionApiService.queryActivities(
           notionConfig.apiKey,
           activityDetailsDatabaseId,
@@ -394,7 +394,7 @@ Page({
 
         if (activitiesResult.success && activitiesResult.activities) {
           allActivities = activitiesResult.activities
-          console.log('📊 加载活动明细成功，数量:', allActivities.length)
+          //           console.log('📊 加载活动明细成功，数量:', allActivities.length)
 
           // 特别检查"王者荣耀"活动
           const wangzheActivity = allActivities.find(act => act.name && act.name.includes('王者荣耀'))
@@ -411,7 +411,7 @@ Page({
 
           // 打印前3个活动的详细信息，查看关联字段
           if (allActivities.length > 0) {
-            console.log('📊 前3个活动详情:')
+            //             console.log('📊 前3个活动详情:')
             allActivities.slice(0, 3).forEach((act, i) => {
               console.log(`  ${i + 1}. ${act.name}`, {
                 relatedMainRecordId: act.relatedMainRecordId,
@@ -435,13 +435,7 @@ Page({
 
         // 查找该主记录关联的活动明细
         const relatedActivities = allActivities.filter(activity => {
-          const isMatch = activity.relatedMainRecordId === record.id
-          if (!isMatch && record.content && record.content.includes('王者荣耀')) {
-            console.log(`🔍 检查主记录 "${record.title}" (ID: ${record.id})`)
-            console.log(`   活动 "${activity.name}" 的关联ID: ${activity.relatedMainRecordId}`)
-            console.log(`   是否匹配: ${isMatch}`)
-          }
-          return isMatch
+          return activity.relatedMainRecordId === record.id
         }).map(activity => {
           // ⭐ 活动明细不需要单独的开始/结束时间，只显示时长
           return {
@@ -452,7 +446,7 @@ Page({
         })
 
         if (relatedActivities.length > 0) {
-          console.log(`📌 主记录 ${record.title} 关联了 ${relatedActivities.length} 个活动:`, relatedActivities)
+          //           console.log(`📌 主记录 ${record.title} 关联了 ${relatedActivities.length} 个活动:`, relatedActivities)
         }
 
         // 从主记录中获取开始和结束时间（如果有的话）
@@ -473,7 +467,7 @@ Page({
             actualStartTime.setHours(startHour, startMin, 0, 0)
             actualEndTime = new Date(recordDate)
             actualEndTime.setHours(endHour, endMin, 0, 0)
-            console.log(`⏰ 主记录 ${record.title} 时间范围: ${record.startTime} - ${record.endTime}`)
+            //             console.log(`⏰ 主记录 ${record.title} 时间范围: ${record.startTime} - ${record.endTime}`)
           }
         }
 
@@ -523,7 +517,7 @@ Page({
           category: this.getCategoryFromContent(record.content),
           categoryColor: this.getCategoryColorFromContent(record.content),
           isPlaying: false,
-          isPlanning: record.recordType === '明日规划',
+          isPlanning: record.recordType === '次日规划',
           // 主记录特有信息
           title: record.title,
           recordType: record.recordType,
@@ -555,14 +549,14 @@ Page({
         }
       })
 
-      console.log('📌 转换后的processedMemos数量:', processedMemos.length)
-      console.log('📌 去重后的uniqueMemos数量:', uniqueMemos.length)
+      //       console.log('📌 转换后的processedMemos数量:', processedMemos.length)
+      //       console.log('📌 去重后的uniqueMemos数量:', uniqueMemos.length)
       if (processedMemos.length !== uniqueMemos.length) {
         console.warn(`⚠️ processedMemos中去除了 ${processedMemos.length - uniqueMemos.length} 条重复`)
       }
 
       if (uniqueMemos.length > 0) {
-        console.log('📌 第一条转换后的memo:', uniqueMemos[0])
+        //         console.log('📌 第一条转换后的memo:', uniqueMemos[0])
       }
 
       // 计算统计数据
@@ -574,14 +568,14 @@ Page({
         stats: stats
       })
 
-      console.log('📌 setData完成，准备applyFilters')
+      //       console.log('📌 setData完成，准备applyFilters')
       this.applyFilters()
-      console.log('📌 applyFilters完成，当前groupedMemos数量:', this.data.groupedMemos?.length || 0)
+      //       console.log('📌 applyFilters完成，当前groupedMemos数量:', this.data.groupedMemos?.length || 0)
 
       // 详细输出第一个分组的内容
       if (this.data.groupedMemos && this.data.groupedMemos.length > 0) {
         const firstGroup = this.data.groupedMemos[0]
-        console.log('📌 第一个分组详情:')
+        //         console.log('📌 第一个分组详情:')
         console.log('  - 日期:', firstGroup.dateDisplay)
         console.log('  - 记录数:', firstGroup.memos?.length || 0)
         if (firstGroup.memos && firstGroup.memos.length > 0) {
@@ -782,7 +776,7 @@ Page({
     })
 
     if (memo.activities && memo.activities.length > 0) {
-      console.log('🔄 开始转换activities到timeEntries:', memo.activities)
+      //       console.log('🔄 开始转换activities到timeEntries:', memo.activities)
 
       memo.activities.forEach((activity, index) => {
         const cleanedName = this.cleanActivityName(activity.name)
@@ -887,12 +881,12 @@ Page({
 
       // 如果有Notion配置，同时删除Notion中的记录
       if (notionConfig && notionConfig.apiKey && memo.notionPageId) {
-        console.log('🗑️ 开始删除主记录和关联的活动明细')
+        //         console.log('🗑️ 开始删除主记录和关联的活动明细')
 
         // 1. 先查询并归档所有关联的活动明细
         const activityDatabaseId = notionConfig.databases?.activityDetails
         if (activityDatabaseId) {
-          console.log('🔍 查询关联的活动明细记录...')
+          //           console.log('🔍 查询关联的活动明细记录...')
 
           try {
             // 查询与此主记录关联的所有活动明细
@@ -913,11 +907,11 @@ Page({
 
             if (queryResult.success && queryResult.data && queryResult.data.results) {
               const activities = queryResult.data.results
-              console.log(`📝 找到 ${activities.length} 条关联的活动明细`)
+              //               console.log(`📝 找到 ${activities.length} 条关联的活动明细`)
 
               // 归档每个活动明细
               for (const activity of activities) {
-                console.log(`🗑️ 归档活动明细: ${activity.id}`)
+                //                 console.log(`🗑️ 归档活动明细: ${activity.id}`)
                 await notionApiService.updatePageProperties(
                   notionConfig.apiKey,
                   activity.id,
@@ -927,7 +921,7 @@ Page({
                 )
               }
 
-              console.log('✅ 所有活动明细已归档')
+              //               console.log('✅ 所有活动明细已归档')
             } else {
               console.warn('⚠️ 查询活动明细失败或没有找到关联记录')
             }
@@ -938,7 +932,7 @@ Page({
         }
 
         // 2. 归档主记录
-        console.log('🗑️ 归档主记录:', memo.notionPageId)
+        //         console.log('🗑️ 归档主记录:', memo.notionPageId)
         const archiveResult = await notionApiService.updatePageProperties(
           notionConfig.apiKey,
           memo.notionPageId,
@@ -950,7 +944,7 @@ Page({
         if (!archiveResult.success) {
           console.warn('⚠️ 主记录归档失败，仅删除本地记录:', archiveResult.error)
         } else {
-          console.log('✅ 主记录已归档')
+          //           console.log('✅ 主记录已归档')
         }
       }
 
@@ -1027,8 +1021,8 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
     let totalMinutes = 0
     let totalActivityCount = 0
 
-    console.log('📊 开始计算统计数据，记录数:', memoList.length)
-    console.log('📊 今日日期字符串:', today)
+    //     console.log('📊 开始计算统计数据，记录数:', memoList.length)
+    //     console.log('📊 今日日期字符串:', today)
 
     memoList.forEach(memo => {
       const isToday = new Date(memo.timestamp).toDateString() === today
@@ -1036,7 +1030,7 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
       // 统计每条记录的活动明细
       if (memo.activities && memo.activities.length > 0) {
         if (isToday) {
-          console.log(`📌 [今日] 记录 ${memo.title} 有 ${memo.activities.length} 个活动`)
+          //           console.log(`📌 [今日] 记录 ${memo.title} 有 ${memo.activities.length} 个活动`)
         }
 
         memo.activities.forEach(activity => {
@@ -1056,10 +1050,10 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
 
             if (activityType.includes('有价值') || activityType === 'valuable') {
               todayValuableMinutes += duration
-              console.log(`    ✅ 今日有价值: +${duration}分钟`)
+              //               console.log(`    ✅ 今日有价值: +${duration}分钟`)
             } else if (activityType.includes('低效') || activityType === 'wasteful') {
               todayWastefulMinutes += duration
-              console.log(`    ❌ 今日低效: +${duration}分钟`)
+              //               console.log(`    ❌ 今日低效: +${duration}分钟`)
             } else {
               todayNeutralMinutes += duration
               console.log(`    ⚪ 今日中性: +${duration}分钟`)
@@ -1203,9 +1197,9 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
 
   // 应用筛选
   applyFilters: function() {
-    console.log('🔧 applyFilters开始 - allMemos数量:', this.data.allMemos?.length || 0)
+    //     console.log('🔧 applyFilters开始 - allMemos数量:', this.data.allMemos?.length || 0)
     if (this.data.allMemos && this.data.allMemos.length > 0) {
-      console.log('🔧 第一条allMemo:', this.data.allMemos[0])
+      //       console.log('🔧 第一条allMemo:', this.data.allMemos[0])
     }
 
     let filteredMemos = [...this.data.allMemos]
@@ -1232,7 +1226,7 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
       })
     } else {
       // 否则使用高级筛选的时间范围
-      console.log('⏰ 使用时间范围筛选:', this.data.timeRange)
+      //       console.log('⏰ 使用时间范围筛选:', this.data.timeRange)
       switch (this.data.timeRange) {
         case 'today':
           const todayDateStr = today.toDateString()
@@ -1262,25 +1256,25 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
     }
 
     // 排序 ⭐ 使用实际发生时间（sortTimestamp）而不是记录创建时间（timestamp）
-    console.log('📊 当前排序方式:', this.data.sortBy)
+    //     console.log('📊 当前排序方式:', this.data.sortBy)
     switch (this.data.sortBy) {
       case 'time_desc':
         filteredMemos.sort((a, b) => (b.sortTimestamp || b.timestamp) - (a.sortTimestamp || a.timestamp))
-        console.log('📊 使用实际发生时间降序排序（最新在前）')
+        //         console.log('📊 使用实际发生时间降序排序（最新在前）')
         break
       case 'time_asc':
         filteredMemos.sort((a, b) => (a.sortTimestamp || a.timestamp) - (b.sortTimestamp || b.timestamp))
-        console.log('📊 使用实际发生时间升序排序（最早在前）')
+        //         console.log('📊 使用实际发生时间升序排序（最早在前）')
         break
       case 'length':
         filteredMemos.sort((a, b) => b.content.length - a.content.length)
-        console.log('📊 使用内容长度排序')
+        //         console.log('📊 使用内容长度排序')
         break
     }
 
     // 打印排序后的前3条记录的实际发生时间
     if (filteredMemos.length > 0) {
-      console.log('📊 排序后前3条记录（按实际发生时间）:')
+      //       console.log('📊 排序后前3条记录（按实际发生时间）:')
       filteredMemos.slice(0, 3).forEach((memo, i) => {
         const time = new Date(memo.sortTimestamp || memo.timestamp)
         console.log(`  ${i + 1}. ${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')} - ${memo.content?.substring(0, 20)}`)
@@ -1290,10 +1284,10 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
     // 按日期分组
     const groupedMemos = this.groupMemosByDate(filteredMemos)
 
-    console.log('🔧 过滤后的memos数量:', filteredMemos.length)
-    console.log('🔧 分组后的groups数量:', groupedMemos.length)
+    //     console.log('🔧 过滤后的memos数量:', filteredMemos.length)
+    //     console.log('🔧 分组后的groups数量:', groupedMemos.length)
     if (groupedMemos.length > 0) {
-      console.log('🔧 第一个group:', groupedMemos[0])
+      //       console.log('🔧 第一个group:', groupedMemos[0])
     }
 
     // 重新计算统计数据（基于筛选后的记录）
@@ -1307,7 +1301,7 @@ ${todayActivities.map((a, i) => `${i+1}. ${a.name} - ${a.type} - ${a.duration}�
       hasMore: filteredMemos.length > this.data.pageSize
     })
 
-    console.log('🔧 setData完成，页面应该已刷新')
+    //     console.log('🔧 setData完成，页面应该已刷新')
   },
 
   // 按日期分组

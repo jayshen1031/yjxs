@@ -15,8 +15,6 @@ Page({
     recentMemos: [],
     todayPlanning: null,
     planningDate: '',
-    todayValueMinutes: 0, // 今日价值分钟总数
-    todayValueActivities: [], // ⭐ 今日有价值活动列表
     todayStatus: null, // 今日状态
     todayHappyThings: [], // 今日开心推荐
     // 箴言相关
@@ -51,8 +49,6 @@ Page({
       inProgress: 0,
       completed: 0
     },
-    // 进行中待办
-    inProgressTodos: [],
     // HUMAN 3.0评估
     lastAssessment: null
   },
@@ -110,9 +106,6 @@ Page({
     // 获取今日目标
     this.loadTodayGoals()
 
-    // 获取进行中待办
-    this.loadInProgressTodos()
-
     // 获取今日待办
     this.loadTodayTodos()
 
@@ -121,9 +114,6 @@ Page({
 
     // 加载今日开心推荐
     this.loadTodayHappyThings()
-
-    // ⭐ 加载今日有价值投入
-    this.loadTodayValueMinutes()
 
     // 加载最近评估
     this.loadLastAssessment()
@@ -269,52 +259,7 @@ Page({
 
   // 加载备忘录统计
   loadMemoStats: function() {
-    const memoList = app.getMemoList()
-    const today = new Date()
-    const todayStr = today.toDateString()
-
-    // 计算今日价值分钟总数
-    const todayValueMinutes = this.calculateTodayValueMinutes(memoList, todayStr)
-
-    this.setData({
-      todayValueMinutes: todayValueMinutes
-    })
-  },
-
-  // 计算今日价值分钟总数
-  calculateTodayValueMinutes: function(memoList, todayStr) {
-    const todayMemos = memoList.filter(memo => {
-      const memoDateStr = new Date(memo.timestamp).toDateString()
-      return memoDateStr === todayStr && !memo.isPlanning
-    })
-
-    if (todayMemos.length === 0) return 0
-
-    let totalMinutes = 0
-
-    // 从记录中提取valuableTimeEntries
-    todayMemos.forEach(memo => {
-      // 如果memo有valuableTimeEntries字段
-      if (memo.valuableTimeEntries && Array.isArray(memo.valuableTimeEntries)) {
-        memo.valuableTimeEntries.forEach(entry => {
-          totalMinutes += entry.minutes || 0
-        })
-      }
-
-      // 兼容：从content中解析时间投入（格式：活动名称 (X分钟)）
-      if (memo.content && memo.content.includes('🌟 有价值的活动')) {
-        const valuableSection = memo.content.split('😐 中性的活动')[0]
-        const timeMatches = valuableSection.match(/\((\d+)分钟\)/g)
-        if (timeMatches) {
-          timeMatches.forEach(match => {
-            const minutes = parseInt(match.match(/\d+/)[0])
-            totalMinutes += minutes
-          })
-        }
-      }
-    })
-
-    return totalMinutes
+    // 暂无统计逻辑
   },
 
   // 计算连续记录天数
@@ -509,99 +454,6 @@ Page({
       this.setData({
         todayPlanning: null,
         planningDate: ''
-      })
-    }
-  },
-
-  // 加载进行中待办 ⭐ 新增
-  loadInProgressTodos: async function() {
-    try {
-      const currentUser = userManager.getCurrentUser()
-//       console.log('🔍 [进行中待办] 当前用户:', currentUser ? '已登录' : '未登录')
-//       console.log('🔍 [进行中待办] notionConfig:', JSON.stringify(currentUser?.notionConfig, null, 2))
-
-      if (!currentUser || !currentUser.notionConfig) {
-        console.log('❌ [进行中待办] 未配置Notion，无法加载进行中待办')
-        return
-      }
-
-      const { apiKey, databases } = currentUser.notionConfig
-      const todosDatabaseId = databases?.todos || currentUser.notionConfig.todosDatabaseId || currentUser.notionConfig.databaseId
-
-//       console.log('🔍 [进行中待办] databases对象:', databases)
-//       console.log('🔍 [进行中待办] 待办库ID:', todosDatabaseId)
-
-      if (!todosDatabaseId) {
-        console.log('❌ [进行中待办] 未配置待办库ID')
-        return
-      }
-
-      console.log('⏳ [进行中待办] 开始从Notion加载...')
-
-      // 查询进行中的待办
-      const result = await notionApiService.queryTodos(apiKey, todosDatabaseId, {
-        scope: '进行中'
-      })
-
-//       console.log('✅ [进行中待办] Notion API调用结果:', result)
-
-      if (result.success && result.todos.length > 0) {
-        // 处理数据，添加进度百分比
-        const todos = result.todos.map(todo => {
-          const progressPercentage = todo.estimatedMinutes > 0
-            ? Math.min(Math.round((todo.actualMinutes / todo.estimatedMinutes) * 100), 100)
-            : 0
-
-          return {
-            ...todo,
-            progressPercentage: progressPercentage
-          }
-        })
-
-//         console.log(`✅ [进行中待办] 成功加载 ${todos.length} 个进行中待办`)
-        this.setData({
-          inProgressTodos: todos
-        })
-      } else {
-        console.log('⚠️ [进行中待办] 暂无进行中待办')
-        this.setData({
-          inProgressTodos: []
-        })
-      }
-    } catch (error) {
-      console.error('❌ [进行中待办] 加载失败:', error)
-      this.setData({
-        inProgressTodos: []
-      })
-    }
-  },
-
-  // 跳转到memo页面并预填待办 ⭐ 新增
-  goToMemoWithTodo: function(e) {
-    const todoId = e.currentTarget.dataset.todoId
-    const todo = this.data.inProgressTodos.find(t => t.id === todoId)
-
-    if (todo) {
-      // 跳转到memo页面，并通过URL参数传递待办ID
-      wx.navigateTo({
-        url: '/pages/memo/memo?todoId=' + todoId,
-        success: function() {
-          // 获取memo页面实例
-          const pages = getCurrentPages()
-          const memoPage = pages[pages.length - 1]
-          if (memoPage && memoPage.route === 'pages/memo/memo') {
-            // 预设待办关联
-            memoPage.setData({
-              selectedTodoId: todoId,
-              selectedTodoInfo: todo,
-              todoFilterScope: '进行中'
-            })
-            // 重新加载待办列表
-            if (memoPage.loadAvailableTodos) {
-              memoPage.loadAvailableTodos()
-            }
-          }
-        }
       })
     }
   },
@@ -1228,89 +1080,6 @@ Page({
   },
 
   // ========== 开心推荐相关方法 ==========
-
-  // ⭐ 加载今日有价值投入（从Notion）
-  loadTodayValueMinutes: async function() {
-    try {
-      const currentUser = userManager.getCurrentUser()
-      if (!currentUser || !currentUser.notionConfig) {
-        console.log('⚠️ 未配置Notion，使用本地数据计算')
-        // 降级到本地数据
-        const app = getApp()
-        const memoList = app.getMemoList()
-        const todayStr = new Date().toDateString()
-        const todayValueMinutes = this.calculateTodayValueMinutes(memoList, todayStr)
-        this.setData({ todayValueMinutes })
-        return
-      }
-
-      const notionConfig = currentUser.notionConfig
-      const activityDetailsDatabaseId = notionConfig.databases?.activityDetails || notionConfig.activityDetailsDatabaseId
-
-      if (!notionConfig.apiKey || !activityDetailsDatabaseId) {
-        console.log('⚠️ Notion配置不完整，跳过加载今日有价值投入')
-        return
-      }
-
-      // 查询今日的活动明细
-      const today = new Date()
-      const todayDate = this.formatDate(today)
-
-//       console.log('📊 开始查询今日有价值投入:', todayDate)
-
-      const result = await notionApiService.queryActivities(
-        notionConfig.apiKey,
-        activityDetailsDatabaseId,
-        currentUser.email,
-        {}
-      )
-
-      if (!result.success || !result.activities) {
-        console.error('❌ 查询活动明细失败:', result.error)
-        return
-      }
-
-//       console.log(`📊 查询到 ${result.activities.length} 条活动明细`)
-
-      // 筛选今日的有价值活动
-      const todayValueActivities = result.activities.filter(activity => {
-        // 检查日期（使用recordDate字段，格式：YYYY-MM-DD）
-        const activityDate = activity.recordDate || ''
-        const isToday = activityDate === todayDate
-
-        // ⭐ 检查是否为有价值活动（兼容两种字段）
-        // 1. Value Type 字段 = '有价值'
-        // 2. Activity Type 字段包含 '价值' 或 '高价值'
-        const isValuable = activity.valueType === '有价值' ||
-                          activity.activityType?.includes('价值') ||
-                          activity.activityType?.includes('高价值')
-
-        return isToday && isValuable
-      })
-
-      // 按时间降序排序
-      todayValueActivities.sort((a, b) => {
-        const timeA = a.startTime || ''
-        const timeB = b.startTime || ''
-        return timeB.localeCompare(timeA)
-      })
-
-      // 计算总分钟数
-      const totalMinutes = todayValueActivities.reduce((sum, activity) => {
-        return sum + (activity.duration || 0)
-      }, 0)
-
-      console.log(`✅ 今日有价值投入: ${totalMinutes} 分钟 (${todayValueActivities.length}个活动)`)
-
-      this.setData({
-        todayValueMinutes: totalMinutes,
-        todayValueActivities: todayValueActivities // ⭐ 保存活动列表
-      })
-
-    } catch (error) {
-      console.error('❌ 加载今日有价值投入失败:', error)
-    }
-  },
 
   // 加载今日开心推荐
   loadTodayHappyThings: function() {

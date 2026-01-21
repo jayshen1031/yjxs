@@ -43,7 +43,7 @@ Page({
     selectedTimeDisplay: '', // 完整时间显示
     customDate: '',
     customDateDisplay: '',
-    todayDate: ''
+    todayDate: '',
 
     // 保存相关
     isSaving: false,

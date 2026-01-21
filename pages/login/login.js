@@ -609,9 +609,41 @@ Page({
     this.setData({ logging: true })
 
     try {
+      // ⚡ 确保云开发环境已初始化
+      const app = getApp()
+      if (!app.globalData.cloudReady) {
+        console.warn('云开发环境未就绪，正在等待初始化...')
+        wx.showToast({
+          title: '正在初始化...',
+          icon: 'loading',
+          duration: 2000
+        })
+
+        // 等待云开发环境就绪（最多等待3秒）
+        let waitCount = 0
+        while (!app.globalData.cloudReady && waitCount < 30) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          waitCount++
+        }
+
+        if (!app.globalData.cloudReady) {
+          wx.hideToast()
+          wx.showToast({
+            title: '云服务初始化失败，请重试',
+            icon: 'none',
+            duration: 3000
+          })
+          this.setData({ logging: false })
+          return
+        }
+
+        wx.hideToast()
+        console.log('✅ 云开发环境已就绪')
+      }
+
       console.log('开始密码登录流程:', { loginEmail: loginEmail.trim(), passwordLength: loginPassword.length })
       const apiService = require('../../utils/apiService.js')
-      
+
       // 密码登录验证
       const result = await apiService.loginWithPassword(loginEmail.trim(), loginPassword)
       console.log('云函数返回结果:', result)
